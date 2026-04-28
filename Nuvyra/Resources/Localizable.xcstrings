@@ -1,0 +1,23 @@
+﻿{
+  "sourceLanguage" : "tr",
+  "strings" : {
+    "app_name" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nuvyra"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nuvyra"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

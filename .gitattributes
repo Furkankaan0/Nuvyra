@@ -1,0 +1,11 @@
+﻿*.swift text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.plist text eol=lf
+*.xcprivacy text eol=lf
+*.entitlements text eol=lf
+*.xcstrings text eol=lf
+*.json text eol=lf
+*.storekit text eol=lf
+*.png binary
