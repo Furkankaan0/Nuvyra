@@ -112,6 +112,21 @@
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
             --scheme "$XCODE_SCHEME"
+      - name: Validate IPA metadata
+        script: |
+          IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -n 1)
+          test -n "$IPA_PATH"
+          rm -rf /tmp/nuvyra_ipa
+          mkdir -p /tmp/nuvyra_ipa
+          unzip -q "$IPA_PATH" -d /tmp/nuvyra_ipa
+          APP_DIR=$(find /tmp/nuvyra_ipa/Payload -maxdepth 1 -name "*.app" -type d | head -n 1)
+          test -n "$APP_DIR"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIconName" "$APP_DIR/Info.plist"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName" "$APP_DIR/Info.plist"
+          test -f "$APP_DIR/AppIcon60x60@2x.png"
+          test -f "$APP_DIR/AppIcon40x40@3x.png"
+          file "$APP_DIR/AppIcon60x60@2x.png"
+          file "$APP_DIR/AppIcon40x40@3x.png"
     artifacts:
       - build/ios/ipa/*.ipa
       - /tmp/xcodebuild_logs/*.log
