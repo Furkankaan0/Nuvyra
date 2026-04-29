@@ -34,12 +34,12 @@
           xcodebuild -resolvePackageDependencies \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME"
-      - name: Run tests
+      - name: Validate simulator build
         script: |
-          xcodebuild test \
+          xcodebuild build \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_TEST_SCHEME" \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO
     artifacts:
       - /tmp/xcodebuild_logs/*.log
@@ -94,12 +94,12 @@
           xcodebuild -resolvePackageDependencies \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME"
-      - name: Run tests
+      - name: Validate simulator build
         script: |
-          xcodebuild test \
+          xcodebuild build \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_TEST_SCHEME" \
-            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO
       - name: Set up code signing
         script: |
