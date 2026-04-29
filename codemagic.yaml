@@ -114,6 +114,7 @@
             --scheme "$XCODE_SCHEME"
       - name: Validate IPA metadata
         script: |
+          set -euo pipefail
           IPA_PATH=$(find build/ios/ipa -name "*.ipa" | head -n 1)
           test -n "$IPA_PATH"
           rm -rf /tmp/nuvyra_ipa
