@@ -33,12 +33,18 @@ targets:
       - path: Nuvyra/Resources/PrivacyInfo.xcprivacy
         buildPhase: resources
     dependencies:
+      - target: NuvyraWidgetExtension
+        embed: true
       - sdk: HealthKit.framework
       - sdk: StoreKit.framework
       - sdk: Security.framework
       - sdk: UserNotifications.framework
       - sdk: CoreLocation.framework
       - sdk: CoreMotion.framework
+      - sdk: ActivityKit.framework
+      - sdk: AppIntents.framework
+      - sdk: Charts.framework
+      - sdk: CoreHaptics.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app
@@ -64,8 +70,10 @@ targets:
     sources:
       - path: Nuvyra/Widgets
       - path: Nuvyra/DesignSystem
+      - path: Nuvyra/Shared
     dependencies:
       - sdk: WidgetKit.framework
+      - sdk: ActivityKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app.widget

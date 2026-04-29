@@ -15,6 +15,14 @@ struct InsightsView: View {
                     TrendCard(title: "Kalori", value: "\(viewModel.averageCalories) kcal", detail: "Bugünkü kayıt", systemImage: "flame")
                     TrendCard(title: "Adım", value: viewModel.averageSteps.formatted(), detail: "7 günlük ortalama", systemImage: "figure.walk")
                     TrendCard(title: "Su", value: "\(viewModel.waterAverage) ml", detail: "Bugünkü toplam", systemImage: "drop")
+                    RhythmTrendCard(
+                        calories: viewModel.averageCalories,
+                        calorieTarget: 1_900,
+                        steps: viewModel.averageSteps,
+                        stepGoal: 7_500,
+                        waterMl: viewModel.waterAverage,
+                        waterTarget: 2_000
+                    )
                     WeeklySummaryView(insight: viewModel.trendText)
                 }
                 .padding(NuvyraSpacing.lg)

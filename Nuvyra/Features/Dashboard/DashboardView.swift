@@ -20,6 +20,14 @@ struct DashboardView: View {
                     } onAdd500: {
                         Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: 500) }
                     }
+                    RhythmTrendCard(
+                        calories: viewModel.totalCalories,
+                        calorieTarget: viewModel.calorieTarget,
+                        steps: viewModel.healthSnapshot.steps,
+                        stepGoal: viewModel.stepTarget,
+                        waterMl: viewModel.waterMl,
+                        waterTarget: viewModel.waterTarget
+                    )
                     mealSlots
                     DailyInsightCard(text: viewModel.insight)
                     premiumTeaser

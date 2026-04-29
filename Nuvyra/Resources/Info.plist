@@ -66,6 +66,8 @@
   <string>Nuvyra, Apple Sağlık izni olmadığında adım ritmini desteklemek için hareket verilerini kullanabilir.</string>
   <key>NSPhotoLibraryUsageDescription</key>
   <string>Nuvyra, seçtiğin öğün fotoğraflarını analiz veya kayıt amacıyla kullanır.</string>
+  <key>NSSupportsLiveActivities</key>
+  <true/>
   <key>UILaunchScreen</key>
   <dict>
     <key>UIColorName</key>

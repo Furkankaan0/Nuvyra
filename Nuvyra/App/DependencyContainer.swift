@@ -9,6 +9,9 @@ final class DependencyContainer: ObservableObject {
     let activeEnergyService: ActiveEnergyService
     let storeKitService: StoreKitService
     let notificationService: NotificationService
+    let foodIntelligenceService: FoodIntelligenceService
+    let haptics: HapticsService
+    let walkingLiveActivityService: WalkingLiveActivityService
     let analytics: AnalyticsService
     @Published var subscriptionManager: SubscriptionManager
 
@@ -17,6 +20,9 @@ final class DependencyContainer: ObservableObject {
         motionService: MotionService,
         storeKitService: StoreKitService,
         notificationService: NotificationService,
+        foodIntelligenceService: FoodIntelligenceService,
+        haptics: HapticsService,
+        walkingLiveActivityService: WalkingLiveActivityService,
         analytics: AnalyticsService
     ) {
         self.healthService = healthService
@@ -25,6 +31,9 @@ final class DependencyContainer: ObservableObject {
         self.activeEnergyService = LiveActiveEnergyService(healthService: healthService)
         self.storeKitService = storeKitService
         self.notificationService = notificationService
+        self.foodIntelligenceService = foodIntelligenceService
+        self.haptics = haptics
+        self.walkingLiveActivityService = walkingLiveActivityService
         self.analytics = analytics
         self.subscriptionManager = SubscriptionManager(storeKitService: storeKitService)
     }
@@ -35,6 +44,9 @@ final class DependencyContainer: ObservableObject {
             motionService: LiveMotionService(),
             storeKitService: LiveStoreKitService(),
             notificationService: LiveNotificationService(),
+            foodIntelligenceService: MockFoodIntelligenceService(),
+            haptics: LiveHapticsService(),
+            walkingLiveActivityService: LiveWalkingLiveActivityService(),
             analytics: MockAnalyticsService()
         )
     }
@@ -45,6 +57,9 @@ final class DependencyContainer: ObservableObject {
             motionService: MockMotionService(),
             storeKitService: MockStoreKitService(),
             notificationService: MockNotificationService(),
+            foodIntelligenceService: MockFoodIntelligenceService(),
+            haptics: MockHapticsService(),
+            walkingLiveActivityService: MockWalkingLiveActivityService(),
             analytics: MockAnalyticsService()
         )
     }

@@ -1,7 +1,14 @@
-﻿import WidgetKit
 import SwiftUI
+import WidgetKit
 
 @main
+struct NuvyraWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        NuvyraWidget()
+        WalkingLiveActivityWidget()
+    }
+}
+
 struct NuvyraWidget: Widget {
     let kind = "NuvyraWidget"
 

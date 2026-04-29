@@ -68,6 +68,7 @@ struct AddMealView: View {
         )
         do {
             try dependencies.nutritionRepository(context: modelContext).addMeal(meal)
+            dependencies.haptics.mealLogged()
             Task { await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "manual"])) }
             dismiss()
         } catch {}

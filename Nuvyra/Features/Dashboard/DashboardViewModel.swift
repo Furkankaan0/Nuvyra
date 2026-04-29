@@ -8,6 +8,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var waterMl = 0
     @Published var healthSnapshot = HealthSnapshot.fallback
     @Published var isLoading = false
+    private var didPlayStepGoalHaptic = false
 
     var calorieTarget: Int { profile?.dailyCalorieTarget ?? 1_900 }
     var stepTarget: Int { profile?.dailyStepTarget ?? 7_500 }
@@ -41,8 +42,12 @@ final class DashboardViewModel: ObservableObject {
             waterMl = try waterRepository.totalWater(on: Date())
             healthSnapshot = await dependencies.healthService.todaySnapshot()
             try activityRepository.upsertWalkingSnapshot(date: Date(), steps: healthSnapshot.steps, activeEnergy: healthSnapshot.activeEnergy, distanceKm: healthSnapshot.distanceKm, goal: stepTarget)
-            if healthSnapshot.steps >= stepTarget {
+            if healthSnapshot.steps >= stepTarget, !didPlayStepGoalHaptic {
+                didPlayStepGoalHaptic = true
+                dependencies.haptics.goalCompleted()
                 await dependencies.analytics.track(.stepGoalCompleted, payload: AnalyticsPayload())
+            } else if healthSnapshot.steps < stepTarget {
+                didPlayStepGoalHaptic = false
             }
         } catch {
             healthSnapshot = .fallback
@@ -52,6 +57,7 @@ final class DashboardViewModel: ObservableObject {
     func addWater(context: ModelContext, dependencies: DependencyContainer, amount: Int) async {
         do {
             try dependencies.waterRepository(context: context).addWater(amountMl: amount, date: Date())
+            dependencies.haptics.waterAdded()
             await dependencies.analytics.track(.waterAdded, payload: AnalyticsPayload(values: ["amount_ml": "\(amount)"]))
             await load(context: context, dependencies: dependencies)
         } catch {}

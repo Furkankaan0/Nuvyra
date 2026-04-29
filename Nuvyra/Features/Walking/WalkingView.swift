@@ -13,6 +13,13 @@ struct WalkingView: View {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     NuvyraSectionHeader(title: "Yürüyüş", subtitle: "Bugün düşük tempoda kalmak da sorun değil. Devamlılık daha önemli.")
                     StepGoalCard(steps: viewModel.snapshot.steps, goal: viewModel.stepGoal, remaining: viewModel.remainingSteps)
+                    WalkingFocusCard(
+                        isActive: viewModel.walkingFocusActive,
+                        motionState: viewModel.motionState,
+                        elapsedMinutes: viewModel.focusElapsedMinutes,
+                        onStart: { Task { await viewModel.startWalkingFocus(dependencies: dependencies) } },
+                        onEnd: { Task { await viewModel.endWalkingFocus(dependencies: dependencies) } }
+                    )
                     WalkingStreakCard(streak: viewModel.streak, averageSteps: viewModel.averageSteps, completionRate: viewModel.completionRate)
                     WeeklyStepsChart(logs: viewModel.logs, goal: viewModel.stepGoal)
                     NuvyraGlassCard {
@@ -44,4 +51,42 @@ struct WalkingView: View {
     NavigationStack { WalkingView() }
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
+}
+
+private struct WalkingFocusCard: View {
+    @Environment(\.colorScheme) private var scheme
+    var isActive: Bool
+    var motionState: MotionActivityState
+    var elapsedMinutes: Int
+    var onStart: () -> Void
+    var onEnd: () -> Void
+
+    var body: some View {
+        NuvyraGlassCard {
+            VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
+                HStack {
+                    Label(isActive ? "Yürüyüş odağı açık" : "Yürüyüş odağı", systemImage: "figure.walk.motion")
+                        .font(NuvyraTypography.section)
+                        .foregroundStyle(NuvyraColors.primaryText(scheme))
+                    Spacer()
+                    Text(isActive ? "\(elapsedMinutes) dk" : motionState.title)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(NuvyraColors.accent)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(NuvyraColors.accent.opacity(0.12), in: Capsule())
+                }
+
+                Text(isActive ? "Live Activity ile Kilit Ekranı ve Dynamic Island’da yürüyüş ritmini takip et." : "Kısa yürüyüşü başlat; Nuvyra hedefini nazikçe görünür tutar.")
+                    .font(NuvyraTypography.body)
+                    .foregroundStyle(NuvyraColors.secondaryText(scheme))
+
+                if isActive {
+                    NuvyraSecondaryButton(title: "Yürüyüşü bitir", systemImage: "stop.circle", action: onEnd)
+                } else {
+                    NuvyraPrimaryButton(title: "Yürüyüş başlat", systemImage: "play.fill", action: onStart)
+                }
+            }
+        }
+    }
 }
