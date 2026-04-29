@@ -1,78 +1,57 @@
-﻿import SwiftUI
+﻿import SwiftData
+import SwiftUI
 
 struct AppRootView: View {
-    @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var router: AppRouter
+    @Query private var settings: [AppSettings]
+
+    private var hasCompletedOnboarding: Bool {
+        return settings.first?.hasCompletedOnboarding == true
+    }
 
     var body: some View {
         Group {
-            if appState.hasCompletedOnboarding {
+            if hasCompletedOnboarding {
                 MainTabView()
             } else {
                 OnboardingView()
             }
         }
-        .tint(NuvyraColor.lightPrimary)
+        .tint(NuvyraColors.accent)
     }
 }
 
-struct MainTabView: View {
-    @EnvironmentObject private var appState: AppState
+private struct MainTabView: View {
+    @EnvironmentObject private var router: AppRouter
 
     var body: some View {
-        TabView(selection: $appState.router.selectedTab) {
-            NavigationStack(path: $appState.router.dashboardPath) {
-                DashboardView()
-            }
-            .tabItem { Label(AppTab.dashboard.title, systemImage: AppTab.dashboard.systemImage) }
-            .tag(AppTab.dashboard)
+        TabView(selection: $router.selectedTab) {
+            NavigationStack { DashboardView() }
+                .tabItem { Label(AppTab.dashboard.title, systemImage: AppTab.dashboard.systemImage) }
+                .tag(AppTab.dashboard)
 
-            NavigationStack(path: $appState.router.mealPath) {
-                MealLoggingView()
-            }
-            .tabItem { Label(AppTab.meals.title, systemImage: AppTab.meals.systemImage) }
-            .tag(AppTab.meals)
+            NavigationStack { NutritionView() }
+                .tabItem { Label(AppTab.nutrition.title, systemImage: AppTab.nutrition.systemImage) }
+                .tag(AppTab.nutrition)
 
-            NavigationStack(path: $appState.router.walkingPath) {
-                WalkingView()
-            }
-            .tabItem { Label(AppTab.walking.title, systemImage: AppTab.walking.systemImage) }
-            .tag(AppTab.walking)
+            NavigationStack { WalkingView() }
+                .tabItem { Label(AppTab.walking.title, systemImage: AppTab.walking.systemImage) }
+                .tag(AppTab.walking)
 
-            NavigationStack {
-                WeeklySummaryView()
-            }
-            .tabItem { Label(AppTab.weekly.title, systemImage: AppTab.weekly.systemImage) }
-            .tag(AppTab.weekly)
+            NavigationStack { InsightsView() }
+                .tabItem { Label(AppTab.insights.title, systemImage: AppTab.insights.systemImage) }
+                .tag(AppTab.insights)
 
-            NavigationStack {
-                SettingsView()
-            }
-            .tabItem { Label(AppTab.settings.title, systemImage: AppTab.settings.systemImage) }
-            .tag(AppTab.settings)
-        }
-        .sheet(item: $appState.router.presentedSheet) { sheet in
-            switch sheet {
-            case .addMeal:
-                NavigationStack {
-                    MealLoggingView(mode: .sheet)
-                }
-            case .photoMeal:
-                PhotoMealEstimateView()
-            case .healthPermission:
-                HealthPermissionExplainerView()
-            case .notificationPermission:
-                NotificationPermissionExplainerView()
-            }
+            NavigationStack { ProfileView() }
+                .tabItem { Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage) }
+                .tag(AppTab.profile)
         }
     }
 }
 
 #Preview("Onboarding") {
     AppRootView()
-        .environmentObject(AppState.preview(completedOnboarding: false))
-}
-
-#Preview("Main") {
-    AppRootView()
-        .environmentObject(AppState.preview())
+        .modelContainer(NuvyraModelContainer.uiTesting())
+        .environmentObject(DependencyContainer.preview())
+        .environmentObject(AppRouter())
 }

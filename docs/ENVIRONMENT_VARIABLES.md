@@ -17,6 +17,7 @@ Gerekli değişkenler:
 Projede kullanılan sabitler:
 
 - `BUNDLE_ID=com.nuvyra.app`
+- `WIDGET_BUNDLE_ID=com.nuvyra.app.widget`
 - `XCODE_PROJECT=Nuvyra.xcodeproj`
 - `XCODE_SCHEME=Nuvyra`
 
@@ -30,8 +31,14 @@ App Store Connect içinde şu ürün ID'leri oluşturulmalı:
 
 - `com.nuvyra.premium.monthly`
 - `com.nuvyra.premium.yearly`
-- `com.nuvyra.plus.monthly`
-- `com.nuvyra.plus.yearly`
+
+Premium Plus ürünleri MVP kapsamı dışında bırakıldı; App Store Connect'te ilk fazda yalnızca Premium aylık/yıllık ürünleri oluştur.
+
+## Widget/App Group
+
+Apple Developer > Identifiers altında hem app hem widget App ID için App Groups capability açık olmalı. İlk TestFlight signing öncesi şu grup tanımlanmalıdır:
+
+- `group.com.nuvyra.app`
 
 ## Güvenlik notu
 
@@ -48,6 +55,7 @@ Güvenli şekilde repoda tutulabilecek değerler:
 - Team ID: `J5CYS3RDGH`
 - Developer ID: `579d53d0-534c-40bd-80e7-b964c69447e5`
 - Bundle ID: `com.nuvyra.app`
+- Widget Bundle ID: `com.nuvyra.app.widget`
 
 Bu değerler `project.yml`, `codemagic.yaml` ve `ci/codemagic.yaml` içine eklendi.
 

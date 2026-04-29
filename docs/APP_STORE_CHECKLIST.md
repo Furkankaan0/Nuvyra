@@ -57,8 +57,6 @@ kalori sayacı, kalori takip, beslenme takibi, diyet, kilo verme, adım sayar, y
 
 - `com.nuvyra.premium.monthly`
 - `com.nuvyra.premium.yearly`
-- `com.nuvyra.plus.monthly`
-- `com.nuvyra.plus.yearly`
 
 ## Demo verisi
 

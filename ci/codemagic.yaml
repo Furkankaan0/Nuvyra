@@ -10,6 +10,7 @@
       xcode: latest
       vars:
         BUNDLE_ID: "com.nuvyra.app"
+        WIDGET_BUNDLE_ID: "com.nuvyra.app.widget"
         APPLE_TEAM_ID: "J5CYS3RDGH"
         APPLE_DEVELOPER_ID: "579d53d0-534c-40bd-80e7-b964c69447e5"
         XCODE_PROJECT: "Nuvyra.xcodeproj"
@@ -18,23 +19,19 @@
       - name: Show Xcode version
         script: |
           xcodebuild -version
-
       - name: Install XcodeGen if needed
         script: |
           if ! command -v xcodegen >/dev/null 2>&1; then
             brew install xcodegen
           fi
-
       - name: Generate Xcode project
         script: |
           xcodegen generate --spec project.yml
-
       - name: Resolve Swift packages
         script: |
           xcodebuild -resolvePackageDependencies \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME"
-
       - name: Run tests
         script: |
           xcodebuild test \
@@ -64,6 +61,7 @@
       xcode: latest
       vars:
         BUNDLE_ID: "com.nuvyra.app"
+        WIDGET_BUNDLE_ID: "com.nuvyra.app.widget"
         APPLE_TEAM_ID: "J5CYS3RDGH"
         APPLE_DEVELOPER_ID: "579d53d0-534c-40bd-80e7-b964c69447e5"
         XCODE_PROJECT: "Nuvyra.xcodeproj"
@@ -79,23 +77,19 @@
       - name: Show Xcode version
         script: |
           xcodebuild -version
-
       - name: Install XcodeGen if needed
         script: |
           if ! command -v xcodegen >/dev/null 2>&1; then
             brew install xcodegen
           fi
-
       - name: Generate Xcode project
         script: |
           xcodegen generate --spec project.yml
-
       - name: Resolve Swift packages
         script: |
           xcodebuild -resolvePackageDependencies \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_SCHEME"
-
       - name: Run tests
         script: |
           xcodebuild test \
@@ -103,15 +97,12 @@
             -scheme "$XCODE_SCHEME" \
             -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
             CODE_SIGNING_ALLOWED=NO
-
       - name: Set up code signing
         script: |
           xcode-project use-profiles
-
       - name: Increment build number
         script: |
           agvtool new-version -all $CM_BUILD_NUMBER || true
-
       - name: Build ipa
         script: |
           xcode-project build-ipa \

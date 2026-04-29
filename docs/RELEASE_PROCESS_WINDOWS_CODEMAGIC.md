@@ -14,7 +14,8 @@ Nuvyra yerelde Xcode gerektirmeden GitHub ve Codemagic üzerinden build edilecek
 2. `codemagic.yaml` workflow kullanımını seç.
 3. App Store Connect integration oluştur ve adını `codemagic_app_store_connect` yap veya YAML'daki adı güncelle.
 4. `app_store_credentials` variable group değerlerini ekle.
-5. Automatic code signing için bundle id `com.nuvyra.app` kullan.
+5. Automatic code signing için `com.nuvyra.app` ve widget extension `com.nuvyra.app.widget` profillerinin üretilebildiğini kontrol et.
+6. App Groups altında `group.com.nuvyra.app` grubunu app ve widget App ID'lerine bağla.
 
 ## 3. Build akışı
 
@@ -29,6 +30,8 @@ Nuvyra yerelde Xcode gerektirmeden GitHub ve Codemagic üzerinden build edilecek
 
 - App name: Nuvyra
 - Bundle ID: `com.nuvyra.app`
+- Widget Bundle ID: `com.nuvyra.app.widget`
+- App Group: `group.com.nuvyra.app`
 - SKU: `nuvyra-ios`
 - Primary language: Turkish
 - Category: Health & Fitness

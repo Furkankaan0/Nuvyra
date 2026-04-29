@@ -32,6 +32,8 @@
   <string>Nuvyra, yalnızca kullanıcı onayıyla wellness kayıtlarını Apple Sağlık ile senkronize etmek için sağlık verisi yazabilir.</string>
   <key>NSLocationWhenInUseUsageDescription</key>
   <string>Nuvyra, yürüyüş rotanı kaydetmek istersen konumunu yalnızca yürüyüş sırasında kullanır.</string>
+  <key>NSMotionUsageDescription</key>
+  <string>Nuvyra, Apple Sağlık izni olmadığında adım ritmini desteklemek için hareket verilerini kullanabilir.</string>
   <key>NSPhotoLibraryUsageDescription</key>
   <string>Nuvyra, seçtiğin öğün fotoğraflarını analiz veya kayıt amacıyla kullanır.</string>
   <key>UILaunchScreen</key>

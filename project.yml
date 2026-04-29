@@ -22,17 +22,20 @@ targets:
         excludes:
           - Resources
           - Tests
+          - Widgets
     resources:
       - path: Nuvyra/Resources/Assets.xcassets
       - path: Nuvyra/Resources/Localizable.xcstrings
       - path: Nuvyra/Resources/PrivacyInfo.xcprivacy
     dependencies:
+      - target: NuvyraWidgetExtension
+        embed: true
       - sdk: HealthKit.framework
       - sdk: StoreKit.framework
       - sdk: Security.framework
-      - sdk: PhotosUI.framework
       - sdk: UserNotifications.framework
       - sdk: CoreLocation.framework
+      - sdk: CoreMotion.framework
     info:
       path: Nuvyra/Resources/Info.plist
     entitlements:
@@ -48,11 +51,32 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         SUPPORTS_MACCATALYST: NO
+  NuvyraWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Nuvyra/Widgets
+      - path: Nuvyra/DesignSystem
+    dependencies:
+      - sdk: WidgetKit.framework
+    info:
+      path: Nuvyra/Widgets/Info.plist
+    entitlements:
+      path: Nuvyra/Widgets/NuvyraWidget.entitlements
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app.widget
+        PRODUCT_NAME: NuvyraWidgetExtension
+        DEVELOPMENT_TEAM: J5CYS3RDGH
+        CODE_SIGN_STYLE: Automatic
+        INFOPLIST_FILE: Nuvyra/Widgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Nuvyra/Widgets/NuvyraWidget.entitlements
+        SKIP_INSTALL: YES
   NuvyraTests:
     type: bundle.unit-test
     platform: iOS
     sources:
-      - path: Nuvyra/Tests/UnitTests
+      - path: Nuvyra/Tests/NuvyraUnitTests
     dependencies:
       - target: Nuvyra
     settings:
@@ -62,7 +86,7 @@ targets:
     type: bundle.ui-testing
     platform: iOS
     sources:
-      - path: Nuvyra/Tests/UITests
+      - path: Nuvyra/Tests/NuvyraUITests
     dependencies:
       - target: Nuvyra
     settings:
@@ -73,6 +97,7 @@ schemes:
     build:
       targets:
         Nuvyra: all
+        NuvyraWidgetExtension: all
         NuvyraTests: [test]
         NuvyraUITests: [test]
     test:
@@ -84,6 +109,3 @@ schemes:
       config: Debug
     archive:
       config: Release
-
-
-
