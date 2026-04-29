@@ -106,7 +106,11 @@
           xcode-project use-profiles
       - name: Increment build number
         script: |
-          agvtool new-version -all $CM_BUILD_NUMBER || true
+          set -euo pipefail
+          BUILD_NUMBER="${CM_BUILD_NUMBER:-$(date +%s)}"
+          echo "Setting CFBundleVersion to $BUILD_NUMBER"
+          agvtool new-version -all "$BUILD_NUMBER"
+          xcodebuild -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -showBuildSettings | grep CURRENT_PROJECT_VERSION
       - name: Build ipa
         script: |
           xcode-project build-ipa \
@@ -124,6 +128,10 @@
           test -n "$APP_DIR"
           /usr/libexec/PlistBuddy -c "Print :CFBundleIconName" "$APP_DIR/Info.plist"
           /usr/libexec/PlistBuddy -c "Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName" "$APP_DIR/Info.plist"
+          BUNDLE_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "$APP_DIR/Info.plist")
+          echo "CFBundleVersion=$BUNDLE_VERSION"
+          case "$BUNDLE_VERSION" in ''|*[!0-9]*) echo "CFBundleVersion must be numeric"; exit 1 ;; esac
+          test "$BUNDLE_VERSION" -gt 1
           test -f "$APP_DIR/AppIcon60x60@2x.png"
           test -f "$APP_DIR/AppIcon40x40@3x.png"
           test -f "$APP_DIR/Assets.car"
