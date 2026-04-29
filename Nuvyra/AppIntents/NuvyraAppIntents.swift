@@ -23,7 +23,7 @@ struct LogWaterIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let message = try await IntentActionStore.addWater(amountMl: amountMl)
-        return .result(dialog: IntentDialog(message))
+        return .result(dialog: IntentDialog(stringLiteral: message))
     }
 }
 
@@ -40,7 +40,7 @@ struct AddQuickMealIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let message = try await IntentActionStore.addQuickMeal(text: mealText, mealType: mealType)
-        return .result(dialog: IntentDialog(message))
+        return .result(dialog: IntentDialog(stringLiteral: message))
     }
 }
 
@@ -51,7 +51,7 @@ struct StartWalkingFocusIntent: AppIntent {
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
         let message = await IntentActionStore.startWalkingFocus()
-        return .result(dialog: IntentDialog(message))
+        return .result(dialog: IntentDialog(stringLiteral: message))
     }
 }
 
