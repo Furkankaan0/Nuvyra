@@ -125,6 +125,8 @@
           /usr/libexec/PlistBuddy -c "Print :CFBundleIcons:CFBundlePrimaryIcon:CFBundleIconName" "$APP_DIR/Info.plist"
           test -f "$APP_DIR/AppIcon60x60@2x.png"
           test -f "$APP_DIR/AppIcon40x40@3x.png"
+          test -f "$APP_DIR/Assets.car"
+          xcrun assetutil --info "$APP_DIR/Assets.car" | grep -q 'AppIcon'
           file "$APP_DIR/AppIcon60x60@2x.png"
           file "$APP_DIR/AppIcon40x40@3x.png"
     artifacts:
