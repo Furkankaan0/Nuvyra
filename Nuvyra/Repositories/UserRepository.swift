@@ -37,7 +37,7 @@ final class SwiftDataUserRepository: UserRepository {
             profile = UserProfile()
             context.insert(profile)
         }
-        profile.name = name.isEmpty ? "Furkan" : name
+        profile.name = name.isEmpty ? "Nuvyra" : name
         profile.goalType = goalType
         profile.dailyCalorieTarget = Self.defaultCalories(for: goalType)
         profile.dailyStepTarget = Self.defaultSteps(for: goalType)
