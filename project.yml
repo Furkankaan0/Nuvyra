@@ -112,3 +112,12 @@ schemes:
       config: Debug
     archive:
       config: Release
+  NuvyraCI:
+    build:
+      targets:
+        Nuvyra: all
+        NuvyraTests: [test]
+    test:
+      targets:
+        - NuvyraTests
+      gatherCoverageData: true

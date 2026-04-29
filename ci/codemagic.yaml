@@ -16,6 +16,7 @@
         APPLE_DEVELOPER_ID: "579d53d0-534c-40bd-80e7-b964c69447e5"
         XCODE_PROJECT: "Nuvyra.xcodeproj"
         XCODE_SCHEME: "Nuvyra"
+        XCODE_TEST_SCHEME: "NuvyraCI"
     scripts:
       - name: Show Xcode version
         script: |
@@ -37,7 +38,7 @@
         script: |
           xcodebuild test \
             -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
+            -scheme "$XCODE_TEST_SCHEME" \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             CODE_SIGNING_ALLOWED=NO
     artifacts:
@@ -68,6 +69,7 @@
         APPLE_DEVELOPER_ID: "579d53d0-534c-40bd-80e7-b964c69447e5"
         XCODE_PROJECT: "Nuvyra.xcodeproj"
         XCODE_SCHEME: "Nuvyra"
+        XCODE_TEST_SCHEME: "NuvyraCI"
       groups:
         - app_store_credentials
       ios_signing:
@@ -96,7 +98,7 @@
         script: |
           xcodebuild test \
             -project "$XCODE_PROJECT" \
-            -scheme "$XCODE_SCHEME" \
+            -scheme "$XCODE_TEST_SCHEME" \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             CODE_SIGNING_ALLOWED=NO
       - name: Set up code signing
