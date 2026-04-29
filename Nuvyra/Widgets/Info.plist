@@ -15,13 +15,18 @@
   <key>CFBundleName</key>
   <string>$(PRODUCT_NAME)</string>
   <key>CFBundlePackageType</key>
-  <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+  <string>XPC!</string>
   <key>CFBundleShortVersionString</key>
   <string>$(MARKETING_VERSION)</string>
   <key>CFBundleVersion</key>
   <string>$(CURRENT_PROJECT_VERSION)</string>
   <key>NSExtension</key>
   <dict>
+    <key>NSExtensionAttributes</key>
+    <dict>
+      <key>WKAppBundleIdentifier</key>
+      <string>com.nuvyra.app</string>
+    </dict>
     <key>NSExtensionPointIdentifier</key>
     <string>com.apple.widgetkit-extension</string>
   </dict>

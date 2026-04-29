@@ -71,6 +71,9 @@ targets:
         CODE_SIGN_STYLE: Automatic
         INFOPLIST_FILE: Nuvyra/Widgets/Info.plist
         CODE_SIGN_ENTITLEMENTS: Nuvyra/Widgets/NuvyraWidget.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        PRODUCT_BUNDLE_PACKAGE_TYPE: XPC!
+        PRODUCT_BUNDLE_EXTENSION: appex
         SKIP_INSTALL: YES
   NuvyraTests:
     type: bundle.unit-test
