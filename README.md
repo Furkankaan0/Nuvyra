@@ -70,6 +70,8 @@ Widget extension target: `NuvyraWidgetExtension`.
 
 İlk TestFlight archive öncesi Apple Developer > Identifiers altında app ve widget App ID'leri için App Groups capability açılmalı ve `group.com.nuvyra.app` grubu tanımlanmalıdır.
 
+Not: Widget extension kaynakları ve XcodeGen target'ı repoda hazır tutulur; ilk TestFlight upload'unu unblock etmek için extension ana app archive'ına şimdilik embed edilmez. Widget V1.1'de gerçek cihaz/Xcode doğrulaması sonrası tekrar embed edilecek.
+
 ## App Store Copy
 
 App adı: Nuvyra: Kalori & Yürüyüş

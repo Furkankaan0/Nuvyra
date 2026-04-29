@@ -25,11 +25,17 @@ targets:
           - Widgets
     resources:
       - path: Nuvyra/Resources/Assets.xcassets
+      - path: Nuvyra/Resources/AppIconFiles/AppIcon20x20@2x.png
+      - path: Nuvyra/Resources/AppIconFiles/AppIcon20x20@3x.png
+      - path: Nuvyra/Resources/AppIconFiles/AppIcon29x29@2x.png
+      - path: Nuvyra/Resources/AppIconFiles/AppIcon29x29@3x.png
+      - path: Nuvyra/Resources/AppIconFiles/AppIcon40x40@2x.png
+      - path: Nuvyra/Resources/AppIconFiles/AppIcon40x40@3x.png
+      - path: Nuvyra/Resources/AppIconFiles/AppIcon60x60@2x.png
+      - path: Nuvyra/Resources/AppIconFiles/AppIcon60x60@3x.png
       - path: Nuvyra/Resources/Localizable.xcstrings
       - path: Nuvyra/Resources/PrivacyInfo.xcprivacy
     dependencies:
-      - target: NuvyraWidgetExtension
-        embed: true
       - sdk: HealthKit.framework
       - sdk: StoreKit.framework
       - sdk: Security.framework
@@ -107,7 +113,6 @@ schemes:
     build:
       targets:
         Nuvyra: all
-        NuvyraWidgetExtension: all
         NuvyraTests: [test]
         NuvyraUITests: [test]
     test:
