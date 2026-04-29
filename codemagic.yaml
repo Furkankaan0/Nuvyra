@@ -11,6 +11,7 @@
       vars:
         BUNDLE_ID: "com.nuvyra.app"
         WIDGET_BUNDLE_ID: "com.nuvyra.app.widget"
+        APP_STORE_APPLE_ID: "6763769241"
         APPLE_TEAM_ID: "J5CYS3RDGH"
         APPLE_DEVELOPER_ID: "579d53d0-534c-40bd-80e7-b964c69447e5"
         XCODE_PROJECT: "Nuvyra.xcodeproj"
@@ -62,6 +63,7 @@
       vars:
         BUNDLE_ID: "com.nuvyra.app"
         WIDGET_BUNDLE_ID: "com.nuvyra.app.widget"
+        APP_STORE_APPLE_ID: "6763769241"
         APPLE_TEAM_ID: "J5CYS3RDGH"
         APPLE_DEVELOPER_ID: "579d53d0-534c-40bd-80e7-b964c69447e5"
         XCODE_PROJECT: "Nuvyra.xcodeproj"

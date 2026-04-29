@@ -64,7 +64,10 @@ Release branch'te problem olursa yeni bir düzeltme commit'i ile ilerle. `git re
 ## Apple Developer signing metadata
 
 - Team ID: `J5CYS3RDGH`
+- App Store Apple ID: `6763769241`
 - Bundle ID: `com.nuvyra.app`
+- Widget Bundle ID: `com.nuvyra.app.widget`
+- App Group: `group.com.nuvyra.app`
 - Provisioning profile: `Nuvyra App`
 - Profile UUID: `ac3fbe15-8d42-4e01-8605-9a32d3d8b239`
 - Profile expiry: `2026-12-20T19:08:58Z`

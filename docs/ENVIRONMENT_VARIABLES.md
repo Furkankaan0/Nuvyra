@@ -18,6 +18,7 @@ Projede kullanılan sabitler:
 
 - `BUNDLE_ID=com.nuvyra.app`
 - `WIDGET_BUNDLE_ID=com.nuvyra.app.widget`
+- `APP_STORE_APPLE_ID=6763769241`
 - `XCODE_PROJECT=Nuvyra.xcodeproj`
 - `XCODE_SCHEME=Nuvyra`
 
