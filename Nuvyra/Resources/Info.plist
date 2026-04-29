@@ -24,6 +24,12 @@
   <false/>
   <key>LSRequiresIPhoneOS</key>
   <true/>
+  <key>UIDeviceFamily</key>
+  <array>
+    <integer>1</integer>
+  </array>
+  <key>UIRequiresFullScreen</key>
+  <true/>
   <key>NSCameraUsageDescription</key>
   <string>Nuvyra, öğün fotoğrafını kaydederek tahmini besin değerlerini oluşturmak için kamerayı kullanır.</string>
   <key>NSHealthShareUsageDescription</key>
