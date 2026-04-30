@@ -44,10 +44,10 @@ final class DependencyContainer: ObservableObject {
             motionService: LiveMotionService(),
             storeKitService: LiveStoreKitService(),
             notificationService: LiveNotificationService(),
-            foodIntelligenceService: MockFoodIntelligenceService(),
+            foodIntelligenceService: LocalFoodIntelligenceService(),
             haptics: LiveHapticsService(),
             walkingLiveActivityService: LiveWalkingLiveActivityService(),
-            analytics: MockAnalyticsService()
+            analytics: PrivacyPreservingAnalyticsService()
         )
     }
 
@@ -65,19 +65,25 @@ final class DependencyContainer: ObservableObject {
     }
 
     func userRepository(context: ModelContext) -> UserRepository {
-        SwiftDataUserRepository(context: context)
+        SwiftDataUserRepository(context: context, onMutate: widgetReloader(for: context))
     }
 
     func nutritionRepository(context: ModelContext) -> NutritionRepository {
-        SwiftDataNutritionRepository(context: context)
+        SwiftDataNutritionRepository(context: context, onMutate: widgetReloader(for: context))
     }
 
     func activityRepository(context: ModelContext) -> ActivityRepository {
-        SwiftDataActivityRepository(context: context)
+        SwiftDataActivityRepository(context: context, onMutate: widgetReloader(for: context))
     }
 
     func waterRepository(context: ModelContext) -> WaterRepository {
-        SwiftDataWaterRepository(context: context)
+        SwiftDataWaterRepository(context: context, onMutate: widgetReloader(for: context))
+    }
+
+    /// Builds the closure repositories use to push a fresh snapshot to the
+    /// widget extension. Captures the same `ModelContext` they read from.
+    private func widgetReloader(for context: ModelContext) -> @MainActor () -> Void {
+        { WidgetRefresh.reload(context: context) }
     }
 
     func subscriptionRepository(context: ModelContext) -> SubscriptionRepository {

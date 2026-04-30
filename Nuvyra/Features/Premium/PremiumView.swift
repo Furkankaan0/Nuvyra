@@ -1,9 +1,24 @@
-﻿import SwiftData
+import SwiftData
 import SwiftUI
 
 struct PremiumView: View {
+    @EnvironmentObject private var dependencies: DependencyContainer
+
+    var body: some View {
+        // Re-bind the SubscriptionManager into the child view as
+        // @ObservedObject so its inner @Published properties (lastMessage,
+        // isAwaitingApproval, entitlement) actually trigger redraws.
+        // Reading them through the EnvironmentObject alone wouldn't —
+        // DependencyContainer only emits objectWillChange when the
+        // manager *reference* changes, not when its fields mutate.
+        PremiumContent(manager: dependencies.subscriptionManager)
+    }
+}
+
+private struct PremiumContent: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var dependencies: DependencyContainer
+    @ObservedObject var manager: SubscriptionManager
     @StateObject private var viewModel = PremiumViewModel()
 
     var body: some View {
@@ -12,12 +27,20 @@ struct PremiumView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     header
+                    pendingApprovalBanner
+                    activeSubscriptionBanner
                     features
                     productCards
-                    NuvyraPrimaryButton(title: "Premium'u başlat", systemImage: "crown") {
+                    NuvyraPrimaryButton(
+                        title: viewModel.isProcessing ? "İşleniyor…" : "Premium'u başlat",
+                        systemImage: "crown"
+                    ) {
                         Task { await viewModel.purchase(context: modelContext, dependencies: dependencies) }
                     }
-                    RestorePurchaseButton {
+                    .disabled(viewModel.isProcessing || manager.entitlement.isActive)
+                    .opacity(viewModel.isProcessing ? 0.72 : 1)
+
+                    RestorePurchaseButton(isProcessing: viewModel.isProcessing) {
                         Task { await viewModel.restore(context: modelContext, dependencies: dependencies) }
                     }
                     subscriptionLegal
@@ -28,6 +51,13 @@ struct PremiumView: View {
         .navigationTitle("Premium")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load(dependencies: dependencies) }
+        .alert(item: $manager.lastMessage) { message in
+            Alert(
+                title: Text(message.title),
+                message: Text(message.message),
+                dismissButton: .default(Text("Tamam"))
+            )
+        }
     }
 
     private var header: some View {
@@ -37,6 +67,38 @@ struct PremiumView: View {
             Text("Daha net trendler, premium widget'lar ve kişisel ritim içgörüleri.")
                 .font(.title3.weight(.medium))
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private var pendingApprovalBanner: some View {
+        if manager.isAwaitingApproval {
+            NuvyraDataIssueBanner(
+                banner: DataIssueBanner(
+                    icon: "person.2.crop.square.stack",
+                    title: "Ebeveyn onayı bekleniyor",
+                    message: "Aile paylaşımı / Ask-to-Buy nedeniyle bu satın alma onaylanana kadar bekliyor. Onaylandığında premium otomatik olarak açılır.",
+                    action: .none
+                )
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var activeSubscriptionBanner: some View {
+        if manager.entitlement.isActive {
+            NuvyraGlassCard {
+                VStack(alignment: .leading, spacing: NuvyraSpacing.xs) {
+                    Label("Premium aktif", systemImage: "checkmark.seal.fill")
+                        .font(NuvyraTypography.section)
+                        .foregroundStyle(NuvyraColors.accent)
+                    if let expiration = manager.entitlement.expirationDate {
+                        Text("Yenileme: \(expiration.formatted(date: .abbreviated, time: .omitted))")
+                            .font(NuvyraTypography.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
     }
 

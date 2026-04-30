@@ -14,10 +14,16 @@ protocol ActivityRepository {
 final class SwiftDataActivityRepository: ActivityRepository {
     private let context: ModelContext
     private let calendar: Calendar
+    private let onMutate: (@MainActor () -> Void)?
 
-    init(context: ModelContext, calendar: Calendar = .nuvyra) {
+    init(
+        context: ModelContext,
+        calendar: Calendar = .nuvyra,
+        onMutate: (@MainActor () -> Void)? = nil
+    ) {
         self.context = context
         self.calendar = calendar
+        self.onMutate = onMutate
     }
 
     func walkingLogs(days: Int) throws -> [WalkingLog] {
@@ -46,6 +52,7 @@ final class SwiftDataActivityRepository: ActivityRepository {
             context.insert(WalkingLog(date: start, steps: steps, activeEnergy: activeEnergy, distanceKm: distanceKm, goalCompleted: steps >= goal))
         }
         try context.save()
+        onMutate?()
     }
 
     func averageSteps(days: Int) throws -> Int {

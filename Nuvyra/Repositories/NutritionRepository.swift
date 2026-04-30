@@ -27,8 +27,11 @@ struct QuickFood: Identifiable, Hashable {
 @MainActor
 protocol NutritionRepository {
     func meals(on date: Date) throws -> [MealEntry]
-    func addMeal(_ meal: MealEntry) throws
-    func addQuickFood(_ food: QuickFood, mealType: MealType) throws
+    /// Inserts the meal and returns the day's post-write calorie total.
+    @discardableResult
+    func addMeal(_ meal: MealEntry) throws -> Int
+    @discardableResult
+    func addQuickFood(_ food: QuickFood, mealType: MealType) throws -> Int
     func favoriteMeals() throws -> [MealEntry]
     func totalCalories(on date: Date) throws -> Int
 }
@@ -37,10 +40,19 @@ protocol NutritionRepository {
 final class SwiftDataNutritionRepository: NutritionRepository {
     private let context: ModelContext
     private let calendar: Calendar
+    /// Optional hook invoked after every successful mutation. The
+    /// `DependencyContainer` wires it to `WidgetRefresh.reload(...)` so the
+    /// home-screen widget sees the change immediately. Tests pass `nil`.
+    private let onMutate: (@MainActor () -> Void)?
 
-    init(context: ModelContext, calendar: Calendar = .nuvyra) {
+    init(
+        context: ModelContext,
+        calendar: Calendar = .nuvyra,
+        onMutate: (@MainActor () -> Void)? = nil
+    ) {
         self.context = context
         self.calendar = calendar
+        self.onMutate = onMutate
     }
 
     func meals(on date: Date) throws -> [MealEntry] {
@@ -52,12 +64,17 @@ final class SwiftDataNutritionRepository: NutritionRepository {
         return try context.fetch(descriptor)
     }
 
-    func addMeal(_ meal: MealEntry) throws {
+    @discardableResult
+    func addMeal(_ meal: MealEntry) throws -> Int {
         context.insert(meal)
         try context.save()
+        let total = try totalCalories(on: meal.date)
+        onMutate?()
+        return total
     }
 
-    func addQuickFood(_ food: QuickFood, mealType: MealType) throws {
+    @discardableResult
+    func addQuickFood(_ food: QuickFood, mealType: MealType) throws -> Int {
         let meal = MealEntry(
             mealType: mealType,
             name: food.name,
@@ -70,7 +87,7 @@ final class SwiftDataNutritionRepository: NutritionRepository {
             isVerifiedTurkishFood: true,
             isEstimated: true
         )
-        try addMeal(meal)
+        return try addMeal(meal)
     }
 
     func favoriteMeals() throws -> [MealEntry] {

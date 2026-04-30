@@ -14,7 +14,7 @@ struct EstimatedMealResult: Identifiable, Hashable {
 }
 
 enum FoodEstimationSource: String, Codable {
-    case mockTurkishNLP
+    case localTurkishNLP
     case photoAdapter
     case barcodeAdapter
     case cloudProvider
@@ -25,6 +25,12 @@ protocol FoodIntelligenceService {
 }
 
 struct MockFoodIntelligenceService: FoodIntelligenceService {
+    func estimateFromText(_ input: String, mealType: MealType) async throws -> [EstimatedMealResult] {
+        try await LocalFoodIntelligenceService().estimateFromText(input, mealType: mealType)
+    }
+}
+
+struct LocalFoodIntelligenceService: FoodIntelligenceService {
     func estimateFromText(_ input: String, mealType: MealType) async throws -> [EstimatedMealResult] {
         let normalizedInput = Self.normalized(input)
         let matches = QuickFood.turkishDefaults.filter { food in
@@ -41,7 +47,7 @@ struct MockFoodIntelligenceService: FoodIntelligenceService {
                     fat: food.fat,
                     portion: food.portion,
                     confidence: 0.82,
-                    source: .mockTurkishNLP,
+                    source: .localTurkishNLP,
                     isEstimated: true
                 )
             }
@@ -58,7 +64,7 @@ struct MockFoodIntelligenceService: FoodIntelligenceService {
                 fat: 14,
                 portion: "1 porsiyon",
                 confidence: 0.42,
-                source: .mockTurkishNLP,
+                source: .localTurkishNLP,
                 isEstimated: true
             )
         ]

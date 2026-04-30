@@ -20,11 +20,16 @@ struct OnboardingView: View {
                         ScrollView(showsIndicators: false) {
                             VStack(spacing: NuvyraSpacing.lg) {
                                 OnboardingPageView(page: page, progress: Double(index + 1) / Double(viewModel.pages.count))
-                                if index == viewModel.pages.count - 1 {
+                                switch page.kind {
+                                case .intro:
+                                    OnboardingHighlightsCard(items: page.highlights)
+                                case .bodyMetrics:
+                                    BodyMetricsSetupView(viewModel: viewModel)
+                                case .activity:
+                                    ActivityLevelSetupView(viewModel: viewModel)
+                                case .goal:
                                     GoalSetupView(viewModel: viewModel)
                                     HealthPermissionView(viewModel: viewModel)
-                                } else {
-                                    OnboardingHighlightsCard(items: page.highlights)
                                 }
                             }
                             .padding(.horizontal, NuvyraSpacing.lg)
@@ -42,6 +47,7 @@ struct OnboardingView: View {
         .safeAreaInset(edge: .bottom) {
             OnboardingControlBar(
                 canGoBack: viewModel.pageIndex > 0,
+                canProceed: viewModel.canProceed,
                 isLastPage: viewModel.isLastPage,
                 isCompleting: viewModel.isCompleting,
                 errorMessage: viewModel.errorMessage,
@@ -151,6 +157,7 @@ private struct OnboardingHighlightsCard: View {
 private struct OnboardingControlBar: View {
     @Environment(\.colorScheme) private var scheme
     var canGoBack: Bool
+    var canProceed: Bool
     var isLastPage: Bool
     var isCompleting: Bool
     var errorMessage: String?
@@ -178,8 +185,8 @@ private struct OnboardingControlBar: View {
                     systemImage: isLastPage ? "checkmark" : "arrow.right",
                     action: onPrimary
                 )
-                .disabled(isCompleting)
-                .opacity(isCompleting ? 0.72 : 1)
+                .disabled(isCompleting || !canProceed)
+                .opacity((isCompleting || !canProceed) ? 0.72 : 1)
             }
 
             Text("Nuvyra wellness uygulamasıdır; tıbbi tanı veya tedavi tavsiyesi vermez.")

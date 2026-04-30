@@ -4,7 +4,12 @@ import SwiftData
 @Model
 final class DailyLog: Identifiable {
     @Attribute(.unique) var id: UUID
-    var date: Date
+    /// Per-day uniqueness is enforced at the SwiftData layer so we can
+    /// never accidentally end up with two `DailyLog` rows for the same
+    /// calendar day. Every insert path normalises this value to
+    /// `Calendar.current.startOfDay(for:)` (see init) so the constraint
+    /// always compares apples to apples.
+    @Attribute(.unique) var date: Date
     var totalCalories: Int
     var caloriesBurned: Int
     var steps: Int

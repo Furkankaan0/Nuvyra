@@ -8,6 +8,11 @@ final class AppSettings: Identifiable {
     var notificationsEnabled: Bool
     var healthPermissionAsked: Bool
     var reducedInsightCopy: Bool
+    /// Set when the user opted into nazik bildirimler in onboarding but
+    /// the system permission prompt was denied. Drives the "Bildirim
+    /// izni gerekli — Ayarları aç" deeplink banner on the dashboard,
+    /// since the system prompt can only be shown once.
+    var notificationsDeniedByUser: Bool
     var createdAt: Date
     var updatedAt: Date
 
@@ -17,6 +22,7 @@ final class AppSettings: Identifiable {
         notificationsEnabled: Bool = false,
         healthPermissionAsked: Bool = false,
         reducedInsightCopy: Bool = false,
+        notificationsDeniedByUser: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -25,6 +31,7 @@ final class AppSettings: Identifiable {
         self.notificationsEnabled = notificationsEnabled
         self.healthPermissionAsked = healthPermissionAsked
         self.reducedInsightCopy = reducedInsightCopy
+        self.notificationsDeniedByUser = notificationsDeniedByUser
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

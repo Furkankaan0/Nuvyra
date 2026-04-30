@@ -38,6 +38,57 @@ enum Gender: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+enum ActivityLevel: String, CaseIterable, Codable, Identifiable {
+    case sedentary
+    case light
+    case moderate
+    case active
+    case veryActive
+
+    var id: String { rawValue }
+
+    /// Mifflin-St Jeor PAL multiplier (TDEE = BMR × multiplier).
+    var multiplier: Double {
+        switch self {
+        case .sedentary: 1.2
+        case .light: 1.375
+        case .moderate: 1.55
+        case .active: 1.725
+        case .veryActive: 1.9
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .sedentary: "Hareketsiz"
+        case .light: "Hafif aktif"
+        case .moderate: "Orta aktif"
+        case .active: "Aktif"
+        case .veryActive: "Çok aktif"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .sedentary: "Masa başı, neredeyse hiç egzersiz yok"
+        case .light: "Haftada 1–3 gün hafif yürüyüş ya da egzersiz"
+        case .moderate: "Haftada 3–5 gün orta tempolu egzersiz"
+        case .active: "Haftada 6–7 gün aktif yaşam"
+        case .veryActive: "Fiziksel iş veya yoğun antrenman"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .sedentary: "chair.lounge"
+        case .light: "figure.walk"
+        case .moderate: "figure.walk.motion"
+        case .active: "figure.run"
+        case .veryActive: "flame.fill"
+        }
+    }
+}
+
 enum MealType: String, CaseIterable, Codable, Identifiable {
     case breakfast
     case lunch

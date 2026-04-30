@@ -13,7 +13,21 @@ enum SeedData {
 
     @MainActor
     static func seedPreview(in context: ModelContext) {
-        let profile = UserProfile(name: "Furkan", goalType: .walkMore)
+        // Preview-only data. Never used in release builds — it's gated by
+        // `#if DEBUG` callers and `NuvyraModelContainer.preview()`.
+        let profile = UserProfile(
+            name: "Önizleme",
+            age: 30,
+            gender: .preferNotToSay,
+            heightCm: 175,
+            weightKg: 78,
+            targetWeightKg: 74,
+            dailyCalorieTarget: 1_900,
+            dailyStepTarget: 7_500,
+            dailyWaterTargetMl: 2_000,
+            goalType: .walkMore,
+            activityLevel: .light
+        )
         let settings = AppSettings(hasCompletedOnboarding: true, notificationsEnabled: true, healthPermissionAsked: true)
         let subscription = SubscriptionState(isPremium: false)
         let goal = NutritionGoal()
@@ -29,6 +43,44 @@ enum SeedData {
         context.insert(WaterEntry(date: today, amountMl: 500))
         context.insert(MealEntry(mealType: .breakfast, name: "Menemen", calories: 330, protein: 18, carbs: 12, fat: 22, portionDescription: "1 tabak", isFavorite: true, isVerifiedTurkishFood: true, isEstimated: true))
         context.insert(MealEntry(mealType: .lunch, name: "Mercimek çorbası", calories: 210, protein: 11, carbs: 31, fat: 6, portionDescription: "1 kase", isFavorite: true, isVerifiedTurkishFood: true, isEstimated: true))
+        try? context.save()
+    }
+
+    /// Seeds a fully-onboarded user so UI tests can skip the onboarding
+    /// flow and exercise the screens they actually want to assert on
+    /// (Restore Purchases, Walking start, etc.). Distinct from
+    /// `seedPreview` because it doesn't pre-populate meal/water demo
+    /// rows that would interfere with assertions.
+    @MainActor
+    static func seedUITesting(in context: ModelContext) {
+        ensureSettings(in: context)
+        ensureSubscription(in: context)
+        ensureNutritionGoal(in: context)
+
+        let userProfileDescriptor = FetchDescriptor<UserProfile>()
+        if (try? context.fetch(userProfileDescriptor).isEmpty) == true {
+            let profile = UserProfile(
+                name: "UITest",
+                age: 30,
+                gender: .preferNotToSay,
+                heightCm: 175,
+                weightKg: 78,
+                targetWeightKg: 74,
+                dailyCalorieTarget: 1_900,
+                dailyStepTarget: 7_500,
+                dailyWaterTargetMl: 2_000,
+                goalType: .walkMore,
+                activityLevel: .light
+            )
+            context.insert(profile)
+        }
+
+        if let settings = try? context.fetch(FetchDescriptor<AppSettings>()).first {
+            settings.hasCompletedOnboarding = true
+            settings.notificationsEnabled = true
+            settings.healthPermissionAsked = true
+        }
+
         try? context.save()
     }
 

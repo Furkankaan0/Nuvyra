@@ -94,8 +94,12 @@ private enum IntentActionStore {
     static func addWater(amountMl: Int) throws -> String {
         let safeAmount = min(max(amountMl, 50), 2_000)
         let container = NuvyraModelContainer.live()
-        SeedData.ensureMinimumData(in: container.mainContext)
-        try SwiftDataWaterRepository(context: container.mainContext).addWater(amountMl: safeAmount, date: Date())
+        let context = container.mainContext
+        SeedData.ensureMinimumData(in: context)
+        try SwiftDataWaterRepository(
+            context: context,
+            onMutate: { WidgetRefresh.reload(context: context) }
+        ).addWater(amountMl: safeAmount, date: Date())
         return "\(safeAmount) ml su Nuvyra’ya eklendi."
     }
 
@@ -103,7 +107,7 @@ private enum IntentActionStore {
     static func addQuickMeal(text: String, mealType: MealType) async throws -> String {
         let container = NuvyraModelContainer.live()
         SeedData.ensureMinimumData(in: container.mainContext)
-        let estimates = try await MockFoodIntelligenceService().estimateFromText(text, mealType: mealType)
+        let estimates = try await LocalFoodIntelligenceService().estimateFromText(text, mealType: mealType)
         guard let estimate = estimates.first else {
             return "Bu metinden öğün çıkaramadık. Uygulamada manuel ekleyebilirsin."
         }
@@ -116,10 +120,14 @@ private enum IntentActionStore {
             fat: estimate.fat,
             portionDescription: estimate.portion,
             isFavorite: false,
-            isVerifiedTurkishFood: estimate.source == .mockTurkishNLP,
+            isVerifiedTurkishFood: estimate.source == .localTurkishNLP,
             isEstimated: true
         )
-        try SwiftDataNutritionRepository(context: container.mainContext).addMeal(meal)
+        let context = container.mainContext
+        try SwiftDataNutritionRepository(
+            context: context,
+            onMutate: { WidgetRefresh.reload(context: context) }
+        ).addMeal(meal)
         return "\(estimate.name), tahmini \(estimate.calories) kcal olarak kaydedildi."
     }
 

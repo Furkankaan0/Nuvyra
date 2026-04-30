@@ -9,6 +9,15 @@ protocol WalkingLiveActivityService {
     func end(finalSteps: Int, goal: Int) async
 }
 
+/// Drives `WalkingActivityAttributes` Live Activity sessions.
+///
+/// **Background updates note:** ActivityKit only delivers state changes
+/// while the host app pushes them. We currently use `pushType: nil`, which
+/// means updates only land while the app is foregrounded (driven by the
+/// 60-second loop in `WalkingViewModel`). For true background updates the
+/// next iteration needs either an `HKObserverQuery` with
+/// `enableBackgroundDelivery(...)` or APNs push tokens — both intentionally
+/// out of scope until the foreground flow ships.
 @MainActor
 final class LiveWalkingLiveActivityService: WalkingLiveActivityService {
     private var activity: Activity<WalkingActivityAttributes>?

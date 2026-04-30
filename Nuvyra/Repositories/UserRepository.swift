@@ -1,20 +1,36 @@
-﻿import Foundation
+import Foundation
 import SwiftData
 
 @MainActor
 protocol UserRepository {
     func settings() throws -> AppSettings
     func profile() throws -> UserProfile?
-    func saveOnboardingProfile(name: String, goalType: GoalType) throws -> UserProfile
+    func saveOnboardingProfile(
+        name: String,
+        goalType: GoalType,
+        gender: Gender,
+        age: Int,
+        heightCm: Double,
+        weightKg: Double,
+        activityLevel: ActivityLevel
+    ) throws -> UserProfile
     func markOnboardingCompleted() throws
 }
 
 @MainActor
 final class SwiftDataUserRepository: UserRepository {
     private let context: ModelContext
+    private let calculator: NutritionTargetCalculator
+    private let onMutate: (@MainActor () -> Void)?
 
-    init(context: ModelContext) {
+    init(
+        context: ModelContext,
+        calculator: NutritionTargetCalculator = NutritionTargetCalculator(),
+        onMutate: (@MainActor () -> Void)? = nil
+    ) {
         self.context = context
+        self.calculator = calculator
+        self.onMutate = onMutate
     }
 
     func settings() throws -> AppSettings {
@@ -29,22 +45,62 @@ final class SwiftDataUserRepository: UserRepository {
         try context.fetch(FetchDescriptor<UserProfile>()).first
     }
 
-    func saveOnboardingProfile(name: String, goalType: GoalType) throws -> UserProfile {
+    func saveOnboardingProfile(
+        name: String,
+        goalType: GoalType,
+        gender: Gender,
+        age: Int,
+        heightCm: Double,
+        weightKg: Double,
+        activityLevel: ActivityLevel
+    ) throws -> UserProfile {
+        let target = calculator.compute(
+            NutritionTargetInput(
+                gender: gender,
+                age: age,
+                heightCm: heightCm,
+                weightKg: weightKg,
+                activityLevel: activityLevel,
+                goal: goalType
+            )
+        )
+
+        let resolvedName = name.isEmpty ? "Nuvyra" : name
+
         let profile: UserProfile
         if let existing = try self.profile() {
+            existing.name = resolvedName
+            existing.age = age
+            existing.gender = gender
+            existing.heightCm = heightCm
+            existing.weightKg = weightKg
+            existing.goalType = goalType
+            existing.activityLevel = activityLevel
+            existing.dailyCalorieTarget = target.dailyCalories
+            existing.dailyStepTarget = target.dailyStepTarget
+            existing.dailyWaterTargetMl = target.dailyWaterTargetMl
+            existing.updatedAt = Date()
             profile = existing
         } else {
-            profile = UserProfile()
+            profile = UserProfile(
+                name: resolvedName,
+                age: age,
+                gender: gender,
+                heightCm: heightCm,
+                weightKg: weightKg,
+                dailyCalorieTarget: target.dailyCalories,
+                dailyStepTarget: target.dailyStepTarget,
+                dailyWaterTargetMl: target.dailyWaterTargetMl,
+                goalType: goalType,
+                activityLevel: activityLevel
+            )
             context.insert(profile)
         }
-        profile.name = name.isEmpty ? "Nuvyra" : name
-        profile.goalType = goalType
-        profile.dailyCalorieTarget = Self.defaultCalories(for: goalType)
-        profile.dailyStepTarget = Self.defaultSteps(for: goalType)
-        profile.dailyWaterTargetMl = 2_000
-        profile.updatedAt = Date()
+
+        try upsertNutritionGoal(target: target)
         try markOnboardingCompleted()
         try context.save()
+        onMutate?()
         return profile
     }
 
@@ -55,21 +111,24 @@ final class SwiftDataUserRepository: UserRepository {
         try context.save()
     }
 
-    private static func defaultCalories(for goal: GoalType) -> Int {
-        switch goal {
-        case .loseWeight: 1_750
-        case .maintain: 1_950
-        case .gainHealthy: 2_150
-        case .walkMore: 1_900
-        case .eatHealthier: 1_850
-        }
-    }
+    // MARK: - Helpers
 
-    private static func defaultSteps(for goal: GoalType) -> Int {
-        switch goal {
-        case .walkMore: 8_000
-        case .loseWeight: 7_500
-        default: 7_000
+    private func upsertNutritionGoal(target: NutritionTargetResult) throws {
+        let existing = try context.fetch(FetchDescriptor<NutritionGoal>()).first
+        if let existing {
+            existing.dailyCalories = target.dailyCalories
+            existing.proteinGrams = target.proteinGrams
+            existing.carbsGrams = target.carbsGrams
+            existing.fatGrams = target.fatGrams
+            existing.updatedAt = Date()
+        } else {
+            let goal = NutritionGoal(
+                dailyCalories: target.dailyCalories,
+                proteinGrams: target.proteinGrams,
+                carbsGrams: target.carbsGrams,
+                fatGrams: target.fatGrams
+            )
+            context.insert(goal)
         }
     }
 }

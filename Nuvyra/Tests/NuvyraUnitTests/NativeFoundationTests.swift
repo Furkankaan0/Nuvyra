@@ -8,7 +8,7 @@ final class NativeFoundationTests: XCTestCase {
         let results = try await service.estimateFromText("öğlen mercimek çorbası ve ayran içtim", mealType: .lunch)
 
         XCTAssertTrue(results.contains { $0.name == "Mercimek çorbası" && $0.isEstimated })
-        XCTAssertTrue(results.contains { $0.name == "Ayran" && $0.source == .mockTurkishNLP })
+        XCTAssertTrue(results.contains { $0.name == "Ayran" && $0.source == .localTurkishNLP })
     }
 
     func testWalkingLiveActivityMockTransitions() async {

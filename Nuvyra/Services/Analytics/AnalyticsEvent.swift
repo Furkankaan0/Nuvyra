@@ -13,6 +13,8 @@ enum AnalyticsEvent: String, CaseIterable {
     case purchaseStarted = "purchase_started"
     case purchaseCompleted = "purchase_completed"
     case purchaseFailed = "purchase_failed"
+    case purchasePending = "purchase_pending"
+    case purchaseCancelled = "purchase_cancelled"
     case restorePurchasesTapped = "restore_purchases_tapped"
 }
 

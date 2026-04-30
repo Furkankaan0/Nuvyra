@@ -25,4 +25,15 @@ final class SubscriptionState: Identifiable {
         self.lastVerifiedAt = lastVerifiedAt
         self.entitlementSource = entitlementSource
     }
+
+    /// True only if the entitlement is currently active. Use this — NOT
+    /// `isPremium` — for any feature gating: an `isPremium == true` row
+    /// whose `expirationDate` has passed is no longer a valid grant.
+    /// `expirationDate == nil` means "non-renewable / lifetime", so the
+    /// gate stays open.
+    var isActive: Bool {
+        guard isPremium else { return false }
+        guard let expirationDate else { return true }
+        return expirationDate > Date()
+    }
 }

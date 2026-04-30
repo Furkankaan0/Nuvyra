@@ -49,7 +49,7 @@ final class NutritionViewModel: ObservableObject {
                 fat: result.fat,
                 portionDescription: result.portion,
                 isFavorite: false,
-                isVerifiedTurkishFood: result.source == .mockTurkishNLP,
+                isVerifiedTurkishFood: result.source == .localTurkishNLP,
                 isEstimated: result.isEstimated
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)

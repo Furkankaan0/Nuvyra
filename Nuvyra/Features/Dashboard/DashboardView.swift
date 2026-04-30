@@ -13,6 +13,11 @@ struct DashboardView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     TodaySummaryCard(title: "Bugünkü ritmin", date: Date())
+                    if let banner = viewModel.dataIssueBanner {
+                        NuvyraDataIssueBanner(banner: banner) {
+                            Task { await viewModel.retryHealth(context: modelContext, dependencies: dependencies) }
+                        }
+                    }
                     CalorieBalanceCard(consumed: viewModel.totalCalories, burned: Int(viewModel.healthSnapshot.activeEnergy), target: viewModel.calorieTarget, remaining: viewModel.remainingCalories)
                     StepRingCard(steps: viewModel.healthSnapshot.steps, goal: viewModel.stepTarget)
                     WaterCard(waterMl: viewModel.waterMl, targetMl: viewModel.waterTarget) {
@@ -39,6 +44,9 @@ struct DashboardView: View {
         .navigationTitle("Nuvyra")
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+        .onReceive(NotificationCenter.default.publisher(for: .nuvyraAppDidBecomeActive)) { _ in
+            Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+        }
     }
 
     private var mealSlots: some View {
