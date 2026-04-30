@@ -135,10 +135,10 @@ private struct GenderOptionRow: View {
 
     private var symbol: String {
         switch gender {
-        case .female: "person.fill"
-        case .male: "person.fill"
-        case .other: "person.fill"
-        case .preferNotToSay: "questionmark.circle.fill"
+        case .female: return "person.fill"
+        case .male: return "person.fill"
+        case .other: return "person.fill"
+        case .preferNotToSay: return "questionmark.circle.fill"
         }
     }
 }

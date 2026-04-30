@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 import SwiftUI
 
 @MainActor
@@ -17,21 +17,21 @@ enum AppTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .dashboard: "Ritim"
-        case .nutrition: "Beslenme"
-        case .walking: "Yürüyüş"
-        case .insights: "İçgörü"
-        case .profile: "Profil"
+        case .dashboard: return "Ritim"
+        case .nutrition: return "Beslenme"
+        case .walking: return "Yürüyüş"
+        case .insights: return "İçgörü"
+        case .profile: return "Profil"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .dashboard: "sparkles"
-        case .nutrition: "fork.knife"
-        case .walking: "figure.walk"
-        case .insights: "chart.line.uptrend.xyaxis"
-        case .profile: "person.crop.circle"
+        case .dashboard: return "sparkles"
+        case .nutrition: return "fork.knife"
+        case .walking: return "figure.walk"
+        case .insights: return "chart.line.uptrend.xyaxis"
+        case .profile: return "person.crop.circle"
         }
     }
 }

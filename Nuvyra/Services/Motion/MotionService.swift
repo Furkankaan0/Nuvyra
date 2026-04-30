@@ -10,11 +10,11 @@ enum MotionActivityState: String, Codable, Equatable {
 
     var title: String {
         switch self {
-        case .stationary: "Sakin"
-        case .walking: "Yürüyüş"
-        case .running: "Koşu"
-        case .automotive: "Araçta"
-        case .unknown: "Belirsiz"
+        case .stationary: return "Sakin"
+        case .walking: return "Yürüyüş"
+        case .running: return "Koşu"
+        case .automotive: return "Araçta"
+        case .unknown: return "Belirsiz"
         }
     }
 }

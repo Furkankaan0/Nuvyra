@@ -146,23 +146,23 @@ final class OnboardingViewModel: ObservableObject {
 
     var healthStatusTitle: String {
         switch healthState {
-        case .sharingAuthorized: "Apple Sağlık bağlı"
-        case .sharingDenied: "Manuel mod hazır"
-        case .unavailable: "Bu cihazda uygun değil"
-        case .notDetermined: "Apple Sağlık isteğe bağlı"
+        case .sharingAuthorized: return "Apple Sağlık bağlı"
+        case .sharingDenied: return "Manuel mod hazır"
+        case .unavailable: return "Bu cihazda uygun değil"
+        case .notDetermined: return "Apple Sağlık isteğe bağlı"
         }
     }
 
     var healthStatusDescription: String {
         switch healthState {
         case .sharingAuthorized:
-            "Adımların otomatik gelebilir. Nuvyra yalnızca günlük ritim içgörüleri için okur."
+            return "Adımların otomatik gelebilir. Nuvyra yalnızca günlük ritim içgörüleri için okur."
         case .sharingDenied:
-            "Sorun değil. Nuvyra manuel modda çalışmaya devam eder."
+            return "Sorun değil. Nuvyra manuel modda çalışmaya devam eder."
         case .unavailable:
-            "Bu cihazda HealthKit uygun görünmüyor. Uygulama manuel takiple açılır."
+            return "Bu cihazda HealthKit uygun görünmüyor. Uygulama manuel takiple açılır."
         case .notDetermined:
-            "Adım ve aktif enerji verilerini izin verdiğin ölçüde okuyabiliriz."
+            return "Adım ve aktif enerji verilerini izin verdiğin ölçüde okuyabiliriz."
         }
     }
 
