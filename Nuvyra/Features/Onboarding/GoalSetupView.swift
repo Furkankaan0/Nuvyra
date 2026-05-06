@@ -4,7 +4,7 @@ struct GoalSetupView: View {
     @ObservedObject var viewModel: OnboardingViewModel
     @Environment(\.colorScheme) private var scheme
 
-    private let goals: [GoalType] = [.loseWeight, .maintain, .walkMore, .eatHealthier]
+    private let goals: [GoalType] = [.loseWeight, .maintain, .gainMuscle, .healthyLiving, .stayFit]
 
     var body: some View {
         NuvyraGlassCard {
@@ -14,185 +14,74 @@ struct GoalSetupView: View {
                     subtitle: "Bunu katı bir hedef değil, başlangıç ritmi olarak düşün."
                 )
 
-                nameField
-
                 VStack(spacing: NuvyraSpacing.sm) {
                     ForEach(goals) { goal in
-                        GoalOptionRow(
-                            goal: goal,
-                            isSelected: viewModel.selectedGoal == goal
-                        ) {
-                            viewModel.selectedGoal = goal
+                        Button {
+                            viewModel.selectGoal(goal)
+                        } label: {
+                            HStack(spacing: NuvyraSpacing.md) {
+                                Image(systemName: goal.legacyOnboardingSymbol)
+                                    .foregroundStyle(viewModel.selectedGoal == goal ? .white : NuvyraColors.accent)
+                                    .frame(width: 38, height: 38)
+                                    .background(viewModel.selectedGoal == goal ? NuvyraColors.accent : NuvyraColors.accent.opacity(0.12), in: Circle())
+
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(goal.title)
+                                        .font(.subheadline.weight(.bold))
+                                        .foregroundStyle(NuvyraColors.primaryText(scheme))
+                                    Text(goal.legacyOnboardingSubtitle)
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                                }
+
+                                Spacer()
+
+                                Image(systemName: viewModel.selectedGoal == goal ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(viewModel.selectedGoal == goal ? NuvyraColors.accent : NuvyraColors.secondaryText(scheme).opacity(0.5))
+                            }
+                            .padding(14)
+                            .background(NuvyraColors.card(scheme).opacity(0.62), in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous))
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-
-                TargetPreviewCard(preview: viewModel.targetPreview)
             }
         }
-    }
-
-    private var nameField: some View {
-        VStack(alignment: .leading, spacing: NuvyraSpacing.xs) {
-            Text("Sana nasıl hitap edelim?")
-                .font(.footnote.weight(.semibold))
-                .foregroundStyle(NuvyraColors.secondaryText(scheme))
-
-            HStack(spacing: NuvyraSpacing.sm) {
-                Image(systemName: "person.crop.circle")
-                    .foregroundStyle(NuvyraColors.accent)
-                TextField("Adın opsiyonel", text: $viewModel.name)
-                    .textInputAutocapitalization(.words)
-                    .submitLabel(.done)
-                    .font(.body.weight(.medium))
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 14)
-            .background(NuvyraColors.card(scheme).opacity(scheme == .dark ? 0.72 : 0.84), in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous)
-                    .stroke(NuvyraColors.accent.opacity(0.16))
-            )
-            .accessibilityLabel("Adın opsiyonel")
-        }
-    }
-}
-
-private struct GoalOptionRow: View {
-    @Environment(\.colorScheme) private var scheme
-    var goal: GoalType
-    var isSelected: Bool
-    var action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: NuvyraSpacing.md) {
-                Image(systemName: goal.onboardingSymbol)
-                    .font(.headline.weight(.bold))
-                    .foregroundStyle(isSelected ? .white : NuvyraColors.accent)
-                    .frame(width: 38, height: 38)
-                    .background(isSelected ? NuvyraColors.accent : NuvyraColors.accent.opacity(0.12), in: Circle())
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(goal.title)
-                        .font(.subheadline.weight(.bold))
-                        .foregroundStyle(NuvyraColors.primaryText(scheme))
-                    Text(goal.onboardingSubtitle)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(NuvyraColors.secondaryText(scheme))
-                        .lineLimit(2)
-                }
-
-                Spacer(minLength: NuvyraSpacing.sm)
-
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(isSelected ? NuvyraColors.accent : NuvyraColors.secondaryText(scheme).opacity(0.52))
-            }
-            .padding(14)
-            .background(
-                isSelected ? NuvyraColors.accent.opacity(scheme == .dark ? 0.18 : 0.12) : NuvyraColors.card(scheme).opacity(0.58),
-                in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous)
-                    .stroke(isSelected ? NuvyraColors.accent.opacity(0.42) : Color.white.opacity(scheme == .dark ? 0.08 : 0.32))
-            )
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(goal.title)
-        .accessibilityHint(goal.onboardingSubtitle)
-        .accessibilityValue(isSelected ? "Seçili" : "Seçili değil")
-    }
-}
-
-private struct TargetPreviewCard: View {
-    @Environment(\.colorScheme) private var scheme
-    var preview: OnboardingTargetPreview
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-            HStack {
-                Label("İlk ritim önerisi", systemImage: "sparkles")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(NuvyraColors.primaryText(scheme))
-                Spacer()
-                Text("Tahmini")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(NuvyraColors.accent)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(NuvyraColors.accent.opacity(0.12), in: Capsule())
-            }
-
-            HStack(spacing: NuvyraSpacing.sm) {
-                TargetMetric(title: "Kalori", value: "\(preview.calories) kcal")
-                TargetMetric(title: "Adım", value: preview.steps)
-                TargetMetric(title: "Su", value: preview.water)
-            }
-
-            Text(preview.note)
-                .font(.caption.weight(.medium))
-                .foregroundStyle(NuvyraColors.secondaryText(scheme))
-        }
-        .padding(16)
-        .background(
-            LinearGradient(
-                colors: [NuvyraColors.accent.opacity(0.14), NuvyraColors.paleLime.opacity(0.10)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            ),
-            in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous)
-        )
-    }
-}
-
-private struct TargetMetric: View {
-    @Environment(\.colorScheme) private var scheme
-    var title: String
-    var value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(title)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(NuvyraColors.secondaryText(scheme))
-            Text(value)
-                .font(.footnote.weight(.heavy))
-                .foregroundStyle(NuvyraColors.primaryText(scheme))
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 11)
-        .background(NuvyraColors.card(scheme).opacity(0.58), in: RoundedRectangle(cornerRadius: NuvyraRadius.sm, style: .continuous))
     }
 }
 
 private extension GoalType {
-    var onboardingSubtitle: String {
+    var legacyOnboardingSubtitle: String {
         switch self {
         case .loseWeight:
-            "Daha yumuşak kalori açığı ve düzenli yürüyüş."
+            "Nazik kalori açığı, yüksek protein ve gerçekçi adım hedefi."
         case .maintain:
-            "Dengeyi koru, su ve öğün ritmini netleştir."
+            "Enerji dengesini koruyan sakin günlük ritim."
         case .gainHealthy:
-            "Enerjini artırırken sürdürülebilir kal."
+            "Daha yüksek enerji hedefiyle sağlıklı kilo artışı."
+        case .gainMuscle:
+            "Protein odağı yüksek, kontrollü kalori fazlası."
         case .walkMore:
             "Walking-first planla adımı alışkanlığa çevir."
         case .eatHealthier:
-            "Öğün farkındalığını sakin şekilde artır."
+            "Öğün farkındalığını sade ve sürdürülebilir artır."
+        case .healthyLiving:
+            "Beslenme, su ve hareket dengesini bütünsel kur."
+        case .stayFit:
+            "Formunu korurken adım ve makro ritmini netleştir."
         }
     }
 
-    var onboardingSymbol: String {
+    var legacyOnboardingSymbol: String {
         switch self {
         case .loseWeight: "arrow.down.forward.circle.fill"
         case .maintain: "equal.circle.fill"
         case .gainHealthy: "plus.circle.fill"
+        case .gainMuscle: "dumbbell.fill"
         case .walkMore: "figure.walk.circle.fill"
         case .eatHealthier: "leaf.circle.fill"
+        case .healthyLiving: "heart.circle.fill"
+        case .stayFit: "sparkles"
         }
     }
 }

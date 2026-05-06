@@ -1,11 +1,36 @@
-﻿import Foundation
+import Foundation
 import SwiftData
+
+enum OnboardingStep: String, CaseIterable, Identifiable {
+    case welcome
+    case gender
+    case age
+    case height
+    case weight
+    case activity
+    case goal
+    case pace
+    case goalWeight
+    case summary
+    case health
+    case premium
+
+    var id: String { rawValue }
+}
 
 @MainActor
 final class OnboardingViewModel: ObservableObject {
     @Published var pageIndex = 0
-    @Published var selectedGoal: GoalType = .walkMore
     @Published var name = ""
+    @Published var selectedGender: Gender = .preferNotToSay
+    @Published var age = 30
+    @Published var heightCm = 175
+    @Published var weightKg = 78
+    @Published var activityLevel: ActivityLevel = .lightlyActive
+    @Published var selectedGoal: GoalType = .healthyLiving
+    @Published var goalPace: GoalPace = .balanced
+    @Published var usesGoalWeight = false
+    @Published var targetWeightKg = 74
     @Published var healthState: HealthAuthorizationState = .notDetermined
     @Published var wantsNotifications = true
     @Published var isCompleting = false
@@ -13,56 +38,76 @@ final class OnboardingViewModel: ObservableObject {
 
     let pages: [OnboardingPageContent] = [
         OnboardingPageContent(
-            eyebrow: "Sakin başlangıç",
-            title: "Ritmini yeniden kur.",
-            subtitle: "Nuvyra, beslenme ve yürüyüş alışkanlığını sakin bir düzende takip eder.",
+            eyebrow: "Nuvyra",
+            title: "Nuvyra'ya hoş geldin.",
+            subtitle: "Beslenme, su ve yürüyüş ritmini tek bir sakin wellness akışında kur.",
             systemImage: "leaf.fill",
-            metric: "1 ekran",
-            metricCaption: "günün dengesi",
-            highlights: ["Katı diyet dili yok", "Kalori, su ve yürüyüş tek akışta"]
-        ),
-        OnboardingPageContent(
-            eyebrow: "Beslenme",
-            title: "Kalorini karmaşa olmadan gör.",
-            subtitle: "Öğünlerini hızlı ekle, günün dengesini tek bakışta anla.",
-            systemImage: "fork.knife",
-            metric: "4 öğün",
-            metricCaption: "sade takip",
-            highlights: ["Türk yemekleri için hızlı seçim", "Değerler tahmini olarak gösterilir"]
-        ),
-        OnboardingPageContent(
-            eyebrow: "Yürüyüş",
-            title: "Yürüyüşü alışkanlığa çevir.",
-            subtitle: "Adım hedeflerin, streak'lerin ve haftalık ritmin tek yerde.",
-            systemImage: "figure.walk",
-            metric: "12 dk",
-            metricCaption: "mini görev",
-            highlights: ["HealthKit adımları desteklenir", "Düşük günlerde suçluluk yok"]
-        ),
-        OnboardingPageContent(
-            eyebrow: "Gizlilik",
-            title: "iPhone'unla birlikte çalışır.",
-            subtitle: "Apple Sağlık verilerini izin verdiğin ölçüde okur. Verilerin sende kalır.",
-            systemImage: "lock.shield.fill",
-            metric: "KVKK",
-            metricCaption: "hazır yaklaşım",
-            highlights: ["Sağlık verisi reklam için kullanılmaz", "İzinleri istediğin zaman kapatabilirsin"]
-        ),
-        OnboardingPageContent(
-            eyebrow: "Kişisel hedef",
-            title: "Hedefini seç.",
-            subtitle: "Bugün için gerçekçi bir kalori, su ve adım hedefi oluşturalım.",
-            systemImage: "target",
-            metric: "7.000+",
-            metricCaption: "nazik başlangıç",
-            highlights: ["Hedeflerini daha sonra değiştirebilirsin", "İlk plan sürdürülebilir başlar"]
+            metric: "1 plan",
+            metricCaption: "kişisel ritim",
+            highlights: ["Katı diyet dili yok", "Hedeflerin kişisel bilgilerinden hesaplanır"]
         )
     ]
 
-    var isLastPage: Bool { pageIndex == pages.count - 1 }
-    var progress: Double { Double(pageIndex + 1) / Double(pages.count) }
-    var stepLabel: String { "\(pageIndex + 1) / \(pages.count)" }
-    var targetPreview: OnboardingTargetPreview { Self.targetPreview(for: selectedGoal) }
+    private var orderedSteps: [OnboardingStep] {
+        OnboardingStep.allCases.filter { step in
+            if step == .pace { return selectedGoal.isPaceSensitive }
+            return true
+        }
+    }
+
+    var currentStep: OnboardingStep {
+        let steps = orderedSteps
+        return steps[min(pageIndex, steps.count - 1)]
+    }
+
+    var isLastPage: Bool { pageIndex == orderedSteps.count - 1 }
+    var progress: Double { Double(pageIndex + 1) / Double(orderedSteps.count) }
+    var stepLabel: String { "\(pageIndex + 1) / \(orderedSteps.count)" }
+    var targets: CalculatedNutritionTargets { NutritionGoalCalculator.calculate(for: calculationInput) }
+    var targetPreview: OnboardingTargetPreview {
+        OnboardingTargetPreview(
+            calories: targets.dailyCalories.formatted(.number.grouping(.automatic)),
+            steps: targets.stepTarget.formatted(.number.grouping(.automatic)),
+            water: targets.waterLitersText,
+            note: "Protein \(targets.proteinGrams)g, karbonhidrat \(targets.carbsGrams)g, yağ \(targets.fatGrams)g olarak dengelendi."
+        )
+    }
+
+    var calculationInput: NutritionGoalCalculationInput {
+        NutritionGoalCalculationInput(
+            age: age,
+            gender: selectedGender,
+            heightCm: Double(heightCm),
+            weightKg: Double(weightKg),
+            targetWeightKg: usesGoalWeight ? Double(targetWeightKg) : nil,
+            activityLevel: activityLevel,
+            goalType: selectedGoal,
+            goalPace: goalPace
+        )
+    }
+
+    var primaryButtonTitle: String {
+        switch currentStep {
+        case .welcome:
+            "Devam"
+        case .summary:
+            "Apple Sağlık'ı ayarla"
+        case .health:
+            "Premium'u gör"
+        case .premium:
+            isCompleting ? "Ritmin hazırlanıyor" : "Dashboard'a geç"
+        default:
+            "Devam"
+        }
+    }
+
+    var primaryButtonIcon: String {
+        switch currentStep {
+        case .premium: "sparkles"
+        case .summary: "heart.text.square"
+        default: "arrow.right"
+        }
+    }
 
     var healthStatusTitle: String {
         switch healthState {
@@ -88,12 +133,19 @@ final class OnboardingViewModel: ObservableObject {
 
     func next() {
         guard !isLastPage else { return }
-        pageIndex += 1
+        pageIndex = min(pageIndex + 1, orderedSteps.count - 1)
     }
 
     func back() {
         guard pageIndex > 0 else { return }
         pageIndex -= 1
+    }
+
+    func selectGoal(_ goal: GoalType) {
+        selectedGoal = goal
+        if !goal.isPaceSensitive, currentStep == .pace {
+            pageIndex = orderedSteps.firstIndex(of: .goalWeight) ?? pageIndex
+        }
     }
 
     func requestHealth(dependencies: DependencyContainer) async {
@@ -109,32 +161,32 @@ final class OnboardingViewModel: ObservableObject {
         isCompleting = true
         errorMessage = nil
         defer { isCompleting = false }
+
         do {
             let repository = dependencies.userRepository(context: context)
             let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-            _ = try repository.saveOnboardingProfile(name: cleanName, goalType: selectedGoal)
+            _ = try repository.savePersonalizedOnboardingProfile(
+                name: cleanName,
+                input: calculationInput,
+                targets: targets
+            )
+
             if wantsNotifications {
                 let granted = await dependencies.notificationService.requestAuthorization()
                 if granted { await dependencies.notificationService.scheduleGentleReminders() }
             }
-            await dependencies.analytics.track(.onboardingCompleted, payload: AnalyticsPayload(values: ["goal": selectedGoal.rawValue]))
+
+            dependencies.haptics.goalCompleted()
+            await dependencies.analytics.track(
+                .onboardingCompleted,
+                payload: AnalyticsPayload(values: [
+                    "goal": selectedGoal.rawValue,
+                    "activity_level": activityLevel.rawValue,
+                    "goal_pace": selectedGoal.isPaceSensitive ? goalPace.rawValue : "not_applicable"
+                ])
+            )
         } catch {
             errorMessage = "Başlangıç planı kaydedilemedi. Lütfen tekrar dene."
-        }
-    }
-
-    private static func targetPreview(for goal: GoalType) -> OnboardingTargetPreview {
-        switch goal {
-        case .loseWeight:
-            OnboardingTargetPreview(calories: "1.750", steps: "7.500", water: "2 L", note: "Daha hafif, sürdürülebilir bir başlangıç.")
-        case .maintain:
-            OnboardingTargetPreview(calories: "1.950", steps: "7.000", water: "2 L", note: "Dengeyi koruyan sakin bir günlük ritim.")
-        case .gainHealthy:
-            OnboardingTargetPreview(calories: "2.150", steps: "7.000", water: "2 L", note: "Enerjiyi artırırken yürüyüş rutinini korur.")
-        case .walkMore:
-            OnboardingTargetPreview(calories: "1.900", steps: "8.000", water: "2 L", note: "Walking-first başlangıç: hedef gerçekçi ama motive edici.")
-        case .eatHealthier:
-            OnboardingTargetPreview(calories: "1.850", steps: "7.000", water: "2 L", note: "Öğün farkındalığını sade bir hedefle başlatır.")
         }
     }
 }
