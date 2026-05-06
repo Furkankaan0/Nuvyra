@@ -12,6 +12,7 @@ final class WalkingViewModel: ObservableObject {
     @Published var walkingFocusActive = false
     @Published var walkingFocusStartedAt: Date?
     private var didPlayGoalHaptic = false
+    private var didPlayHalfwayHaptic = false
 
     var stepGoal: Int { profile?.dailyStepTarget ?? 7_500 }
     var remainingSteps: Int { max(stepGoal - snapshot.steps, 0) }
@@ -57,6 +58,12 @@ final class WalkingViewModel: ObservableObject {
             walkingFocusActive = dependencies.walkingLiveActivityService.isActive
             if walkingFocusActive {
                 await dependencies.walkingLiveActivityService.update(steps: snapshot.steps, goal: stepGoal, elapsedMinutes: focusElapsedMinutes)
+            }
+            if snapshot.steps >= stepGoal / 2, snapshot.steps < stepGoal, !didPlayHalfwayHaptic {
+                didPlayHalfwayHaptic = true
+                dependencies.haptics.walkingHalfwayReached()
+            } else if snapshot.steps < stepGoal / 2 {
+                didPlayHalfwayHaptic = false
             }
             if snapshot.steps >= stepGoal, !didPlayGoalHaptic {
                 didPlayGoalHaptic = true
