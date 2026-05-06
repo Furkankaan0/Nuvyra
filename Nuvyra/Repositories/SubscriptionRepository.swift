@@ -2,7 +2,7 @@
 import SwiftData
 
 @MainActor
-protocol SubscriptionRepository {
+protocol SubscriptionRepository: AnyObject {
     func state() throws -> SubscriptionState
     func save(isPremium: Bool, productId: String?, expirationDate: Date?, source: EntitlementSource) throws
 }

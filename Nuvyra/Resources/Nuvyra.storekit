@@ -1,7 +1,23 @@
 ﻿{
   "identifier" : "nuvyra-storekit-local",
   "nonRenewingSubscriptions" : [],
-  "products" : [],
+  "products" : [
+    {
+      "displayPrice" : "TRY 1999.99",
+      "familyShareable" : false,
+      "internalID" : "premium-lifetime",
+      "localizations" : [
+        {
+          "description" : "Nuvyra Premium'a tek seferlik ömür boyu erişim",
+          "displayName" : "Premium Ömür Boyu",
+          "locale" : "tr_TR"
+        }
+      ],
+      "productID" : "com.nuvyra.premium.lifetime",
+      "referenceName" : "Premium Lifetime",
+      "type" : "NonConsumable"
+    }
+  ],
   "settings" : {
     "_applicationInternalID" : "0",
     "_developerTeamID" : "J5CYS3RDGH",
@@ -22,7 +38,7 @@
       "name" : "Nuvyra Premium",
       "subscriptions" : [
         {
-          "displayPrice" : "TRY 129.99",
+          "displayPrice" : "TRY 99.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "premium-monthly",
@@ -40,7 +56,7 @@
           "type" : "RecurringSubscription"
         },
         {
-          "displayPrice" : "TRY 999.99",
+          "displayPrice" : "TRY 699.99",
           "familyShareable" : false,
           "groupNumber" : 2,
           "internalID" : "premium-yearly",

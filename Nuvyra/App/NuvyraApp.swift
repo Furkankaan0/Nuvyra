@@ -6,6 +6,7 @@ import WidgetKit
 @MainActor
 struct NuvyraApp: App {
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("nuvyra.theme.preference") private var themePreference = NuvyraThemePreference.system.rawValue
     @StateObject private var dependencies: DependencyContainer
     @StateObject private var router = AppRouter()
     private let modelContainer: ModelContainer
@@ -22,6 +23,7 @@ struct NuvyraApp: App {
                 .modelContainer(modelContainer)
                 .environmentObject(dependencies)
                 .environmentObject(router)
+                .preferredColorScheme(preferredColorScheme)
                 .task {
                     await dependencies.analytics.track(.appOpened, payload: AnalyticsPayload())
                     await refreshForegroundState()
@@ -41,5 +43,13 @@ struct NuvyraApp: App {
         )
         WidgetCenter.shared.reloadAllTimelines()
         NotificationCenter.default.post(name: .nuvyraAppDidBecomeActive, object: nil)
+    }
+
+    private var preferredColorScheme: ColorScheme? {
+        switch NuvyraThemePreference(rawValue: themePreference) ?? .system {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
     }
 }
