@@ -42,6 +42,7 @@ targets:
       - sdk: AVFoundation.framework
       - sdk: Vision.framework
       - sdk: CoreML.framework
+      - sdk: libsqlite3.tbd
       - sdk: CoreLocation.framework
       - sdk: CoreMotion.framework
       - sdk: ActivityKit.framework

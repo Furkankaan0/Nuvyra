@@ -8,6 +8,7 @@ final class NutritionViewModel: ObservableObject {
     @Published var selectedMealType: MealType = .breakfast
     @Published var showingAddMeal = false
     @Published var showingCamera = false
+    @Published var showingFoodSearch = false
     @Published var errorMessage: String?
     @Published var smartMealText = ""
     @Published var estimatedResults: [EstimatedMealResult] = []
@@ -72,6 +73,29 @@ final class NutritionViewModel: ObservableObject {
             load(context: context, dependencies: dependencies)
         } catch {
             errorMessage = "Öğün eklenemedi."
+        }
+    }
+
+    func addFoodSearchResult(_ result: FoodSearchResult, context: ModelContext, dependencies: DependencyContainer) async {
+        do {
+            let meal = MealEntry(
+                mealType: selectedMealType,
+                name: result.name,
+                calories: result.calories,
+                protein: 0,
+                carbs: 0,
+                fat: 0,
+                portionDescription: result.servingDescription,
+                isFavorite: false,
+                isVerifiedTurkishFood: false,
+                isEstimated: true
+            )
+            try dependencies.nutritionRepository(context: context).addMeal(meal)
+            dependencies.haptics.mealLogged()
+            await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "fts_food_search"]))
+            load(context: context, dependencies: dependencies)
+        } catch {
+            errorMessage = "Arama sonucundan öğün eklenemedi."
         }
     }
 }

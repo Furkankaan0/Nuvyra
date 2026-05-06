@@ -24,6 +24,9 @@ struct NutritionView: View {
                             viewModel.showingCamera = true
                         }
                     }
+                    NuvyraSecondaryButton(title: "Besin veritabanında ara", systemImage: "magnifyingglass") {
+                        viewModel.showingFoodSearch = true
+                    }
                     SmartMealEntryCard(
                         text: $viewModel.smartMealText,
                         results: viewModel.estimatedResults,
@@ -55,6 +58,11 @@ struct NutritionView: View {
                 viewModel.smartMealText = detection.label
                 viewModel.showingCamera = false
                 Task { await viewModel.estimateSmartMeal(dependencies: dependencies) }
+            }
+        }
+        .sheet(isPresented: $viewModel.showingFoodSearch, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
+            FoodSearchView { result in
+                Task { await viewModel.addFoodSearchResult(result, context: modelContext, dependencies: dependencies) }
             }
         }
         .task { viewModel.load(context: modelContext, dependencies: dependencies) }

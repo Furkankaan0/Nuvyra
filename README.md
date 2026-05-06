@@ -110,6 +110,13 @@ Nuvyra wellness/fitness uygulamasıdır; tıbbi teşhis veya tedavi sunmaz. Sağ
 - Beklenen JSON şekli: `{ "FoodLog": [{ "name": "Elma", "quantity": "1 adet", "calories": 95 }] }`.
 - Swift tarafında yanıt `GeminiFoodLogResponse` ve `FoodLog` Codable modelleriyle decode edilir.
 
+## SQLite FTS5 Food Search
+
+- `SQLiteFTSFoodSearchService`, milyonlarca satırlık yerel besin indeksini SQLite FTS5 sanal tablosu ile aramak için hazırdır.
+- Türkçe karakter ve aksan normalizasyonu sayesinde `seftali` sorgusu `Şeftali` sonucunu bulur.
+- Arama serial background queue üzerinde çalışır; SwiftUI sonuçları `FoodSearchViewModel` ile main actor'da yayınlar.
+- SQL schema ve sorgu detayları: `docs/FOOD_SEARCH_FTS5.md`.
+
 Launch öncesi tamamlanacak alanlar:
 
 - Gerçek Privacy Policy URL
