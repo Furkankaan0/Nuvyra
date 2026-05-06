@@ -76,6 +76,10 @@ final class DependencyContainer: ObservableObject {
         SwiftDataActivityRepository(context: context)
     }
 
+    func analyticsRepository(context: ModelContext) -> AnalyticsRepository {
+        SwiftDataAnalyticsRepository(context: context)
+    }
+
     func waterRepository(context: ModelContext) -> WaterRepository {
         SwiftDataWaterRepository(context: context)
     }
