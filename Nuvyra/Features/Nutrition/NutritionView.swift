@@ -16,7 +16,14 @@ struct NutritionView: View {
                         ForEach(MealType.allCases) { type in Text(type.title).tag(type) }
                     }
                     .pickerStyle(.segmented)
-                    NuvyraPrimaryButton(title: "Manuel öğün ekle", systemImage: "plus") { viewModel.showingAddMeal = true }
+                    HStack(spacing: NuvyraSpacing.sm) {
+                        NuvyraPrimaryButton(title: "Manuel öğün ekle", systemImage: "plus") {
+                            viewModel.showingAddMeal = true
+                        }
+                        NuvyraSecondaryButton(title: "Kamerayla tara", systemImage: "camera.viewfinder") {
+                            viewModel.showingCamera = true
+                        }
+                    }
                     SmartMealEntryCard(
                         text: $viewModel.smartMealText,
                         results: viewModel.estimatedResults,
@@ -42,6 +49,13 @@ struct NutritionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $viewModel.showingAddMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
             AddMealView(defaultMealType: viewModel.selectedMealType)
+        }
+        .fullScreenCover(isPresented: $viewModel.showingCamera) {
+            CameraView { detection in
+                viewModel.smartMealText = detection.label
+                viewModel.showingCamera = false
+                Task { await viewModel.estimateSmartMeal(dependencies: dependencies) }
+            }
         }
         .task { viewModel.load(context: modelContext, dependencies: dependencies) }
     }
@@ -70,7 +84,7 @@ private struct SmartMealEntryCard: View {
                         Label("Akıllı kayıt", systemImage: "sparkles")
                             .font(NuvyraTypography.section)
                             .foregroundStyle(NuvyraColors.primaryText(scheme))
-                        Text("Şimdilik mock Türkçe NLP kullanır. Gerçek AI ve barkod adapter’ları bu katmana bağlanacak.")
+                        Text("Şimdilik cihaz içi Türkçe tahmin katmanını kullanır. Gerçek AI ve barkod adapter’ları bu katmana bağlanacak.")
                             .font(NuvyraTypography.caption)
                             .foregroundStyle(NuvyraColors.secondaryText(scheme))
                     }

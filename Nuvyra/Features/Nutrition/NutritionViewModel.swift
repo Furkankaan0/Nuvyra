@@ -7,6 +7,7 @@ final class NutritionViewModel: ObservableObject {
     @Published var favorites: [MealEntry] = []
     @Published var selectedMealType: MealType = .breakfast
     @Published var showingAddMeal = false
+    @Published var showingCamera = false
     @Published var errorMessage: String?
     @Published var smartMealText = ""
     @Published var estimatedResults: [EstimatedMealResult] = []

@@ -95,6 +95,13 @@ Nuvyra wellness/fitness uygulamasıdır; tıbbi teşhis veya tedavi sunmaz. Sağ
 - Analytics bu fazda `PrivacyPreservingAnalyticsService` ile no-op çalışır. Sağlık verisi veya kişisel beslenme detayı üçüncü taraf reklam/marketing SDK'sına gönderilmez. Gerçek analytics sağlayıcısı eklenecekse event payload'ları anonim ve aggregate kalmalıdır.
 - StoreKit restore/sync kullanıcı aksiyonuna bağlıdır. App foreground olduğunda entitlement refresh yapılır; `AppStore.sync()` otomatik çağrılmaz.
 
+## Camera / Core ML Foundation
+
+- Kamera feature'ı `Nuvyra/Features/Camera` altında SwiftUI + MVVM olarak bulunur.
+- Canlı kare akışı AVFoundation ile alınır, `alwaysDiscardsLateVideoFrames` ve `FrameRateLimiter` ile varsayılan 4 FPS'e düşürülür.
+- Vision entegrasyonu `VNCoreMLRequest` üzerinden `NuvyraFoodDetector.mlmodel` adlı object detection modelini bekler. Model Xcode target'a eklendiğinde build sırasında `NuvyraFoodDetector.mlmodelc` olarak derlenir ve runtime'da otomatik yüklenir.
+- Model yoksa kamera ekranı çökmez; kullanıcıya modelin beklediğini söyleyen güvenli state gösterir.
+
 Launch öncesi tamamlanacak alanlar:
 
 - Gerçek Privacy Policy URL

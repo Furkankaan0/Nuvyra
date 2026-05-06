@@ -39,6 +39,9 @@ targets:
       - sdk: StoreKit.framework
       - sdk: Security.framework
       - sdk: UserNotifications.framework
+      - sdk: AVFoundation.framework
+      - sdk: Vision.framework
+      - sdk: CoreML.framework
       - sdk: CoreLocation.framework
       - sdk: CoreMotion.framework
       - sdk: ActivityKit.framework
