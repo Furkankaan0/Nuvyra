@@ -102,6 +102,14 @@ Nuvyra wellness/fitness uygulamasıdır; tıbbi teşhis veya tedavi sunmaz. Sağ
 - Vision entegrasyonu `VNCoreMLRequest` üzerinden `NuvyraFoodDetector.mlmodel` adlı object detection modelini bekler. Model Xcode target'a eklendiğinde build sırasında `NuvyraFoodDetector.mlmodelc` olarak derlenir ve runtime'da otomatik yüklenir.
 - Model yoksa kamera ekranı çökmez; kullanıcıya modelin beklediğini söyleyen güvenli state gösterir.
 
+## Gemini Food Log Service
+
+- `GeminiFoodLogService`, Türkçe doğal dil girdisini Gemini API ile yapılandırılmış `FoodLog` JSON çıktısına dönüştürür.
+- API key koda yazılmaz; servis `apiKey` initializer parametresiyle dışarıdan beslenir.
+- REST isteğinde `generationConfig.responseMimeType = "application/json"` ve `generationConfig.responseJsonSchema` kullanılır.
+- Beklenen JSON şekli: `{ "FoodLog": [{ "name": "Elma", "quantity": "1 adet", "calories": 95 }] }`.
+- Swift tarafında yanıt `GeminiFoodLogResponse` ve `FoodLog` Codable modelleriyle decode edilir.
+
 Launch öncesi tamamlanacak alanlar:
 
 - Gerçek Privacy Policy URL
