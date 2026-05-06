@@ -6,6 +6,7 @@ struct NuvyraWidgetBundle: WidgetBundle {
     var body: some Widget {
         NuvyraWidget()
         WalkingLiveActivityWidget()
+        NuvyraWalkingLiveActivityWidget()
     }
 }
 

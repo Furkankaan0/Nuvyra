@@ -174,25 +174,25 @@ private extension GoalType {
     var onboardingSubtitle: String {
         switch self {
         case .loseWeight:
-            return "Daha yumuşak kalori açığı ve düzenli yürüyüş."
+            "Daha yumuşak kalori açığı ve düzenli yürüyüş."
         case .maintain:
-            return "Dengeyi koru, su ve öğün ritmini netleştir."
+            "Dengeyi koru, su ve öğün ritmini netleştir."
         case .gainHealthy:
-            return "Enerjini artırırken sürdürülebilir kal."
+            "Enerjini artırırken sürdürülebilir kal."
         case .walkMore:
-            return "Walking-first planla adımı alışkanlığa çevir."
+            "Walking-first planla adımı alışkanlığa çevir."
         case .eatHealthier:
-            return "Öğün farkındalığını sakin şekilde artır."
+            "Öğün farkındalığını sakin şekilde artır."
         }
     }
 
     var onboardingSymbol: String {
         switch self {
-        case .loseWeight: return "arrow.down.forward.circle.fill"
-        case .maintain: return "equal.circle.fill"
-        case .gainHealthy: return "plus.circle.fill"
-        case .walkMore: return "figure.walk.circle.fill"
-        case .eatHealthier: return "leaf.circle.fill"
+        case .loseWeight: "arrow.down.forward.circle.fill"
+        case .maintain: "equal.circle.fill"
+        case .gainHealthy: "plus.circle.fill"
+        case .walkMore: "figure.walk.circle.fill"
+        case .eatHealthier: "leaf.circle.fill"
         }
     }
 }

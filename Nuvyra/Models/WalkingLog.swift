@@ -4,9 +4,7 @@ import SwiftData
 @Model
 final class WalkingLog: Identifiable {
     @Attribute(.unique) var id: UUID
-    /// Per-day unique. ActivityRepository.upsertWalkingSnapshot is the
-    /// single insert path and it normalises to startOfDay before write.
-    @Attribute(.unique) var date: Date
+    var date: Date
     var steps: Int
     var activeEnergy: Double
     var distanceKm: Double?

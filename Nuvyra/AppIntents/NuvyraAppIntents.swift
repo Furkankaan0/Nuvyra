@@ -94,12 +94,8 @@ private enum IntentActionStore {
     static func addWater(amountMl: Int) throws -> String {
         let safeAmount = min(max(amountMl, 50), 2_000)
         let container = NuvyraModelContainer.live()
-        let context = container.mainContext
-        SeedData.ensureMinimumData(in: context)
-        try SwiftDataWaterRepository(
-            context: context,
-            onMutate: { WidgetRefresh.reload(context: context) }
-        ).addWater(amountMl: safeAmount, date: Date())
+        SeedData.ensureMinimumData(in: container.mainContext)
+        try SwiftDataWaterRepository(context: container.mainContext).addWater(amountMl: safeAmount, date: Date())
         return "\(safeAmount) ml su Nuvyra’ya eklendi."
     }
 
@@ -123,11 +119,7 @@ private enum IntentActionStore {
             isVerifiedTurkishFood: estimate.source == .localTurkishNLP,
             isEstimated: true
         )
-        let context = container.mainContext
-        try SwiftDataNutritionRepository(
-            context: context,
-            onMutate: { WidgetRefresh.reload(context: context) }
-        ).addMeal(meal)
+        try SwiftDataNutritionRepository(context: container.mainContext).addMeal(meal)
         return "\(estimate.name), tahmini \(estimate.calories) kcal olarak kaydedildi."
     }
 

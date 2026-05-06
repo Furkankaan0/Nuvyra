@@ -12,11 +12,6 @@ struct WalkingView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     NuvyraSectionHeader(title: "Yürüyüş", subtitle: "Bugün düşük tempoda kalmak da sorun değil. Devamlılık daha önemli.")
-                    if let banner = viewModel.dataIssueBanner {
-                        NuvyraDataIssueBanner(banner: banner) {
-                            Task { await viewModel.retryHealth(context: modelContext, dependencies: dependencies) }
-                        }
-                    }
                     StepGoalCard(steps: viewModel.snapshot.steps, goal: viewModel.stepGoal, remaining: viewModel.remainingSteps)
                     WalkingFocusCard(
                         isActive: viewModel.walkingFocusActive,

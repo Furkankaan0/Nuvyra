@@ -1,4 +1,4 @@
-import SwiftUI
+﻿import SwiftUI
 import WidgetKit
 
 struct NuvyraWidgetView: View {
@@ -15,58 +15,29 @@ struct NuvyraWidgetView: View {
         }
     }
 
-    private var clampedRingProgress: Double {
-        min(max(entry.ringProgress, 0), 1)
-    }
-
     private var small: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("Nuvyra")
-                    .font(.headline.weight(.bold))
-                if entry.isPlaceholder {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
+            Text("Nuvyra")
+                .font(.headline.weight(.bold))
             Spacer()
-            NuvyraProgressRing(
-                progress: clampedRingProgress,
-                lineWidth: 8,
-                center: entry.steps.formatted(),
-                caption: "/ \(entry.stepGoal.formatted()) adım"
-            )
+            NuvyraProgressRing(progress: Double(entry.steps) / 7_500, lineWidth: 8, center: entry.steps.formatted(), caption: "adım")
             Text("\(entry.calorieBalance) kcal kaldı")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
         }
         .padding()
         .containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
-        .opacity(entry.isPlaceholder ? 0.7 : 1)
     }
 
     private var medium: some View {
         HStack(spacing: 14) {
-            NuvyraProgressRing(
-                progress: clampedRingProgress,
-                lineWidth: 10,
-                center: entry.steps.formatted(),
-                caption: "/ \(entry.stepGoal.formatted())"
-            )
-            .frame(width: 112, height: 112)
+            NuvyraProgressRing(progress: Double(entry.steps) / 7_500, lineWidth: 10, center: entry.steps.formatted(), caption: "adım")
+                .frame(width: 112, height: 112)
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Text("Bugünkü ritmin")
-                        .font(.headline.weight(.bold))
-                    if entry.isPlaceholder {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Text("Kalori: \(entry.calorieBalance) / \(entry.calorieTarget) kcal kaldı")
-                Text("Su: \(entry.waterMl) / \(entry.waterTargetMl) ml")
+                Text("Bugünkü ritmin")
+                    .font(.headline.weight(.bold))
+                Text("Kalori: \(entry.calorieBalance) kcal kaldı")
+                Text("Su: \(entry.waterMl) ml")
                 Text(entry.insight)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -76,6 +47,5 @@ struct NuvyraWidgetView: View {
         }
         .padding()
         .containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
-        .opacity(entry.isPlaceholder ? 0.7 : 1)
     }
 }

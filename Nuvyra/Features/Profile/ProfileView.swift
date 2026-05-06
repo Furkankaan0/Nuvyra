@@ -36,10 +36,7 @@ struct ProfileView: View {
                     NuvyraMetricCard(title: "Kalori", value: "\(profile?.dailyCalorieTarget ?? 1_900)", caption: "günlük", systemImage: "flame")
                     NuvyraMetricCard(title: "Adım", value: (profile?.dailyStepTarget ?? 7_500).formatted(), caption: "günlük", systemImage: "figure.walk")
                 }
-                // Use `isActive`, not `isPremium`: an expired premium row
-                // is no longer a valid grant and we must not show it as
-                // "Premium aktif".
-                Text(subscription?.isActive == true ? "Premium aktif" : "Free plan")
+                Text(subscription?.isPremium == true ? "Premium aktif" : "Free plan")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(NuvyraColors.accent)
             }
