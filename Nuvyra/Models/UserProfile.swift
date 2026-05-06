@@ -17,8 +17,8 @@ final class UserProfile: Identifiable {
     var dailyStepTarget: Int
     var dailyWaterTargetMl: Int
     var goalType: GoalType
-    var activityLevel: ActivityLevel = .lightlyActive
-    var goalPace: GoalPace? = .balanced
+    var activityLevel: ActivityLevel = ActivityLevel.lightlyActive
+    var goalPace: GoalPace? = GoalPace.balanced
     var createdAt: Date
     var updatedAt: Date
 
