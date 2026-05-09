@@ -40,7 +40,7 @@ final class WaterTrackingViewModel: ObservableObject {
             entries = try waterRepo.entries(on: Date())
             totalToday = try waterRepo.totalWater(on: Date())
             weeklyTotals = try waterRepo.weeklyTotals(endingOn: Date())
-            remindersEnabled = (try? context.fetch(FetchDescriptor<AppSettings>()).first?.notificationsEnabled) ?? false
+            remindersEnabled = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first?.notificationsEnabled ?? false
             updateCelebrationState()
             await WidgetSnapshotPublisher.publish(context: context, dependencies: dependencies)
         } catch {}
@@ -113,12 +113,12 @@ final class WaterTrackingViewModel: ObservableObject {
 
     private func currentPreferences(context: ModelContext) -> NotificationPreferences {
         let descriptor = FetchDescriptor<AppSettings>()
-        return (try? context.fetch(descriptor).first?.notificationPreferences) ?? .default
+        return (try? context.fetch(descriptor))?.first?.notificationPreferences ?? .default
     }
 
     private func persistPreferences(_ preferences: NotificationPreferences, context: ModelContext) {
         let descriptor = FetchDescriptor<AppSettings>()
-        guard let settings = try? context.fetch(descriptor).first else { return }
+        guard let settings = (try? context.fetch(descriptor))?.first else { return }
         settings.notificationPreferences = preferences
         try? context.save()
     }

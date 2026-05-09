@@ -77,7 +77,7 @@ final class AuthManager: ObservableObject {
     // MARK: - Session helpers
 
     private func loadSessionFromKeychain() -> UserSession? {
-        guard let data = try? keychain.read(sessionKey), let data else { return nil }
+        guard let data = (try? keychain.read(sessionKey)) ?? nil else { return nil }
         return try? decoder.decode(UserSession.self, from: data)
     }
 

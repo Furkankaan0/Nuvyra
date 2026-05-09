@@ -209,7 +209,7 @@ final class OnboardingViewModel: ObservableObject {
 
     private func persistOnboardingPreferences(_ preferences: NotificationPreferences, context: ModelContext) {
         let descriptor = FetchDescriptor<AppSettings>()
-        guard let settings = try? context.fetch(descriptor).first else { return }
+        guard let settings = (try? context.fetch(descriptor))?.first else { return }
         settings.notificationPreferences = preferences
         try? context.save()
     }
