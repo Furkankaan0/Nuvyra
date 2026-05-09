@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Bu fragment uygulamanın Info.plist dosyasına eklenmelidir.
+  Bütün dosya değil, sadece aşağıdaki anahtarlar Info.plist içine MERGE edilir.
+-->
+<dict>
+    <!-- Kamera kullanım açıklaması -->
+    <key>NSCameraUsageDescription</key>
+    <string>Yemek porsiyonunuzu LiDAR ile ölçebilmek için kamera erişimi gereklidir. Görüntüler cihazınızdan ayrılmaz.</string>
+
+    <!-- Hareket verisi açıklaması (ARKit tracking) -->
+    <key>NSMotionUsageDescription</key>
+    <string>AR oturumunun cihaz hareketini takip edebilmesi için hareket sensörlerine erişim gereklidir. Bu veriler cihazda işlenir.</string>
+
+    <!-- LiDAR / WorldSensing hassas çevre okuma açıklaması -->
+    <key>NSWorldSensingUsageDescription</key>
+    <string>Tabak ve yemek mesafesini LiDAR ile ölçmek için çevre algılama izni gereklidir.</string>
+
+    <!-- Yalnızca AR-uyumlu cihazlarda yüklenebilsin -->
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+        <string>arkit</string>
+    </array>
+
+    <!-- iPhone 12 Pro ve üzeri (LiDAR) hedeflenir; min iOS 16 -->
+    <key>MinimumOSVersion</key>
+    <string>16.0</string>
+</dict>
