@@ -9,7 +9,8 @@ extension MealType: AppEnum {
         .breakfast: "Kahvaltı",
         .lunch: "Öğle",
         .dinner: "Akşam",
-        .snack: "Atıştırmalık"
+        .snack: "Atıştırmalık",
+        .beverage: "İçecek"
     ]
 }
 
