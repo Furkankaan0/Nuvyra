@@ -22,10 +22,12 @@ struct NuvyraApp: App {
             AppRootView()
                 .modelContainer(modelContainer)
                 .environmentObject(dependencies)
+                .environmentObject(dependencies.authManager)
                 .environmentObject(router)
                 .preferredColorScheme(preferredColorScheme)
                 .task {
                     await dependencies.analytics.track(.appOpened, payload: AnalyticsPayload())
+                    await dependencies.authManager.bootstrap()
                     await refreshForegroundState()
                 }
                 .onChange(of: scenePhase) { _, newPhase in
@@ -41,7 +43,7 @@ struct NuvyraApp: App {
         await dependencies.subscriptionManager.refresh(
             repository: dependencies.subscriptionRepository(context: modelContainer.mainContext)
         )
-        WidgetCenter.shared.reloadAllTimelines()
+        await WidgetSnapshotPublisher.publish(context: modelContainer.mainContext, dependencies: dependencies)
         NotificationCenter.default.post(name: .nuvyraAppDidBecomeActive, object: nil)
     }
 

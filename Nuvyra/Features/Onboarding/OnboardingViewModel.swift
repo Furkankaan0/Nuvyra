@@ -63,6 +63,12 @@ final class OnboardingViewModel: ObservableObject {
     var isLastPage: Bool { pageIndex == orderedSteps.count - 1 }
     var progress: Double { Double(pageIndex + 1) / Double(orderedSteps.count) }
     var stepLabel: String { "\(pageIndex + 1) / \(orderedSteps.count)" }
+    var totalStepsCount: Int { orderedSteps.count }
+    var canContinue: Bool {
+        // All current steps allow continuing — selections always have a default value.
+        // The summary, health, and premium steps are informational; the rest have selectors with defaults.
+        true
+    }
     var targets: CalculatedNutritionTargets { NutritionGoalCalculator.calculate(for: calculationInput) }
     var targetPreview: OnboardingTargetPreview {
         OnboardingTargetPreview(
@@ -173,7 +179,18 @@ final class OnboardingViewModel: ObservableObject {
 
             if wantsNotifications {
                 let granted = await dependencies.notificationService.requestAuthorization()
-                if granted { await dependencies.notificationService.scheduleGentleReminders() }
+                if granted {
+                    var preferences = NotificationPreferences.default
+                    preferences.masterEnabled = true
+                    let cleanName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    let personal = NotificationPersonalContext(
+                        firstName: cleanName.isEmpty ? nil : cleanName,
+                        goalType: selectedGoal,
+                        activityLevel: activityLevel
+                    )
+                    await dependencies.notificationService.schedule(preferences: preferences, context: personal)
+                    persistOnboardingPreferences(preferences, context: context)
+                }
             }
 
             dependencies.haptics.goalCompleted()
@@ -188,6 +205,13 @@ final class OnboardingViewModel: ObservableObject {
         } catch {
             errorMessage = "Başlangıç planı kaydedilemedi. Lütfen tekrar dene."
         }
+    }
+
+    private func persistOnboardingPreferences(_ preferences: NotificationPreferences, context: ModelContext) {
+        let descriptor = FetchDescriptor<AppSettings>()
+        guard let settings = try? context.fetch(descriptor).first else { return }
+        settings.notificationPreferences = preferences
+        try? context.save()
     }
 }
 

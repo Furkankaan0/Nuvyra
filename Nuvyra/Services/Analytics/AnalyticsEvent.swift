@@ -14,6 +14,8 @@ enum AnalyticsEvent: String, CaseIterable {
     case purchaseCompleted = "purchase_completed"
     case purchaseFailed = "purchase_failed"
     case restorePurchasesTapped = "restore_purchases_tapped"
+    case aiCoachQueryAsked = "aicoach_query_asked"
+    case aiCoachInsightsViewed = "aicoach_insights_viewed"
 }
 
 struct AnalyticsPayload: Equatable {

@@ -1,95 +1,150 @@
-﻿import SwiftData
+import SwiftData
 import SwiftUI
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var scheme
     @EnvironmentObject private var dependencies: DependencyContainer
     @EnvironmentObject private var router: AppRouter
     @StateObject private var viewModel = DashboardViewModel()
+    @State private var presentAICoach = false
+    @State private var presentWaterTracking = false
+
+    private let waterQuickAdd = 250
 
     var body: some View {
         ZStack {
             NuvyraBackground()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
-                    TodaySummaryCard(title: "Bugünkü ritmin", date: Date())
-                    CalorieBalanceCard(consumed: viewModel.totalCalories, burned: Int(viewModel.healthSnapshot.activeEnergy), target: viewModel.calorieTarget, remaining: viewModel.remainingCalories)
-                    StepRingCard(steps: viewModel.healthSnapshot.steps, goal: viewModel.stepTarget)
-                    WaterCard(waterMl: viewModel.waterMl, targetMl: viewModel.waterTarget) {
-                        Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: 250) }
-                    } onAdd500: {
-                        Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: 500) }
+                    DashboardHeroHeader(userName: viewModel.profile?.name, date: Date())
+
+                    CalorieHeroCard(summary: viewModel.nutritionSummary)
+
+                    QuickActionsRail(actions: quickActions)
+
+                    if viewModel.hasAnyData {
+                        MacroRowSection(macros: viewModel.macroSummaries)
+
+                        WaterStepRow(
+                            water: viewModel.waterSummary,
+                            step: viewModel.stepSummary,
+                            onAddWater: { addWater() },
+                            onRemoveWater: { removeWater() },
+                            onWaterDetail: { presentWaterTracking = true }
+                        )
+
+                        MealsTodaySection(meals: viewModel.meals) { mealType in
+                            router.requestNutritionAction(.openAddMeal)
+                        }
+
+                        RecentFoodsSection(items: viewModel.recentFoods) {
+                            router.selectedTab = .nutrition
+                        }
+                    } else {
+                        DashboardEmptyStateCard {
+                            router.requestNutritionAction(.openAddMeal)
+                        }
                     }
-                    RhythmTrendCard(
-                        calories: viewModel.totalCalories,
-                        calorieTarget: viewModel.calorieTarget,
-                        steps: viewModel.healthSnapshot.steps,
-                        stepGoal: viewModel.stepTarget,
-                        waterMl: viewModel.waterMl,
-                        waterTarget: viewModel.waterTarget
-                    )
-                    mealSlots
-                    DailyInsightCard(text: viewModel.insight)
+
+                    AIInsightTeaserCard(insight: viewModel.insight) {
+                        presentAICoach = true
+                    }
+
                     premiumTeaser
                 }
-                .padding(NuvyraSpacing.lg)
+                .padding(.horizontal, NuvyraSpacing.lg)
+                .padding(.top, NuvyraSpacing.md)
+                .padding(.bottom, NuvyraSpacing.xxl)
             }
             .refreshable { await viewModel.load(context: modelContext, dependencies: dependencies) }
         }
-        .navigationTitle("Nuvyra")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    router.selectedTab = .profile
+                } label: {
+                    Image(systemName: "person.crop.circle")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(NuvyraColors.accent)
+                }
+                .accessibilityLabel("Profil")
+            }
+        }
         .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         .onReceive(NotificationCenter.default.publisher(for: .nuvyraAppDidBecomeActive)) { _ in
             Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         }
+        .sheet(isPresented: $presentAICoach) {
+            AICoachView()
+        }
+        .sheet(isPresented: $presentWaterTracking, onDismiss: {
+            Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+        }) {
+            WaterTrackingView()
+        }
     }
 
-    private var mealSlots: some View {
-        VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-            NuvyraSectionHeader(title: "Öğünler", subtitle: "Kalori değerleri tahminidir.")
-            ForEach(MealType.allCases) { type in
-                let meal = viewModel.meals.first { $0.mealType == type }
-                NuvyraCard {
-                    HStack {
-                        Label(type.title, systemImage: type.systemImage)
-                            .font(NuvyraTypography.section)
-                        Spacer()
-                        if let meal {
-                            Text("\(meal.calories) kcal")
-                                .font(.headline.weight(.bold))
-                        } else {
-                            Button("Ekle") { router.selectedTab = .nutrition }
-                                .font(.headline.weight(.semibold))
-                        }
-                    }
-                    if let meal {
-                        Text(meal.name)
-                            .font(NuvyraTypography.body)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+    private var quickActions: [DashboardQuickAction] {
+        [
+            DashboardQuickAction(title: "Yemek ekle", systemImage: "fork.knife", tint: NuvyraColors.accent) {
+                router.requestNutritionAction(.openAddMeal)
+            },
+            DashboardQuickAction(title: "Barkod tara", systemImage: "barcode.viewfinder", tint: NuvyraColors.softSand) {
+                router.requestNutritionAction(.openBarcodeScanner)
+            },
+            DashboardQuickAction(title: "Sesle ekle", systemImage: "mic.fill", tint: NuvyraColors.mutedCoral) {
+                router.requestNutritionAction(.openVoiceEntry)
+            },
+            DashboardQuickAction(title: "Su ekle", systemImage: "drop.fill", tint: Color(red: 0.30, green: 0.70, blue: 0.95)) {
+                addWater()
+            },
+            DashboardQuickAction(title: "Su azalt", systemImage: "drop", tint: Color(red: 0.30, green: 0.70, blue: 0.95).opacity(0.7)) {
+                removeWater()
+            },
+            DashboardQuickAction(title: "Yürüyüş", systemImage: "figure.walk", tint: NuvyraColors.paleLime) {
+                router.selectedTab = .walking
             }
-        }
+        ]
     }
 
     private var premiumTeaser: some View {
-        NuvyraGlassCard {
-            VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
-                Text("Haftalık trendlerini daha detaylı görmek ister misin?")
-                    .font(NuvyraTypography.section)
-                Text("Premium ile yürüyüş, su ve öğün ritmini daha net oku.")
-                    .foregroundStyle(.secondary)
-                NuvyraSecondaryButton(title: "Premium'u keşfet", systemImage: "crown") {
-                    router.selectedTab = .profile
+        Group {
+            if !dependencies.subscriptionManager.isPremium {
+                NuvyraGlassCard {
+                    VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "crown.fill").foregroundStyle(NuvyraColors.softSand)
+                            Text("Premium ile derinleş")
+                                .font(NuvyraTypography.section)
+                        }
+                        Text("Haftalık trendler, gelişmiş içgörüler ve sınırsız AI Coach soruları.")
+                            .foregroundStyle(.secondary)
+                        NuvyraSecondaryButton(title: "Premium'u keşfet", systemImage: "sparkles") {
+                            router.selectedTab = .profile
+                        }
+                    }
                 }
             }
         }
     }
+
+    private func addWater() {
+        Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: waterQuickAdd) }
+    }
+
+    private func removeWater() {
+        Task { await viewModel.removeLatestWater(context: modelContext, dependencies: dependencies) }
+    }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack { DashboardView() }
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
         .environmentObject(AppRouter())
 }
+#endif
