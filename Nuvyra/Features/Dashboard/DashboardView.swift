@@ -17,44 +17,42 @@ struct DashboardView: View {
             NuvyraBackground()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
-                    DashboardHeroHeader(userName: viewModel.profile?.name, date: Date())
+                    DashboardHeroHeader(
+                        userName: viewModel.profile?.name,
+                        date: Date(),
+                        insight: viewModel.insight,
+                        onTapInsight: { presentAICoach = true }
+                    )
 
                     CalorieHeroCard(summary: viewModel.nutritionSummary)
 
-                    QuickActionsRail(actions: quickActions)
-
                     if viewModel.hasAnyData {
-                        MacroRowSection(macros: viewModel.macroSummaries)
+                        DashboardMacrosBar(macros: viewModel.macroSummaries)
 
-                        WaterStepRow(
+                        DashboardMetricTilesRow(
                             water: viewModel.waterSummary,
                             step: viewModel.stepSummary,
-                            onAddWater: { addWater() },
-                            onRemoveWater: { removeWater() },
-                            onWaterDetail: { presentWaterTracking = true }
+                            protein: viewModel.macroSummaries.first(where: { $0.kind == .protein }),
+                            onWaterTap: { presentWaterTracking = true },
+                            onStepsTap: { router.selectedTab = .walking },
+                            onProteinTap: { router.selectedTab = .nutrition }
                         )
 
-                        MealsTodaySection(meals: viewModel.meals) { mealType in
-                            router.requestNutritionAction(.openAddMeal)
-                        }
-
-                        RecentFoodsSection(items: viewModel.recentFoods) {
-                            router.selectedTab = .nutrition
-                        }
+                        DashboardMealsStrip(
+                            meals: viewModel.meals,
+                            onSelect: { _ in router.requestNutritionAction(.openAddMeal) },
+                            onSeeAll: { router.selectedTab = .nutrition }
+                        )
                     } else {
                         DashboardEmptyStateCard {
                             router.requestNutritionAction(.openAddMeal)
                         }
                     }
 
-                    AIInsightTeaserCard(insight: viewModel.insight) {
-                        presentAICoach = true
-                    }
-
-                    premiumTeaser
+                    QuickActionsRail(actions: quickActions)
                 }
                 .padding(.horizontal, NuvyraSpacing.lg)
-                .padding(.top, NuvyraSpacing.md)
+                .padding(.top, NuvyraSpacing.sm)
                 .padding(.bottom, NuvyraSpacing.xxl)
             }
             .refreshable { await viewModel.load(context: modelContext, dependencies: dependencies) }
@@ -66,9 +64,14 @@ struct DashboardView: View {
                 Button {
                     router.selectedTab = .profile
                 } label: {
-                    Image(systemName: "person.crop.circle")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(NuvyraColors.accent)
+                    ZStack {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(NuvyraColors.accent)
+                    }
                 }
                 .accessibilityLabel("Profil")
             }
@@ -87,56 +90,24 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - Quick actions (3 essentials)
+
     private var quickActions: [DashboardQuickAction] {
         [
             DashboardQuickAction(title: "Yemek ekle", systemImage: "fork.knife", tint: NuvyraColors.accent) {
                 router.requestNutritionAction(.openAddMeal)
             },
-            DashboardQuickAction(title: "Barkod tara", systemImage: "barcode.viewfinder", tint: NuvyraColors.softSand) {
-                router.requestNutritionAction(.openBarcodeScanner)
-            },
-            DashboardQuickAction(title: "Sesle ekle", systemImage: "mic.fill", tint: NuvyraColors.mutedCoral) {
-                router.requestNutritionAction(.openVoiceEntry)
-            },
-            DashboardQuickAction(title: "Su ekle", systemImage: "drop.fill", tint: Color(red: 0.30, green: 0.70, blue: 0.95)) {
+            DashboardQuickAction(title: "+250 ml", systemImage: "drop.fill", tint: Color(red: 0.30, green: 0.70, blue: 0.95)) {
                 addWater()
             },
-            DashboardQuickAction(title: "Su azalt", systemImage: "drop", tint: Color(red: 0.30, green: 0.70, blue: 0.95).opacity(0.7)) {
-                removeWater()
-            },
-            DashboardQuickAction(title: "Yürüyüş", systemImage: "figure.walk", tint: NuvyraColors.paleLime) {
-                router.selectedTab = .walking
+            DashboardQuickAction(title: "AI Coach", systemImage: "sparkles", tint: NuvyraColors.softSand) {
+                presentAICoach = true
             }
         ]
     }
 
-    private var premiumTeaser: some View {
-        Group {
-            if !dependencies.subscriptionManager.isPremium {
-                NuvyraGlassCard {
-                    VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "crown.fill").foregroundStyle(NuvyraColors.softSand)
-                            Text("Premium ile derinleş")
-                                .font(NuvyraTypography.section)
-                        }
-                        Text("Haftalık trendler, gelişmiş içgörüler ve sınırsız AI Coach soruları.")
-                            .foregroundStyle(.secondary)
-                        NuvyraSecondaryButton(title: "Premium'u keşfet", systemImage: "sparkles") {
-                            router.selectedTab = .profile
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private func addWater() {
         Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: waterQuickAdd) }
-    }
-
-    private func removeWater() {
-        Task { await viewModel.removeLatestWater(context: modelContext, dependencies: dependencies) }
     }
 }
 
