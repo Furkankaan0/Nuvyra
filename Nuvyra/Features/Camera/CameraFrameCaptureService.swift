@@ -30,10 +30,27 @@ final class CameraFrameCaptureService: NSObject {
     private let videoOutput = AVCaptureVideoDataOutput()
     private var isConfigured = false
     private var frameRateLimiter: FrameRateLimiter
+    private var pendingSnapshot: ((CMSampleBuffer) -> Void)?
 
     init(maxFramesPerSecond: Double = 4) {
         frameRateLimiter = FrameRateLimiter(maxFramesPerSecond: maxFramesPerSecond)
         super.init()
+    }
+
+    /// Capture the next available video frame as a one-shot snapshot.
+    /// `completion` runs on the camera frame queue with the raw sample buffer.
+    /// Returns immediately if a snapshot is already pending.
+    func captureNextFrame(_ completion: @escaping (CMSampleBuffer) -> Void) {
+        videoOutputQueue.async { [weak self] in
+            guard let self else { return }
+            self.pendingSnapshot = completion
+        }
+    }
+
+    func cancelPendingSnapshot() {
+        videoOutputQueue.async { [weak self] in
+            self?.pendingSnapshot = nil
+        }
     }
 
     func authorizationState() -> CameraAuthorizationState {
@@ -142,6 +159,13 @@ extension CameraFrameCaptureService: AVCaptureVideoDataOutputSampleBufferDelegat
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
+        // Pending snapshot bypasses the FPS limiter so the user gets a fresh frame on shutter tap.
+        if let snapshot = pendingSnapshot {
+            pendingSnapshot = nil
+            autoreleasepool { snapshot(sampleBuffer) }
+            return
+        }
+
         guard frameRateLimiter.shouldAcceptFrame(at: CACurrentMediaTime()) else {
             return
         }

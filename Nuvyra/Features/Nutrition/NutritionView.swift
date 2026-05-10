@@ -68,10 +68,9 @@ struct NutritionView: View {
             AddMealView(editing: meal)
         }
         .fullScreenCover(isPresented: $viewModel.showingCamera) {
-            CameraView { detection in
-                viewModel.smartMealText = detection.label
+            CameraView { result in
                 viewModel.showingCamera = false
-                Task { await viewModel.estimateSmartMeal(dependencies: dependencies) }
+                Task { await viewModel.addEstimatedResult(result, context: modelContext, dependencies: dependencies) }
             }
         }
         .sheet(isPresented: $viewModel.showingFoodSearch, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {

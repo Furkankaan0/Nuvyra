@@ -1,16 +1,24 @@
 import AVFoundation
+import CoreMedia
 import Foundation
+import ImageIO
 import Vision
 
+@MainActor
 final class CameraViewModel: ObservableObject {
     @Published private(set) var authorizationState: CameraAuthorizationState = .notDetermined
     @Published private(set) var detections: [CameraDetection] = []
+    @Published private(set) var candidates: [EstimatedMealResult] = []
     @Published private(set) var statusMessage = "Kamera hazırlanıyor."
     @Published private(set) var isRunning = false
+    @Published private(set) var isAnalyzing = false
+    @Published private(set) var isFrozen = false
+    @Published private(set) var capabilityLabel: String
 
     private let frameCaptureService: CameraFrameCaptureService
-    private let objectDetector: CoreMLObjectDetectionService
-    private var didPublishModelMissingState = false
+    private let visionService: FoodVisionService
+    private let labelMapper: FoodLabelMapper
+    private let stabilizer: FoodDetectionStabilizer
 
     var previewSession: AVCaptureSession {
         frameCaptureService.captureSession
@@ -18,17 +26,25 @@ final class CameraViewModel: ObservableObject {
 
     init(
         frameCaptureService: CameraFrameCaptureService = CameraFrameCaptureService(maxFramesPerSecond: 4),
-        objectDetector: CoreMLObjectDetectionService = CoreMLObjectDetectionService()
+        visionService: FoodVisionService = CompositeFoodVisionService(),
+        labelMapper: FoodLabelMapper = FoodLabelMapper(),
+        stabilizer: FoodDetectionStabilizer = FoodDetectionStabilizer()
     ) {
         self.frameCaptureService = frameCaptureService
-        self.objectDetector = objectDetector
-        authorizationState = frameCaptureService.authorizationState()
+        self.visionService = visionService
+        self.labelMapper = labelMapper
+        self.stabilizer = stabilizer
+        self.capabilityLabel = visionService.capability.humanReadable
+        self.authorizationState = frameCaptureService.authorizationState()
+
         self.frameCaptureService.onFrame = { [weak self] sampleBuffer in
-            self?.processFrame(sampleBuffer)
+            guard let self else { return }
+            Task { @MainActor in self.handleLiveFrame(sampleBuffer) }
         }
     }
 
-    @MainActor
+    // MARK: - Lifecycle
+
     func start() async {
         authorizationState = .requestingAccess
         statusMessage = "Kamera izni kontrol ediliyor."
@@ -36,7 +52,7 @@ final class CameraViewModel: ObservableObject {
         let granted = await frameCaptureService.requestAccessIfNeeded()
         guard granted else {
             authorizationState = .denied
-            statusMessage = "Kamera izni kapalı. Fotoğrafla öğün tanıma için Ayarlar'dan kamera iznini açabilirsin."
+            statusMessage = "Kamera izni kapalı. Fotoğrafla öğün için Ayarlar'dan izni aç."
             isRunning = false
             return
         }
@@ -46,9 +62,9 @@ final class CameraViewModel: ObservableObject {
         do {
             try frameCaptureService.startRunning()
             isRunning = true
-            statusMessage = objectDetector.isModelAvailable
-                ? "Kamera aktif. Öğünü kadraja al."
-                : "Core ML modeli eklenmedi. NuvyraFoodDetector.mlmodel eklendiğinde canlı tahmin başlayacak."
+            statusMessage = visionService.isReady
+                ? "Kamera aktif. Bir öğünü kadraja al ve sabit tut."
+                : "Görsel sınıflandırıcı yüklenemedi. Manuel öğün eklemeyi kullanabilirsin."
         } catch {
             authorizationState = .unavailable
             isRunning = false
@@ -56,64 +72,100 @@ final class CameraViewModel: ObservableObject {
         }
     }
 
-    @MainActor
     func stop() {
         frameCaptureService.stopRunning()
+        frameCaptureService.cancelPendingSnapshot()
+        stabilizer.reset()
         isRunning = false
     }
 
-    private func processFrame(_ sampleBuffer: CMSampleBuffer) {
-        guard objectDetector.isModelAvailable else {
-            publishModelMissingStateIfNeeded()
-            return
-        }
+    // MARK: - Live frame pipeline
 
-        do {
-            let results = try objectDetector.detectObjects(in: sampleBuffer)
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                self.detections = results
-                self.statusMessage = results.first.map {
-                    "\($0.label): %\($0.confidencePercent) olasılık"
-                } ?? "Kadraja bir öğün aldığında tahmin burada görünür."
-            }
-        } catch {
-            DispatchQueue.main.async { [weak self] in
-                self?.statusMessage = "Görüntü analiz edilemedi. Kamerayı biraz daha sabit tut."
-            }
+    private func handleLiveFrame(_ sampleBuffer: CMSampleBuffer) {
+        guard !isFrozen, visionService.isReady else { return }
+        Task { [weak self] in
+            await self?.analyzeLive(sampleBuffer)
         }
     }
 
-    private func publishModelMissingStateIfNeeded() {
-        guard !didPublishModelMissingState else { return }
-        didPublishModelMissingState = true
-        DispatchQueue.main.async { [weak self] in
-            self?.detections = []
-            self?.statusMessage = "Core ML modeli bekleniyor. Model eklendiğinde kareler VNCoreMLRequest ile analiz edilecek."
+    private func analyzeLive(_ sampleBuffer: CMSampleBuffer) async {
+        do {
+            let raw = try await visionService.analyze(sampleBuffer, orientation: .right)
+            let stable = stabilizer.ingest(raw).map(\.asCameraDetection)
+            guard !isFrozen else { return }
+            self.detections = stable
+            self.candidates = self.labelMapper.map(stable)
+            self.refreshStatus()
+        } catch {
+            // Silently drop bad frames; status message refresh on next good frame.
+        }
+    }
+
+    // MARK: - Shutter / freeze mode
+
+    /// Captures the next available frame, runs a focused analysis, and freezes the UI on results.
+    func captureSnapshot() {
+        guard isRunning, visionService.isReady, !isAnalyzing else { return }
+        isAnalyzing = true
+        statusMessage = "Kareyi analiz ediyorum..."
+
+        frameCaptureService.captureNextFrame { [weak self] sampleBuffer in
+            guard let self else { return }
+            Task { await self.analyzeSnapshot(sampleBuffer) }
+        }
+    }
+
+    private func analyzeSnapshot(_ sampleBuffer: CMSampleBuffer) async {
+        do {
+            let raw = try await visionService.analyze(sampleBuffer, orientation: .right)
+            let mapped = labelMapper.map(raw)
+            self.detections = raw.sorted { $0.confidence > $1.confidence }
+            self.candidates = mapped
+            self.isFrozen = true
+            self.isAnalyzing = false
+            self.statusMessage = mapped.isEmpty
+                ? "Görüntüden öğün çıkaramadım. Tekrar dene veya manuel ekle."
+                : "\(mapped.count) aday hazır. Birini seç ya da yeniden çek."
+        } catch {
+            self.isAnalyzing = false
+            self.statusMessage = "Analiz başarısız oldu. Tekrar dene."
+        }
+    }
+
+    func resumeLivePreview() {
+        isFrozen = false
+        candidates = []
+        detections = []
+        stabilizer.reset()
+        statusMessage = "Kamera aktif. Bir öğünü kadraja al."
+    }
+
+    // MARK: - Status helper
+
+    private func refreshStatus() {
+        if isFrozen { return }
+        if let top = candidates.first {
+            statusMessage = "\(top.name) — %\(Int((top.confidence * 100).rounded())) güven"
+        } else if detections.isEmpty {
+            statusMessage = "Bir öğünü kadraja al ve sabit tut."
         }
     }
 }
+
+// MARK: - Preview helper
 
 extension CameraViewModel {
     static func preview() -> CameraViewModel {
-        let viewModel = CameraViewModel(
+        let vm = CameraViewModel(
             frameCaptureService: CameraFrameCaptureService(maxFramesPerSecond: 4),
-            objectDetector: CoreMLObjectDetectionService(modelProvider: PreviewObjectDetectionModelProvider())
+            visionService: MockFoodVisionService()
         )
-        viewModel.detections = [
-            CameraDetection(
-                label: "Elma",
-                confidence: 0.90,
-                boundingBox: CGRect(x: 0.18, y: 0.24, width: 0.42, height: 0.38)
-            )
+        let stub = [
+            CameraDetection(label: "pizza", confidence: 0.91, boundingBox: CGRect(x: 0.18, y: 0.22, width: 0.62, height: 0.54))
         ]
-        viewModel.statusMessage = "Elma: %90 olasılık"
-        return viewModel
-    }
-}
-
-private struct PreviewObjectDetectionModelProvider: ObjectDetectionModelProviding {
-    func makeVisionModel() throws -> VNCoreMLModel {
-        throw CameraFeatureError.modelNotFound("Preview")
+        vm.detections = stub
+        vm.candidates = FoodLabelMapper().map(stub)
+        vm.statusMessage = "Pizza — %91 güven"
+        return vm
     }
 }
