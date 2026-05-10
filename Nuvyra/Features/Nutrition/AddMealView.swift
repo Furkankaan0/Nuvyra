@@ -92,7 +92,13 @@ struct AddMealView: View {
                 ToolbarItem(placement: .topBarLeading) { Button("Kapat") { dismiss() } }
             }
             .onAppear {
-                if editingMeal == nil { nameFocused = true }
+                // Defer focus until after the sheet's slide-in animation finishes,
+                // otherwise the keyboard rises mid-presentation and the sheet drifts.
+                guard editingMeal == nil else { return }
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    nameFocused = true
+                }
             }
         }
     }

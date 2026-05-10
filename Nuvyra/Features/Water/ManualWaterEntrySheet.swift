@@ -57,9 +57,18 @@ struct ManualWaterEntrySheet: View {
                     Button("Kapat") { dismiss() }
                 }
             }
-            .onAppear { amountFocused = true }
+            .onAppear {
+                // Defer focus until after the medium-detent sheet finishes its
+                // slide-in animation, so the keyboard doesn't disrupt detent layout.
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                    amountFocused = true
+                }
+            }
         }
         .presentationDetents([.medium])
+        .presentationDragIndicator(.visible)
+        .interactiveDismissDisabled(false)
     }
 }
 

@@ -63,9 +63,11 @@ struct NutritionView: View {
         }
         .sheet(isPresented: $viewModel.showingAddMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
             AddMealView(defaultMealType: viewModel.selectedMealType)
+                .presentationDragIndicator(.visible)
         }
         .sheet(item: $viewModel.editingMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) { meal in
             AddMealView(editing: meal)
+                .presentationDragIndicator(.visible)
         }
         .fullScreenCover(isPresented: $viewModel.showingCamera) {
             CameraView { result in
@@ -77,6 +79,7 @@ struct NutritionView: View {
             FoodSearchView { result in
                 Task { await viewModel.addFoodSearchResult(result, context: modelContext, dependencies: dependencies) }
             }
+            .presentationDragIndicator(.visible)
         }
         .alert("Barkod tarama yakında", isPresented: $showBarcodeUnavailableAlert) {
             Button("Tamam", role: .cancel) {}

@@ -34,6 +34,7 @@ struct ProfileView: View {
                 GoalEditorSheet(profile: profile) { calories, water, steps in
                     viewModel.updateGoals(context: modelContext, calories: calories, waterMl: water, steps: steps)
                 }
+                .presentationDragIndicator(.visible)
             }
         }
         .alert("Profil", isPresented: alertBinding) {

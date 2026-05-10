@@ -26,7 +26,7 @@ struct AICoachView: View {
                         }
                         .padding(.horizontal, NuvyraSpacing.lg)
                         .padding(.top, NuvyraSpacing.md)
-                        .padding(.bottom, NuvyraSpacing.xxl)
+                        .padding(.bottom, NuvyraSpacing.md)
                     }
                     .onChange(of: viewModel.messages.count) { _, _ in
                         withAnimation(.easeOut(duration: 0.25)) {
@@ -34,19 +34,20 @@ struct AICoachView: View {
                         }
                     }
                 }
-
-                VStack {
-                    Spacer()
-                    if !viewModel.hasReachedFreeLimit(isPremium: dependencies.subscriptionManager.isPremium) {
-                        AICoachComposer(
-                            text: $viewModel.inputText,
-                            isSending: viewModel.isSending,
-                            canSend: viewModel.canSend,
-                            onSend: send
-                        )
-                        .padding(.horizontal, NuvyraSpacing.lg)
-                        .padding(.bottom, NuvyraSpacing.sm)
-                    }
+            }
+            // Pin composer with safeAreaInset so iOS keyboard-avoidance handles
+            // it as a true bottom bar instead of pushing the whole sheet around.
+            .safeAreaInset(edge: .bottom) {
+                if !viewModel.hasReachedFreeLimit(isPremium: dependencies.subscriptionManager.isPremium) {
+                    AICoachComposer(
+                        text: $viewModel.inputText,
+                        isSending: viewModel.isSending,
+                        canSend: viewModel.canSend,
+                        onSend: send
+                    )
+                    .padding(.horizontal, NuvyraSpacing.lg)
+                    .padding(.vertical, NuvyraSpacing.sm)
+                    .background(.ultraThinMaterial)
                 }
             }
             .navigationTitle("AI Coach")
@@ -92,10 +93,12 @@ struct AICoachView: View {
                         }
                     }
                 }
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             }
             .sheet(isPresented: $presentPaywall) {
                 NavigationStack { PremiumView() }
+                    .presentationDragIndicator(.visible)
             }
         }
     }

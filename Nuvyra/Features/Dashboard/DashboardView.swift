@@ -82,11 +82,13 @@ struct DashboardView: View {
         }
         .sheet(isPresented: $presentAICoach) {
             AICoachView()
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $presentWaterTracking, onDismiss: {
             Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         }) {
             WaterTrackingView()
+                .presentationDragIndicator(.visible)
         }
     }
 
