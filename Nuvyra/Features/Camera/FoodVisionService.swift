@@ -6,7 +6,7 @@ import Vision
 
 // MARK: - Public API
 
-enum FoodVisionCapability: Equatable {
+enum FoodVisionCapability: Equatable, Sendable {
     case bundledModel(String)   // Custom Core ML model present in app bundle
     case visionFramework        // Apple's built-in image classifier (fallback)
     case unavailable
@@ -20,15 +20,15 @@ enum FoodVisionCapability: Equatable {
     }
 }
 
-protocol FoodVisionService {
+protocol FoodVisionService: Sendable {
     var capability: FoodVisionCapability { get }
     var isReady: Bool { get }
-    func analyze(_ sampleBuffer: CMSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection]
+    func analyze(_ sample: SendableSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection]
 }
 
 // MARK: - Bundled custom model (NuvyraFoodDetector)
 
-protocol BundledFoodModelProviding {
+protocol BundledFoodModelProviding: Sendable {
     var modelName: String { get }
     func makeVisionModel() throws -> VNCoreMLModel
 }
@@ -45,7 +45,7 @@ struct DefaultBundledFoodModelProvider: BundledFoodModelProviding {
     }
 }
 
-final class BundledFoodVisionService: FoodVisionService {
+final class BundledFoodVisionService: FoodVisionService, @unchecked Sendable {
     private let provider: BundledFoodModelProviding
     private let modelLoadResult: Result<VNCoreMLModel, Error>
     private let confidenceThreshold: Float
@@ -74,35 +74,23 @@ final class BundledFoodVisionService: FoodVisionService {
         return false
     }
 
-    func analyze(_ sampleBuffer: CMSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection] {
+    func analyze(_ sample: SendableSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection] {
         let model = try modelLoadResult.get()
-        return try await withCheckedThrowingContinuation { continuation in
-            let request = VNCoreMLRequest(model: model) { request, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                let detections = Self.extractDetections(
-                    from: request.results,
-                    confidenceThreshold: self.confidenceThreshold,
-                    maxResults: self.maxResults
-                )
-                continuation.resume(returning: detections)
-            }
-            request.imageCropAndScaleOption = .centerCrop
-
-            let handler = VNImageRequestHandler(
-                cmSampleBuffer: sampleBuffer,
-                orientation: orientation,
-                options: [:]
-            )
-
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+        // Synchronous Vision pipeline avoids non-Sendable captures across actor
+        // boundaries (Xcode 26 marks VNRequestCompletionHandler as @Sendable).
+        let request = VNCoreMLRequest(model: model)
+        request.imageCropAndScaleOption = .centerCrop
+        let handler = VNImageRequestHandler(
+            cmSampleBuffer: sample.buffer,
+            orientation: orientation,
+            options: [:]
+        )
+        try handler.perform([request])
+        return Self.extractDetections(
+            from: request.results,
+            confidenceThreshold: confidenceThreshold,
+            maxResults: maxResults
+        )
     }
 
     private static func extractDetections(
@@ -113,7 +101,7 @@ final class BundledFoodVisionService: FoodVisionService {
         guard let results else { return [] }
 
         if let objectResults = results as? [VNRecognizedObjectObservation] {
-            return objectResults.compactMap { observation in
+            let mapped = objectResults.compactMap { observation -> CameraDetection? in
                 guard let bestLabel = observation.labels.first else { return nil }
                 return CameraDetection(
                     label: bestLabel.identifier,
@@ -123,12 +111,11 @@ final class BundledFoodVisionService: FoodVisionService {
             }
             .filter { $0.confidence >= confidenceThreshold }
             .sorted { $0.confidence > $1.confidence }
-            .prefix(maxResults)
-            .map { $0 }
+            return Array(mapped.prefix(maxResults))
         }
 
         if let classificationResults = results as? [VNClassificationObservation] {
-            return classificationResults
+            let mapped = classificationResults
                 .filter { $0.confidence >= confidenceThreshold }
                 .prefix(maxResults)
                 .map { observation in
@@ -138,6 +125,7 @@ final class BundledFoodVisionService: FoodVisionService {
                         boundingBox: CGRect(x: 0.12, y: 0.18, width: 0.76, height: 0.64)
                     )
                 }
+            return Array(mapped)
         }
 
         return []
@@ -146,7 +134,7 @@ final class BundledFoodVisionService: FoodVisionService {
 
 // MARK: - Apple Vision built-in classifier (fallback)
 
-final class AppleVisionFoodService: FoodVisionService {
+final class AppleVisionFoodService: FoodVisionService, @unchecked Sendable {
     private let confidenceThreshold: Float
     private let maxResults: Int
 
@@ -156,50 +144,36 @@ final class AppleVisionFoodService: FoodVisionService {
     }
 
     var capability: FoodVisionCapability { .visionFramework }
-    var isReady: Bool { true } // Always available on iOS 13+
+    var isReady: Bool { true }
 
-    func analyze(_ sampleBuffer: CMSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection] {
-        try await withCheckedThrowingContinuation { continuation in
-            let request = VNClassifyImageRequest { request, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                    return
-                }
-                let observations = (request.results as? [VNClassificationObservation]) ?? []
-                let detections = observations
-                    .filter { $0.confidence >= self.confidenceThreshold }
-                    .prefix(self.maxResults * 2) // wider net before mapping
-                    .map { observation in
-                        CameraDetection(
-                            label: observation.identifier,
-                            confidence: observation.confidence,
-                            boundingBox: CGRect(x: 0.10, y: 0.16, width: 0.80, height: 0.68)
-                        )
-                    }
-                continuation.resume(returning: Array(detections))
+    func analyze(_ sample: SendableSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection] {
+        let request = VNClassifyImageRequest()
+        let handler = VNImageRequestHandler(
+            cmSampleBuffer: sample.buffer,
+            orientation: orientation,
+            options: [:]
+        )
+        try handler.perform([request])
+
+        let observations = (request.results as? [VNClassificationObservation]) ?? []
+        let mapped = observations
+            .filter { $0.confidence >= confidenceThreshold }
+            .prefix(maxResults * 2)
+            .map { observation in
+                CameraDetection(
+                    label: observation.identifier,
+                    confidence: observation.confidence,
+                    boundingBox: CGRect(x: 0.10, y: 0.16, width: 0.80, height: 0.68)
+                )
             }
-
-            let handler = VNImageRequestHandler(
-                cmSampleBuffer: sampleBuffer,
-                orientation: orientation,
-                options: [:]
-            )
-
-            do {
-                try handler.perform([request])
-            } catch {
-                continuation.resume(throwing: error)
-            }
-        }
+        return Array(mapped)
     }
 }
 
 // MARK: - Composite (prefers bundled, falls back to Vision framework)
 
 /// Tries the bundled custom model first; falls back to Apple Vision's built-in classifier.
-/// This is the recommended default — works without any model file present, and silently
-/// upgrades to the custom model when one is added to the bundle.
-final class CompositeFoodVisionService: FoodVisionService {
+final class CompositeFoodVisionService: FoodVisionService, @unchecked Sendable {
     private let primary: FoodVisionService
     private let fallback: FoodVisionService
 
@@ -217,17 +191,17 @@ final class CompositeFoodVisionService: FoodVisionService {
 
     var isReady: Bool { primary.isReady || fallback.isReady }
 
-    func analyze(_ sampleBuffer: CMSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection] {
+    func analyze(_ sample: SendableSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection] {
         if primary.isReady {
-            return try await primary.analyze(sampleBuffer, orientation: orientation)
+            return try await primary.analyze(sample, orientation: orientation)
         }
-        return try await fallback.analyze(sampleBuffer, orientation: orientation)
+        return try await fallback.analyze(sample, orientation: orientation)
     }
 }
 
 // MARK: - Mock (preview / tests)
 
-final class MockFoodVisionService: FoodVisionService {
+final class MockFoodVisionService: FoodVisionService, @unchecked Sendable {
     var capability: FoodVisionCapability = .visionFramework
     var isReady: Bool = true
     var stub: [CameraDetection]
@@ -238,7 +212,7 @@ final class MockFoodVisionService: FoodVisionService {
         self.stub = stub
     }
 
-    func analyze(_ sampleBuffer: CMSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection] {
+    func analyze(_ sample: SendableSampleBuffer, orientation: CGImagePropertyOrientation) async throws -> [CameraDetection] {
         stub
     }
 }

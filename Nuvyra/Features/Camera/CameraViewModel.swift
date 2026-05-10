@@ -37,9 +37,9 @@ final class CameraViewModel: ObservableObject {
         self.capabilityLabel = visionService.capability.humanReadable
         self.authorizationState = frameCaptureService.authorizationState()
 
-        self.frameCaptureService.onFrame = { [weak self] sampleBuffer in
+        self.frameCaptureService.onFrame = { [weak self] wrapped in
             guard let self else { return }
-            Task { @MainActor in self.handleLiveFrame(sampleBuffer) }
+            Task { @MainActor in self.handleLiveFrame(wrapped) }
         }
     }
 
@@ -81,16 +81,16 @@ final class CameraViewModel: ObservableObject {
 
     // MARK: - Live frame pipeline
 
-    private func handleLiveFrame(_ sampleBuffer: CMSampleBuffer) {
+    private func handleLiveFrame(_ wrapped: SendableSampleBuffer) {
         guard !isFrozen, visionService.isReady else { return }
         Task { [weak self] in
-            await self?.analyzeLive(sampleBuffer)
+            await self?.analyzeLive(wrapped)
         }
     }
 
-    private func analyzeLive(_ sampleBuffer: CMSampleBuffer) async {
+    private func analyzeLive(_ wrapped: SendableSampleBuffer) async {
         do {
-            let raw = try await visionService.analyze(sampleBuffer, orientation: .right)
+            let raw = try await visionService.analyze(wrapped, orientation: .right)
             let stable = stabilizer.ingest(raw).map(\.asCameraDetection)
             guard !isFrozen else { return }
             self.detections = stable
@@ -109,15 +109,15 @@ final class CameraViewModel: ObservableObject {
         isAnalyzing = true
         statusMessage = "Kareyi analiz ediyorum..."
 
-        frameCaptureService.captureNextFrame { [weak self] sampleBuffer in
+        frameCaptureService.captureNextFrame { [weak self] wrapped in
             guard let self else { return }
-            Task { await self.analyzeSnapshot(sampleBuffer) }
+            Task { await self.analyzeSnapshot(wrapped) }
         }
     }
 
-    private func analyzeSnapshot(_ sampleBuffer: CMSampleBuffer) async {
+    private func analyzeSnapshot(_ wrapped: SendableSampleBuffer) async {
         do {
-            let raw = try await visionService.analyze(sampleBuffer, orientation: .right)
+            let raw = try await visionService.analyze(wrapped, orientation: .right)
             let mapped = labelMapper.map(raw)
             self.detections = raw.sorted { $0.confidence > $1.confidence }
             self.candidates = mapped

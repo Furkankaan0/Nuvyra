@@ -3,6 +3,12 @@ import CoreMedia
 import Foundation
 import QuartzCore
 
+/// Sendable wrapper around `CMSampleBuffer` so it can cross actor boundaries.
+/// CMSampleBuffer is a CoreFoundation type and not auto-Sendable in Swift 6.
+struct SendableSampleBuffer: @unchecked Sendable {
+    let buffer: CMSampleBuffer
+}
+
 struct FrameRateLimiter {
     let minimumFrameInterval: CFTimeInterval
     private(set) var lastAcceptedFrameTime: CFTimeInterval = -Double.greatestFiniteMagnitude
@@ -21,16 +27,16 @@ struct FrameRateLimiter {
     }
 }
 
-final class CameraFrameCaptureService: NSObject {
+final class CameraFrameCaptureService: NSObject, @unchecked Sendable {
     let captureSession = AVCaptureSession()
-    var onFrame: ((CMSampleBuffer) -> Void)?
+    var onFrame: (@Sendable (SendableSampleBuffer) -> Void)?
 
     private let sessionQueue = DispatchQueue(label: "com.nuvyra.camera.session", qos: .userInitiated)
     private let videoOutputQueue = DispatchQueue(label: "com.nuvyra.camera.frames", qos: .userInitiated)
     private let videoOutput = AVCaptureVideoDataOutput()
     private var isConfigured = false
     private var frameRateLimiter: FrameRateLimiter
-    private var pendingSnapshot: ((CMSampleBuffer) -> Void)?
+    private var pendingSnapshot: (@Sendable (SendableSampleBuffer) -> Void)?
 
     init(maxFramesPerSecond: Double = 4) {
         frameRateLimiter = FrameRateLimiter(maxFramesPerSecond: maxFramesPerSecond)
@@ -40,7 +46,7 @@ final class CameraFrameCaptureService: NSObject {
     /// Capture the next available video frame as a one-shot snapshot.
     /// `completion` runs on the camera frame queue with the raw sample buffer.
     /// Returns immediately if a snapshot is already pending.
-    func captureNextFrame(_ completion: @escaping (CMSampleBuffer) -> Void) {
+    func captureNextFrame(_ completion: @escaping @Sendable (SendableSampleBuffer) -> Void) {
         videoOutputQueue.async { [weak self] in
             guard let self else { return }
             self.pendingSnapshot = completion
@@ -159,10 +165,12 @@ extension CameraFrameCaptureService: AVCaptureVideoDataOutputSampleBufferDelegat
         didOutput sampleBuffer: CMSampleBuffer,
         from connection: AVCaptureConnection
     ) {
+        let wrapped = SendableSampleBuffer(buffer: sampleBuffer)
+
         // Pending snapshot bypasses the FPS limiter so the user gets a fresh frame on shutter tap.
         if let snapshot = pendingSnapshot {
             pendingSnapshot = nil
-            autoreleasepool { snapshot(sampleBuffer) }
+            autoreleasepool { snapshot(wrapped) }
             return
         }
 
@@ -171,7 +179,7 @@ extension CameraFrameCaptureService: AVCaptureVideoDataOutputSampleBufferDelegat
         }
 
         autoreleasepool {
-            onFrame?(sampleBuffer)
+            onFrame?(wrapped)
         }
     }
 }
