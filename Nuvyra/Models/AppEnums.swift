@@ -122,6 +122,7 @@ enum MealType: String, CaseIterable, Codable, Identifiable {
     case lunch
     case dinner
     case snack
+    case beverage
 
     var id: String { rawValue }
 
@@ -131,6 +132,7 @@ enum MealType: String, CaseIterable, Codable, Identifiable {
         case .lunch: "Öğle"
         case .dinner: "Akşam"
         case .snack: "Atıştırmalık"
+        case .beverage: "İçecek"
         }
     }
 
@@ -140,6 +142,45 @@ enum MealType: String, CaseIterable, Codable, Identifiable {
         case .lunch: "fork.knife"
         case .dinner: "moon.stars"
         case .snack: "leaf"
+        case .beverage: "cup.and.saucer"
+        }
+    }
+}
+
+enum PortionUnit: String, CaseIterable, Codable, Identifiable {
+    case portion
+    case gram
+    case piece
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .portion: "Porsiyon"
+        case .gram: "Gram"
+        case .piece: "Adet"
+        }
+    }
+
+    var suffix: String {
+        switch self {
+        case .portion: "porsiyon"
+        case .gram: "g"
+        case .piece: "adet"
+        }
+    }
+
+    func describe(amount: Double) -> String {
+        let intAmount = Int(amount)
+        let formattedAmount: String
+        if amount == Double(intAmount) {
+            formattedAmount = "\(intAmount)"
+        } else {
+            formattedAmount = String(format: "%.1f", amount)
+        }
+        switch self {
+        case .gram: return "\(formattedAmount) \(suffix)"
+        case .portion, .piece: return "\(formattedAmount) \(suffix)"
         }
     }
 }

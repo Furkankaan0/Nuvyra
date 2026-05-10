@@ -34,6 +34,7 @@ struct ProfileView: View {
                 GoalEditorSheet(profile: profile) { calories, water, steps in
                     viewModel.updateGoals(context: modelContext, calories: calories, waterMl: water, steps: steps)
                 }
+                .presentationDragIndicator(.visible)
             }
         }
         .alert("Profil", isPresented: alertBinding) {
@@ -145,12 +146,15 @@ struct ProfileView: View {
 
     private var preferencesSection: some View {
         SettingsSection(title: "Tercihler") {
-            SettingsRow(title: "Bildirimler", subtitle: "Su, öğün ve yürüyüş hatırlatmaları.", systemImage: "bell.badge.fill") {
-                Toggle("Bildirimler", isOn: notificationBinding)
-                    .labelsHidden()
-                    .tint(NuvyraColors.accent)
+            NavigationLink {
+                NotificationSettingsView()
+            } label: {
+                SettingsRow(title: "Bildirimler", subtitle: notificationSubtitle, systemImage: "bell.badge.fill")
             }
+            .buttonStyle(.plain)
+
             SettingsDivider()
+
             VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
                 SettingsRow(title: "Tema seçimi", subtitle: "Sistem, açık veya koyu görünüm.", systemImage: "paintpalette.fill")
                 ThemeSelector()
@@ -158,6 +162,14 @@ struct ProfileView: View {
             }
             .padding(.vertical, 12)
         }
+    }
+
+    private var notificationSubtitle: String {
+        guard let settings = settings.first, settings.notificationsEnabled else {
+            return "Kişiye özel hatırlatmaları aç."
+        }
+        let activeCount = settings.notificationPreferences.categories.filter(\.isEnabled).count
+        return activeCount > 0 ? "\(activeCount) aktif kategori — kişiye özel." : "Aktif kategori yok."
     }
 
     private var legalSection: some View {
@@ -189,23 +201,6 @@ struct ProfileView: View {
         }
     }
 
-    private var notificationBinding: Binding<Bool> {
-        Binding(
-            get: { settings.first?.notificationsEnabled ?? false },
-            set: { newValue in
-                let item: AppSettings
-                if let existing = settings.first {
-                    item = existing
-                } else {
-                    item = AppSettings()
-                    modelContext.insert(item)
-                }
-                item.notificationsEnabled = newValue
-                item.updatedAt = Date()
-                try? modelContext.save()
-            }
-        )
-    }
 
     private var alertBinding: Binding<Bool> {
         Binding(

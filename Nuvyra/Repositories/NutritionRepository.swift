@@ -31,6 +31,8 @@ protocol NutritionRepository {
     func addQuickFood(_ food: QuickFood, mealType: MealType) throws
     func favoriteMeals() throws -> [MealEntry]
     func totalCalories(on date: Date) throws -> Int
+    func update(_ meal: MealEntry) throws
+    func delete(_ meal: MealEntry) throws
 }
 
 @MainActor
@@ -83,5 +85,15 @@ final class SwiftDataNutritionRepository: NutritionRepository {
 
     func totalCalories(on date: Date) throws -> Int {
         try meals(on: date).reduce(0) { $0 + $1.calories }
+    }
+
+    func update(_ meal: MealEntry) throws {
+        // SwiftData mutates the @Model in place; persist explicitly so observers fire.
+        try context.save()
+    }
+
+    func delete(_ meal: MealEntry) throws {
+        context.delete(meal)
+        try context.save()
     }
 }

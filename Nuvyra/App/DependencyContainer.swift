@@ -13,7 +13,11 @@ final class DependencyContainer: ObservableObject {
     let haptics: HapticsService
     let walkingLiveActivityService: WalkingLiveActivityService
     let analytics: AnalyticsService
+    let aiCoachService: AICoachService
+    let appleSignInService: AppleSignInService
+    let keychainService: KeychainService
     @Published var subscriptionManager: SubscriptionManager
+    @Published var authManager: AuthManager
 
     init(
         healthService: HealthService,
@@ -23,7 +27,10 @@ final class DependencyContainer: ObservableObject {
         foodIntelligenceService: FoodIntelligenceService,
         haptics: HapticsService,
         walkingLiveActivityService: WalkingLiveActivityService,
-        analytics: AnalyticsService
+        analytics: AnalyticsService,
+        aiCoachService: AICoachService,
+        appleSignInService: AppleSignInService,
+        keychainService: KeychainService
     ) {
         self.healthService = healthService
         self.motionService = motionService
@@ -35,7 +42,11 @@ final class DependencyContainer: ObservableObject {
         self.haptics = haptics
         self.walkingLiveActivityService = walkingLiveActivityService
         self.analytics = analytics
+        self.aiCoachService = aiCoachService
+        self.appleSignInService = appleSignInService
+        self.keychainService = keychainService
         self.subscriptionManager = SubscriptionManager(storeKitService: storeKitService)
+        self.authManager = AuthManager(appleService: appleSignInService, keychain: keychainService)
     }
 
     static func live() -> DependencyContainer {
@@ -47,12 +58,15 @@ final class DependencyContainer: ObservableObject {
             foodIntelligenceService: LocalFoodIntelligenceService(),
             haptics: LiveHapticsService(),
             walkingLiveActivityService: LiveWalkingLiveActivityService(),
-            analytics: PrivacyPreservingAnalyticsService()
+            analytics: PrivacyPreservingAnalyticsService(),
+            aiCoachService: RemoteAICoachService(),
+            appleSignInService: LiveAppleSignInService(),
+            keychainService: LiveKeychainService()
         )
     }
 
     static func preview() -> DependencyContainer {
-        DependencyContainer(
+        let container = DependencyContainer(
             healthService: MockHealthService(),
             motionService: MockMotionService(),
             storeKitService: MockStoreKitService(),
@@ -60,8 +74,14 @@ final class DependencyContainer: ObservableObject {
             foodIntelligenceService: MockFoodIntelligenceService(),
             haptics: MockHapticsService(),
             walkingLiveActivityService: MockWalkingLiveActivityService(),
-            analytics: MockAnalyticsService()
+            analytics: MockAnalyticsService(),
+            aiCoachService: MockAICoachService(),
+            appleSignInService: MockAppleSignInService(),
+            keychainService: InMemoryKeychainService()
         )
+        // Preview default: show signed-in state so dashboard previews don't get stuck on LoginView.
+        container.authManager = AuthManager.previewSignedIn()
+        return container
     }
 
     func userRepository(context: ModelContext) -> UserRepository {
