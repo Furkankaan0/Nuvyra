@@ -11,6 +11,34 @@ struct NutritionView: View {
     @FocusState private var smartFieldFocused: Bool
 
     var body: some View {
+        content
+            .navigationTitle("Beslenme")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { addToolbar }
+            .modifier(SheetsModifier(viewModel: viewModel,
+                                     modelContext: modelContext,
+                                     dependencies: dependencies))
+            .alert("Barkod tarama yakında", isPresented: $showBarcodeUnavailableAlert) {
+                Button("Tamam", role: .cancel) {}
+            } message: {
+                Text("Barkod tarama modülü ayrı bir entegrasyon olarak hazırlanıyor. Şimdilik manuel ekleme veya akıllı kayıt kullanabilirsin.")
+            }
+            .alert("Öğünü sil", isPresented: deleteAlertBinding, presenting: viewModel.pendingDeleteMeal) { meal in
+                Button("Sil", role: .destructive) {
+                    viewModel.delete(meal, context: modelContext, dependencies: dependencies)
+                    viewModel.pendingDeleteMeal = nil
+                }
+                Button("Vazgeç", role: .cancel) { viewModel.pendingDeleteMeal = nil }
+            } message: { meal in
+                Text("\"\(meal.name)\" öğünü silinsin mi? Bu işlem geri alınamaz.")
+            }
+            .task { viewModel.load(context: modelContext, dependencies: dependencies) }
+            .onAppear { handle(action: router.pendingNutritionAction) }
+            .onChange(of: router.pendingNutritionAction) { _, action in handle(action: action) }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         ZStack {
             NuvyraBackground()
             ScrollView(showsIndicators: false) {
@@ -19,9 +47,7 @@ struct NutritionView: View {
                         nutrition: viewModel.nutritionSummary,
                         macros: viewModel.macroSummaries
                     )
-
                     quickActionsRow
-
                     SmartMealEntryCard(
                         text: $viewModel.smartMealText,
                         results: viewModel.estimatedResults,
@@ -35,69 +61,29 @@ struct NutritionView: View {
                             Task { await viewModel.addEstimatedResult(result, context: modelContext, dependencies: dependencies) }
                         }
                     )
-
                     QuickFoodPicker(selectedMealType: viewModel.selectedMealType) { food in
                         Task { await viewModel.addQuickFood(food, context: modelContext, dependencies: dependencies) }
                     }
-
                     FavoriteMealsView(favorites: viewModel.favorites)
-
                     mealSections
                 }
                 .padding(NuvyraSpacing.lg)
             }
         }
-        .navigationTitle("Beslenme")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    viewModel.showingAddMeal = true
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(NuvyraColors.accent)
-                }
-                .accessibilityLabel("Öğün ekle")
+    }
+
+    @ToolbarContentBuilder
+    private var addToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                viewModel.showingAddMeal = true
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(NuvyraColors.accent)
             }
+            .accessibilityLabel("Öğün ekle")
         }
-        .sheet(isPresented: $viewModel.showingAddMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
-            AddMealView(defaultMealType: viewModel.selectedMealType)
-                .presentationDragIndicator(.visible)
-        }
-        .sheet(item: $viewModel.editingMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) { meal in
-            AddMealView(editing: meal)
-                .presentationDragIndicator(.visible)
-        }
-        .fullScreenCover(isPresented: $viewModel.showingCamera) {
-            CameraView { result in
-                viewModel.showingCamera = false
-                Task { await viewModel.addEstimatedResult(result, context: modelContext, dependencies: dependencies) }
-            }
-        }
-        .sheet(isPresented: $viewModel.showingFoodSearch, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
-            FoodSearchView { result in
-                Task { await viewModel.addFoodSearchResult(result, context: modelContext, dependencies: dependencies) }
-            }
-            .presentationDragIndicator(.visible)
-        }
-        .alert("Barkod tarama yakında", isPresented: $showBarcodeUnavailableAlert) {
-            Button("Tamam", role: .cancel) {}
-        } message: {
-            Text("Barkod tarama modülü ayrı bir entegrasyon olarak hazırlanıyor. Şimdilik manuel ekleme veya akıllı kayıt kullanabilirsin.")
-        }
-        .alert("Öğünü sil", isPresented: deleteAlertBinding, presenting: viewModel.pendingDeleteMeal) { meal in
-            Button("Sil", role: .destructive) {
-                viewModel.delete(meal, context: modelContext, dependencies: dependencies)
-                viewModel.pendingDeleteMeal = nil
-            }
-            Button("Vazgeç", role: .cancel) { viewModel.pendingDeleteMeal = nil }
-        } message: { meal in
-            Text("\"\(meal.name)\" öğünü silinsin mi? Bu işlem geri alınamaz.")
-        }
-        .task { viewModel.load(context: modelContext, dependencies: dependencies) }
-        .onAppear { handle(action: router.pendingNutritionAction) }
-        .onChange(of: router.pendingNutritionAction) { _, action in handle(action: action) }
     }
 
     private var quickActionsRow: some View {
@@ -148,6 +134,39 @@ struct NutritionView: View {
             showBarcodeUnavailableAlert = true
         }
         router.pendingNutritionAction = nil
+    }
+}
+
+private struct SheetsModifier: ViewModifier {
+    @ObservedObject var viewModel: NutritionViewModel
+    let modelContext: ModelContext
+    let dependencies: DependencyContainer
+
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $viewModel.showingAddMeal,
+                   onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
+                AddMealView(defaultMealType: viewModel.selectedMealType)
+                    .presentationDragIndicator(.visible)
+            }
+            .sheet(item: $viewModel.editingMeal,
+                   onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) { meal in
+                AddMealView(editing: meal)
+                    .presentationDragIndicator(.visible)
+            }
+            .fullScreenCover(isPresented: $viewModel.showingCamera) {
+                CameraView(onSelect: { result in
+                    viewModel.showingCamera = false
+                    Task { await viewModel.addEstimatedResult(result, context: modelContext, dependencies: dependencies) }
+                })
+            }
+            .sheet(isPresented: $viewModel.showingFoodSearch,
+                   onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
+                FoodSearchView { result in
+                    Task { await viewModel.addFoodSearchResult(result, context: modelContext, dependencies: dependencies) }
+                }
+                .presentationDragIndicator(.visible)
+            }
     }
 }
 
