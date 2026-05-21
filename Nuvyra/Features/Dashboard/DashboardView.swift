@@ -1,95 +1,123 @@
-﻿import SwiftData
+import SwiftData
 import SwiftUI
 
 struct DashboardView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.colorScheme) private var scheme
     @EnvironmentObject private var dependencies: DependencyContainer
     @EnvironmentObject private var router: AppRouter
     @StateObject private var viewModel = DashboardViewModel()
+    @State private var presentAICoach = false
+    @State private var presentWaterTracking = false
+
+    private let waterQuickAdd = 250
 
     var body: some View {
         ZStack {
             NuvyraBackground()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
-                    TodaySummaryCard(title: "Bugünkü ritmin", date: Date())
-                    CalorieBalanceCard(consumed: viewModel.totalCalories, burned: Int(viewModel.healthSnapshot.activeEnergy), target: viewModel.calorieTarget, remaining: viewModel.remainingCalories)
-                    StepRingCard(steps: viewModel.healthSnapshot.steps, goal: viewModel.stepTarget)
-                    WaterCard(waterMl: viewModel.waterMl, targetMl: viewModel.waterTarget) {
-                        Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: 250) }
-                    } onAdd500: {
-                        Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: 500) }
-                    }
-                    RhythmTrendCard(
-                        calories: viewModel.totalCalories,
-                        calorieTarget: viewModel.calorieTarget,
-                        steps: viewModel.healthSnapshot.steps,
-                        stepGoal: viewModel.stepTarget,
-                        waterMl: viewModel.waterMl,
-                        waterTarget: viewModel.waterTarget
+                    DashboardHeroHeader(
+                        userName: viewModel.profile?.name,
+                        date: Date(),
+                        insight: viewModel.insight,
+                        onTapInsight: { presentAICoach = true }
                     )
-                    mealSlots
-                    DailyInsightCard(text: viewModel.insight)
-                    premiumTeaser
+
+                    CalorieHeroCard(summary: viewModel.nutritionSummary)
+
+                    if viewModel.hasAnyData {
+                        DashboardMacrosBar(macros: viewModel.macroSummaries)
+
+                        DashboardMetricTilesRow(
+                            water: viewModel.waterSummary,
+                            step: viewModel.stepSummary,
+                            protein: viewModel.macroSummaries.first(where: { $0.kind == .protein }),
+                            onWaterTap: { presentWaterTracking = true },
+                            onStepsTap: { router.selectedTab = .walking },
+                            onProteinTap: { router.selectedTab = .nutrition }
+                        )
+
+                        DashboardMealsStrip(
+                            meals: viewModel.meals,
+                            onSelect: { _ in router.requestNutritionAction(.openAddMeal) },
+                            onSeeAll: { router.selectedTab = .nutrition }
+                        )
+                    } else {
+                        DashboardEmptyStateCard {
+                            router.requestNutritionAction(.openAddMeal)
+                        }
+                    }
+
+                    QuickActionsRail(actions: quickActions)
                 }
-                .padding(NuvyraSpacing.lg)
+                .padding(.horizontal, NuvyraSpacing.lg)
+                .padding(.top, NuvyraSpacing.sm)
+                .padding(.bottom, NuvyraSpacing.xxl)
             }
             .refreshable { await viewModel.load(context: modelContext, dependencies: dependencies) }
         }
-        .navigationTitle("Nuvyra")
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    router.selectedTab = .profile
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(.ultraThinMaterial)
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(NuvyraColors.accent)
+                    }
+                }
+                .accessibilityLabel("Profil")
+            }
+        }
         .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         .onReceive(NotificationCenter.default.publisher(for: .nuvyraAppDidBecomeActive)) { _ in
             Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         }
-    }
-
-    private var mealSlots: some View {
-        VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-            NuvyraSectionHeader(title: "Öğünler", subtitle: "Kalori değerleri tahminidir.")
-            ForEach(MealType.allCases) { type in
-                let meal = viewModel.meals.first { $0.mealType == type }
-                NuvyraCard {
-                    HStack {
-                        Label(type.title, systemImage: type.systemImage)
-                            .font(NuvyraTypography.section)
-                        Spacer()
-                        if let meal {
-                            Text("\(meal.calories) kcal")
-                                .font(.headline.weight(.bold))
-                        } else {
-                            Button("Ekle") { router.selectedTab = .nutrition }
-                                .font(.headline.weight(.semibold))
-                        }
-                    }
-                    if let meal {
-                        Text(meal.name)
-                            .font(NuvyraTypography.body)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
+        .sheet(isPresented: $presentAICoach) {
+            AICoachView()
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $presentWaterTracking, onDismiss: {
+            Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+        }) {
+            WaterTrackingView()
+                .presentationDragIndicator(.visible)
         }
     }
 
-    private var premiumTeaser: some View {
-        NuvyraGlassCard {
-            VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
-                Text("Haftalık trendlerini daha detaylı görmek ister misin?")
-                    .font(NuvyraTypography.section)
-                Text("Premium ile yürüyüş, su ve öğün ritmini daha net oku.")
-                    .foregroundStyle(.secondary)
-                NuvyraSecondaryButton(title: "Premium'u keşfet", systemImage: "crown") {
-                    router.selectedTab = .profile
-                }
+    // MARK: - Quick actions (3 essentials)
+
+    private var quickActions: [DashboardQuickAction] {
+        [
+            DashboardQuickAction(title: "Yemek ekle", systemImage: "fork.knife", tint: NuvyraColors.accent) {
+                router.requestNutritionAction(.openAddMeal)
+            },
+            DashboardQuickAction(title: "+250 ml", systemImage: "drop.fill", tint: Color(red: 0.30, green: 0.70, blue: 0.95)) {
+                addWater()
+            },
+            DashboardQuickAction(title: "AI Coach", systemImage: "sparkles", tint: NuvyraColors.softSand) {
+                presentAICoach = true
             }
-        }
+        ]
+    }
+
+    private func addWater() {
+        Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: waterQuickAdd) }
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack { DashboardView() }
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
         .environmentObject(AppRouter())
 }
+#endif

@@ -1,6 +1,9 @@
+import SwiftData
 import SwiftUI
 
 struct AccountManagementView: View {
+    @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var authManager: AuthManager
     @State private var activeAlert: AccountAlert?
 
     var body: some View {
@@ -10,32 +13,19 @@ struct AccountManagementView: View {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     NuvyraSectionHeader(
                         title: "Hesap yönetimi",
-                        subtitle: "Veri silme, dışa aktarma ve çıkış akışları release öncesi destek süreciyle bağlanacak."
+                        subtitle: "Apple oturumunu yönet, verilerini dışa aktar veya hesabını sil."
+                    )
+
+                    ProfileAuthSection(
+                        onSignOut: { activeAlert = .logoutConfirm },
+                        onDelete: { activeAlert = .deleteConfirm }
                     )
 
                     SettingsSection(title: "Veri") {
                         Button {
                             activeAlert = .export
                         } label: {
-                            SettingsRow(title: "Verilerimi dışa aktar", subtitle: "CSV/PDF dışa aktarım placeholder.", systemImage: "square.and.arrow.up")
-                        }
-                        .buttonStyle(.plain)
-
-                        SettingsDivider()
-
-                        Button(role: .destructive) {
-                            activeAlert = .delete
-                        } label: {
-                            SettingsRow(title: "Hesabı sil", subtitle: "KVKK veri silme talebi akışı.", systemImage: "trash.fill", tint: NuvyraColors.mutedCoral)
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    SettingsSection(title: "Oturum") {
-                        Button {
-                            activeAlert = .logout
-                        } label: {
-                            SettingsRow(title: "Çıkış yap", subtitle: "Local-first MVP'de oturum sağlayıcı bağlanınca aktifleşir.", systemImage: "rectangle.portrait.and.arrow.right", tint: NuvyraColors.softSand)
+                            SettingsRow(title: "Verilerimi dışa aktar", subtitle: "CSV/PDF dışa aktarım hazırlanıyor.", systemImage: "square.and.arrow.up")
                         }
                         .buttonStyle(.plain)
                     }
@@ -46,38 +36,71 @@ struct AccountManagementView: View {
         .navigationTitle("Hesap")
         .navigationBarTitleDisplayMode(.inline)
         .alert(item: $activeAlert) { alert in
-            Alert(
-                title: Text(alert.title),
-                message: Text(alert.message),
-                dismissButton: .default(Text("Tamam"))
-            )
+            switch alert {
+            case .logoutConfirm:
+                return Alert(
+                    title: Text("Çıkış yap"),
+                    message: Text("Apple oturumun cihazdan kaldırılacak. Yerel verilerin silinmez; tekrar Apple ile giriş yapınca devam edersin."),
+                    primaryButton: .destructive(Text("Çıkış")) { authManager.signOut() },
+                    secondaryButton: .cancel(Text("Vazgeç"))
+                )
+            case .deleteConfirm:
+                return Alert(
+                    title: Text("Hesabı sil"),
+                    message: Text("Apple oturumun ve cihazdaki tüm Nuvyra verin silinecek. Bu işlem geri alınamaz."),
+                    primaryButton: .destructive(Text("Sil")) { performAccountDeletion() },
+                    secondaryButton: .cancel(Text("Vazgeç"))
+                )
+            case .export:
+                return Alert(
+                    title: Text("Dışa aktarım yakında"),
+                    message: Text("CSV ve PDF dışa aktarımı release öncesi tamamlanacak."),
+                    dismissButton: .default(Text("Tamam"))
+                )
+            }
         }
+    }
+
+    private func performAccountDeletion() {
+        wipeLocalStore()
+        authManager.deleteAccount()
+    }
+
+    private func wipeLocalStore() {
+        deleteAll(matching: FetchDescriptor<MealEntry>())
+        deleteAll(matching: FetchDescriptor<WaterEntry>())
+        deleteAll(matching: FetchDescriptor<WalkingLog>())
+        deleteAll(matching: FetchDescriptor<DailyLog>())
+        deleteAll(matching: FetchDescriptor<NutritionGoal>())
+        deleteAll(matching: FetchDescriptor<UserProfile>())
+        deleteAll(matching: FetchDescriptor<AppSettings>())
+        try? modelContext.save()
+    }
+
+    private func deleteAll<T: PersistentModel>(matching descriptor: FetchDescriptor<T>) {
+        guard let items = try? modelContext.fetch(descriptor) else { return }
+        for item in items { modelContext.delete(item) }
     }
 }
 
 private enum AccountAlert: Identifiable {
+    case logoutConfirm
+    case deleteConfirm
     case export
-    case delete
-    case logout
 
-    var id: String { title }
-
-    var title: String {
+    var id: String {
         switch self {
-        case .export: "Dışa aktarım yakında"
-        case .delete: "Hesap silme yakında"
-        case .logout: "Çıkış yakında"
-        }
-    }
-
-    var message: String {
-        switch self {
-        case .export:
-            "Premium Plus dışa aktarım ve destek süreçleri release öncesi bağlanacak."
-        case .delete:
-            "Gerçek veri silme talebi için KVKK destek akışı ve doğrulama ekranı eklenecek."
-        case .logout:
-            "Nuvyra şu anda local-first çalışıyor. Hesap sistemi eklendiğinde çıkış aktifleşecek."
+        case .logoutConfirm: "logout"
+        case .deleteConfirm: "delete"
+        case .export: "export"
         }
     }
 }
+
+#if DEBUG
+#Preview {
+    NavigationStack { AccountManagementView() }
+        .modelContainer(NuvyraModelContainer.preview())
+        .environmentObject(AuthManager.previewSignedIn())
+}
+#endif

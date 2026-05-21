@@ -5,23 +5,67 @@ import SwiftData
 final class NutritionViewModel: ObservableObject {
     @Published var meals: [MealEntry] = []
     @Published var favorites: [MealEntry] = []
+    @Published var profile: UserProfile?
     @Published var selectedMealType: MealType = .breakfast
     @Published var showingAddMeal = false
     @Published var showingCamera = false
     @Published var showingFoodSearch = false
+    @Published var editingMeal: MealEntry?
+    @Published var pendingDeleteMeal: MealEntry?
     @Published var errorMessage: String?
     @Published var smartMealText = ""
     @Published var estimatedResults: [EstimatedMealResult] = []
     @Published var isEstimating = false
 
+    var totalCalories: Int { meals.reduce(0) { $0 + $1.calories } }
+
+    var nutritionSummary: DailyNutritionSummary {
+        DailyNutritionSummary(
+            consumed: totalCalories,
+            burned: 0,
+            target: profile?.dailyCalorieTarget ?? 1_900
+        )
+    }
+
+    var macroSummaries: [MacroSummary] {
+        let p = meals.reduce(0.0) { $0 + ($1.protein ?? 0) }
+        let c = meals.reduce(0.0) { $0 + ($1.carbs ?? 0) }
+        let f = meals.reduce(0.0) { $0 + ($1.fat ?? 0) }
+        return [
+            MacroSummary(kind: .protein, consumedGrams: p, targetGrams: Double(profile?.dailyProteinTargetGrams ?? 120)),
+            MacroSummary(kind: .carbs, consumedGrams: c, targetGrams: Double(profile?.dailyCarbsTargetGrams ?? 210)),
+            MacroSummary(kind: .fat, consumedGrams: f, targetGrams: Double(profile?.dailyFatTargetGrams ?? 65))
+        ]
+    }
+
+    func mealsByType(_ type: MealType) -> [MealEntry] {
+        meals.filter { $0.mealType == type }.sorted { $0.createdAt > $1.createdAt }
+    }
+
     func load(context: ModelContext, dependencies: DependencyContainer) {
         do {
             let repository = dependencies.nutritionRepository(context: context)
+            let userRepo = dependencies.userRepository(context: context)
+            profile = try userRepo.profile()
             meals = try repository.meals(on: Date())
             favorites = try repository.favoriteMeals()
+            Task { await WidgetSnapshotPublisher.publish(context: context, dependencies: dependencies) }
         } catch {
             errorMessage = "Öğünler yüklenemedi."
         }
+    }
+
+    func delete(_ meal: MealEntry, context: ModelContext, dependencies: DependencyContainer) {
+        do {
+            try dependencies.nutritionRepository(context: context).delete(meal)
+            load(context: context, dependencies: dependencies)
+        } catch {
+            errorMessage = "Öğün silinemedi."
+        }
+    }
+
+    func startEditing(_ meal: MealEntry) {
+        editingMeal = meal
     }
 
     func estimateSmartMeal(dependencies: DependencyContainer) async {

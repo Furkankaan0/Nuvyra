@@ -13,8 +13,19 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     NuvyraSectionHeader(title: "Ayarlar", subtitle: "Nuvyra sakin, gizlilik öncelikli bir ritim koçudur.")
                     NuvyraCard {
-                        Toggle("Bildirimler", isOn: notificationBinding)
-                        Text("Su, öğün ve akşam yürüyüş hatırlatmaları nazik tutulur.")
+                        NavigationLink {
+                            NotificationSettingsView()
+                        } label: {
+                            HStack {
+                                Label("Bildirimler", systemImage: "bell.badge.fill")
+                                    .font(NuvyraTypography.section)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        Text("Kişiye özel hatırlatmaları, saatleri ve kategorileri buradan yönet.")
                             .font(NuvyraTypography.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -37,23 +48,5 @@ struct SettingsView: View {
         } message: {
             Text("Bu işlem için destek ve veri yönetimi akışı release öncesi tamamlanacak.")
         }
-    }
-
-    private var notificationBinding: Binding<Bool> {
-        Binding(
-            get: { settings.first?.notificationsEnabled ?? false },
-            set: { newValue in
-                let item: AppSettings
-                if let existing = settings.first {
-                    item = existing
-                } else {
-                    item = AppSettings()
-                    modelContext.insert(item)
-                }
-                item.notificationsEnabled = newValue
-                item.updatedAt = Date()
-                try? modelContext.save()
-            }
-        )
     }
 }

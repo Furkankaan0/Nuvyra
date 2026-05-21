@@ -4,6 +4,19 @@ import SwiftUI
 @MainActor
 final class AppRouter: ObservableObject {
     @Published var selectedTab: AppTab = .dashboard
+    @Published var pendingNutritionAction: NutritionQuickAction?
+
+    func requestNutritionAction(_ action: NutritionQuickAction) {
+        selectedTab = .nutrition
+        pendingNutritionAction = action
+    }
+}
+
+enum NutritionQuickAction: Equatable {
+    case openAddMeal
+    case openVoiceEntry
+    case openBarcodeScanner
+    case openFoodSearch
 }
 
 enum AppTab: String, CaseIterable, Identifiable {

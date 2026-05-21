@@ -3,6 +3,7 @@ import SwiftUI
 
 struct AppRootView: View {
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var authManager: AuthManager
     @Query private var settings: [AppSettings]
 
     private var hasCompletedOnboarding: Bool {
@@ -11,13 +12,40 @@ struct AppRootView: View {
 
     var body: some View {
         Group {
-            if hasCompletedOnboarding {
-                MainTabView()
-            } else {
-                OnboardingView()
+            switch authManager.state {
+            case .unknown:
+                AuthBootstrapView()
+            case .signedOut:
+                LoginView()
+            case .signedIn:
+                if hasCompletedOnboarding {
+                    MainTabView()
+                } else {
+                    OnboardingView()
+                }
             }
         }
         .tint(NuvyraColors.accent)
+        .animation(.easeInOut(duration: 0.25), value: authManager.state)
+    }
+}
+
+private struct AuthBootstrapView: View {
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        ZStack {
+            NuvyraColors.calmGradient(scheme).ignoresSafeArea()
+            VStack(spacing: NuvyraSpacing.md) {
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .scaleEffect(1.4)
+                    .tint(NuvyraColors.accent)
+                Text("Nuvyra hazırlanıyor")
+                    .font(NuvyraTypography.body)
+                    .foregroundStyle(NuvyraColors.secondaryText(scheme))
+            }
+        }
     }
 }
 
@@ -53,5 +81,14 @@ private struct MainTabView: View {
     AppRootView()
         .modelContainer(NuvyraModelContainer.uiTesting())
         .environmentObject(DependencyContainer.preview())
+        .environmentObject(AuthManager.previewSignedIn())
+        .environmentObject(AppRouter())
+}
+
+#Preview("Login") {
+    AppRootView()
+        .modelContainer(NuvyraModelContainer.uiTesting())
+        .environmentObject(DependencyContainer.preview())
+        .environmentObject(AuthManager.previewSignedOut())
         .environmentObject(AppRouter())
 }
