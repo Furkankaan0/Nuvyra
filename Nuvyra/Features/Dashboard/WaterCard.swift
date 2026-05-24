@@ -142,19 +142,25 @@ private struct WaterChipButton: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .foregroundStyle(style == .primary ? Color.white : NuvyraColors.accent)
-            .background(
-                Group {
-                    if style == .primary {
-                        LinearGradient(colors: [NuvyraColors.accent, NuvyraColors.softMint], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    } else {
-                        NuvyraColors.accent.opacity(0.10)
-                    }
-                },
-                in: Capsule()
-            )
+            .background(backgroundStyle, in: Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
+    }
+
+    private var backgroundStyle: AnyShapeStyle {
+        switch style {
+        case .primary:
+            AnyShapeStyle(
+                LinearGradient(
+                    colors: [NuvyraColors.accent, NuvyraColors.softMint],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
+        case .neutral:
+            AnyShapeStyle(NuvyraColors.accent.opacity(0.10))
+        }
     }
 }
 
