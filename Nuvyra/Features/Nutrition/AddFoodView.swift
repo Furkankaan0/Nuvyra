@@ -29,6 +29,13 @@ struct AddFoodView: View {
     @State private var isSaving = false
     @State private var errorMessage: String?
 
+    // Micronutrients (optional)
+    @State private var fiber: Double?
+    @State private var sodium: Double?
+    @State private var sugar: Double?
+    @State private var saturatedFat: Double?
+    @State private var showMicros: Bool = false
+
     init(mode: Mode) {
         self.mode = mode
         switch mode {
@@ -43,6 +50,11 @@ struct AddFoodView: View {
             _carbs = State(initialValue: 35)
             _fat = State(initialValue: 12)
             _isFavorite = State(initialValue: false)
+            _fiber = State(initialValue: nil)
+            _sodium = State(initialValue: nil)
+            _sugar = State(initialValue: nil)
+            _saturatedFat = State(initialValue: nil)
+            _showMicros = State(initialValue: false)
         case .edit(let meal):
             _name = State(initialValue: meal.name)
             _mealType = State(initialValue: meal.mealType)
@@ -54,6 +66,11 @@ struct AddFoodView: View {
             _carbs = State(initialValue: meal.carbs ?? 0)
             _fat = State(initialValue: meal.fat ?? 0)
             _isFavorite = State(initialValue: meal.isFavorite)
+            _fiber = State(initialValue: meal.fiberGrams)
+            _sodium = State(initialValue: meal.sodiumMg)
+            _sugar = State(initialValue: meal.sugarGrams)
+            _saturatedFat = State(initialValue: meal.saturatedFatGrams)
+            _showMicros = State(initialValue: meal.hasMicronutrients)
         }
     }
 
@@ -75,6 +92,7 @@ struct AddFoodView: View {
                         identitySection
                         portionSection
                         macroSection
+                        microSection
                         MacroPreviewCard(values: previewValues)
                         if let errorMessage {
                             Text(errorMessage)
@@ -178,6 +196,39 @@ struct AddFoodView: View {
         }
     }
 
+    private var microSection: some View {
+        NuvyraCard {
+            VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { showMicros.toggle() }
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Mikro besinler")
+                                .font(NuvyraTypography.section)
+                            Text(showMicros ? "Boş bıraktıkların önceki kayıt değerlerini korur" : "İsteğe bağlı: lif, sodyum, şeker, doymuş yağ")
+                                .font(NuvyraTypography.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: showMicros ? "chevron.up" : "chevron.down")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(NuvyraColors.accent)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if showMicros {
+                    MeasurementInputField(icon: "leaf.arrow.circlepath", title: "Lif", unit: "g", value: $fiber, range: 0...100)
+                    MeasurementInputField(icon: "globe", title: "Sodyum", unit: "mg", tint: NuvyraColors.mutedCoral, value: $sodium, range: 0...5_000)
+                    MeasurementInputField(icon: "cube.fill", title: "Şeker", unit: "g", tint: NuvyraColors.softSand, value: $sugar, range: 0...300)
+                    MeasurementInputField(icon: "drop.fill", title: "Doymuş yağ", unit: "g", tint: NuvyraColors.mutedCoral, value: $saturatedFat, range: 0...100)
+                }
+            }
+        }
+    }
+
     // MARK: - Derived state
     private var isEditing: Bool { if case .edit = mode { return true } else { return false } }
     private var confirmTitle: String { isEditing ? "Değişiklikleri kaydet" : "Kaydet" }
@@ -196,7 +247,11 @@ struct AddFoodView: View {
             calories: Int((calories * multiplier).rounded()),
             protein: protein * multiplier,
             carbs: carbs * multiplier,
-            fat: fat * multiplier
+            fat: fat * multiplier,
+            fiber: (fiber ?? 0) * multiplier,
+            sodium: (sodium ?? 0) * multiplier,
+            sugar: (sugar ?? 0) * multiplier,
+            saturatedFat: (saturatedFat ?? 0) * multiplier
         )
     }
 
@@ -232,7 +287,11 @@ struct AddFoodView: View {
                         portionDescription: portion,
                         isFavorite: isFavorite,
                         isVerifiedTurkishFood: false,
-                        isEstimated: true
+                        isEstimated: true,
+                        fiberGrams: values.fiber > 0 ? values.fiber : nil,
+                        sodiumMg: values.sodium > 0 ? values.sodium : nil,
+                        sugarGrams: values.sugar > 0 ? values.sugar : nil,
+                        saturatedFatGrams: values.saturatedFat > 0 ? values.saturatedFat : nil
                     )
                     try repository.addMeal(meal)
                     await dependencies.healthService.saveNutrition(for: meal)

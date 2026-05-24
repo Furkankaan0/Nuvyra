@@ -14,6 +14,10 @@ final class UserProfile: Identifiable {
     var dailyProteinTargetGrams: Int = 120
     var dailyCarbsTargetGrams: Int = 210
     var dailyFatTargetGrams: Int = 65
+    var dailyFiberTargetGrams: Int = 30
+    var dailySodiumTargetMg: Int = 2_300
+    var dailySugarTargetGrams: Int = 50
+    var dailySaturatedFatTargetGrams: Int = 22
     var dailyStepTarget: Int
     var dailyWaterTargetMl: Int
     var goalType: GoalType
@@ -34,6 +38,10 @@ final class UserProfile: Identifiable {
         dailyProteinTargetGrams: Int = 120,
         dailyCarbsTargetGrams: Int = 210,
         dailyFatTargetGrams: Int = 65,
+        dailyFiberTargetGrams: Int = 30,
+        dailySodiumTargetMg: Int = 2_300,
+        dailySugarTargetGrams: Int = 50,
+        dailySaturatedFatTargetGrams: Int = 22,
         dailyStepTarget: Int = 7_500,
         dailyWaterTargetMl: Int = 2_000,
         goalType: GoalType = .walkMore,
@@ -53,6 +61,10 @@ final class UserProfile: Identifiable {
         self.dailyProteinTargetGrams = dailyProteinTargetGrams
         self.dailyCarbsTargetGrams = dailyCarbsTargetGrams
         self.dailyFatTargetGrams = dailyFatTargetGrams
+        self.dailyFiberTargetGrams = dailyFiberTargetGrams
+        self.dailySodiumTargetMg = dailySodiumTargetMg
+        self.dailySugarTargetGrams = dailySugarTargetGrams
+        self.dailySaturatedFatTargetGrams = dailySaturatedFatTargetGrams
         self.dailyStepTarget = dailyStepTarget
         self.dailyWaterTargetMl = dailyWaterTargetMl
         self.goalType = goalType

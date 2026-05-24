@@ -17,6 +17,12 @@ final class MealEntry: Identifiable {
     var isEstimated: Bool
     var createdAt: Date
 
+    // MARK: - Micronutrients (optional, added in v1.2)
+    var fiberGrams: Double?
+    var sodiumMg: Double?
+    var sugarGrams: Double?
+    var saturatedFatGrams: Double?
+
     init(
         id: UUID = UUID(),
         date: Date = Date(),
@@ -30,7 +36,11 @@ final class MealEntry: Identifiable {
         isFavorite: Bool = false,
         isVerifiedTurkishFood: Bool = false,
         isEstimated: Bool = true,
-        createdAt: Date = Date()
+        createdAt: Date = Date(),
+        fiberGrams: Double? = nil,
+        sodiumMg: Double? = nil,
+        sugarGrams: Double? = nil,
+        saturatedFatGrams: Double? = nil
     ) {
         self.id = id
         self.date = date
@@ -45,5 +55,14 @@ final class MealEntry: Identifiable {
         self.isVerifiedTurkishFood = isVerifiedTurkishFood
         self.isEstimated = isEstimated
         self.createdAt = createdAt
+        self.fiberGrams = fiberGrams
+        self.sodiumMg = sodiumMg
+        self.sugarGrams = sugarGrams
+        self.saturatedFatGrams = saturatedFatGrams
+    }
+
+    /// True if any micronutrient field is populated — used to drive UI badges.
+    var hasMicronutrients: Bool {
+        fiberGrams != nil || sodiumMg != nil || sugarGrams != nil || saturatedFatGrams != nil
     }
 }

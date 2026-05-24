@@ -78,6 +78,10 @@ final class SwiftDataNutritionRepository: NutritionRepository {
         meal.protein = values.protein
         meal.carbs = values.carbs
         meal.fat = values.fat
+        meal.fiberGrams = values.fiber > 0 ? values.fiber : meal.fiberGrams
+        meal.sodiumMg = values.sodium > 0 ? values.sodium : meal.sodiumMg
+        meal.sugarGrams = values.sugar > 0 ? values.sugar : meal.sugarGrams
+        meal.saturatedFatGrams = values.saturatedFat > 0 ? values.saturatedFat : meal.saturatedFatGrams
         meal.portionDescription = portion
         meal.mealType = mealType
         meal.date = date
@@ -155,7 +159,11 @@ final class SwiftDataNutritionRepository: NutritionRepository {
                 calories: meal.calories,
                 protein: meal.protein ?? 0,
                 carbs: meal.carbs ?? 0,
-                fat: meal.fat ?? 0
+                fat: meal.fat ?? 0,
+                fiber: meal.fiberGrams ?? 0,
+                sodium: meal.sodiumMg ?? 0,
+                sugar: meal.sugarGrams ?? 0,
+                saturatedFat: meal.saturatedFatGrams ?? 0
             )
         }
         return DailyMealSummary(date: date, totals: totals, mealCount: items.count)

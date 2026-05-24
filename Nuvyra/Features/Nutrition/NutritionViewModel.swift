@@ -4,6 +4,7 @@ import SwiftData
 
 @MainActor
 final class NutritionViewModel: ObservableObject {
+    @Published var profile: UserProfile?
     @Published var meals: [MealEntry] = []
     @Published var favorites: [MealEntry] = []
     @Published var summary: DailyMealSummary = .empty
@@ -36,9 +37,14 @@ final class NutritionViewModel: ObservableObject {
             meals = try repository.meals(on: selectedDate)
             favorites = try repository.favoriteMeals()
             summary = try repository.dailySummary(on: selectedDate)
+            profile = try? dependencies.userRepository(context: context).profile()
         } catch {
             errorMessage = "Öğünler yüklenemedi."
         }
+    }
+
+    var macroTarget: MacroTarget {
+        profile.map(MacroTarget.init(profile:)) ?? .defaultTarget
     }
 
     func changeDate(to date: Date, context: ModelContext, dependencies: DependencyContainer) {
