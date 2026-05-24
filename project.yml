@@ -49,6 +49,7 @@ targets:
       - sdk: WidgetKit.framework
       - sdk: AppIntents.framework
       - sdk: CoreHaptics.framework
+      - sdk: AuthenticationServices.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app

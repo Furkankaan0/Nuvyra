@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 import SwiftData
 
 struct QuickFood: Identifiable, Hashable {
@@ -24,13 +24,25 @@ struct QuickFood: Identifiable, Hashable {
     ]
 }
 
+/// Aggregated values for a single day — used by Dashboard, Nutrition and Insights.
+struct DailyMealSummary: Equatable {
+    var date: Date
+    var totals: NutritionValues
+    var mealCount: Int
+
+    static let empty = DailyMealSummary(date: Date(), totals: .zero, mealCount: 0)
+}
+
 @MainActor
 protocol NutritionRepository {
     func meals(on date: Date) throws -> [MealEntry]
     func addMeal(_ meal: MealEntry) throws
+    func updateMeal(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool) throws
+    func deleteMeal(_ meal: MealEntry) throws
     func addQuickFood(_ food: QuickFood, mealType: MealType) throws
     func favoriteMeals() throws -> [MealEntry]
     func totalCalories(on date: Date) throws -> Int
+    func dailySummary(on date: Date) throws -> DailyMealSummary
 }
 
 @MainActor
@@ -54,6 +66,24 @@ final class SwiftDataNutritionRepository: NutritionRepository {
 
     func addMeal(_ meal: MealEntry) throws {
         context.insert(meal)
+        try context.save()
+    }
+
+    func updateMeal(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool) throws {
+        meal.name = name
+        meal.calories = values.calories
+        meal.protein = values.protein
+        meal.carbs = values.carbs
+        meal.fat = values.fat
+        meal.portionDescription = portion
+        meal.mealType = mealType
+        meal.date = date
+        meal.isFavorite = isFavorite
+        try context.save()
+    }
+
+    func deleteMeal(_ meal: MealEntry) throws {
+        context.delete(meal)
         try context.save()
     }
 
@@ -83,5 +113,18 @@ final class SwiftDataNutritionRepository: NutritionRepository {
 
     func totalCalories(on date: Date) throws -> Int {
         try meals(on: date).reduce(0) { $0 + $1.calories }
+    }
+
+    func dailySummary(on date: Date) throws -> DailyMealSummary {
+        let items = try meals(on: date)
+        let totals = items.reduce(NutritionValues.zero) { acc, meal in
+            acc + NutritionValues(
+                calories: meal.calories,
+                protein: meal.protein ?? 0,
+                carbs: meal.carbs ?? 0,
+                fat: meal.fat ?? 0
+            )
+        }
+        return DailyMealSummary(date: date, totals: totals, mealCount: items.count)
     }
 }

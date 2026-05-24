@@ -14,6 +14,7 @@ struct ProfileView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     headerCard
+                    ProfileAuthSection()
                     profileInfoSection
                     goalsSection
                     premiumSection

@@ -1,27 +1,42 @@
-﻿import Foundation
+import Foundation
 import SwiftData
 
 @MainActor
 final class NutritionViewModel: ObservableObject {
     @Published var meals: [MealEntry] = []
     @Published var favorites: [MealEntry] = []
+    @Published var summary: DailyMealSummary = .empty
     @Published var selectedMealType: MealType = .breakfast
+    @Published var selectedDate: Date = Date()
     @Published var showingAddMeal = false
     @Published var showingCamera = false
     @Published var showingFoodSearch = false
+    @Published var editingMeal: MealEntry?
     @Published var errorMessage: String?
     @Published var smartMealText = ""
     @Published var estimatedResults: [EstimatedMealResult] = []
     @Published var isEstimating = false
 
+    var sectionedMeals: [(MealType, [MealEntry])] {
+        MealType.allCases.map { type in
+            (type, meals.filter { $0.mealType == type })
+        }
+    }
+
     func load(context: ModelContext, dependencies: DependencyContainer) {
         do {
             let repository = dependencies.nutritionRepository(context: context)
-            meals = try repository.meals(on: Date())
+            meals = try repository.meals(on: selectedDate)
             favorites = try repository.favoriteMeals()
+            summary = try repository.dailySummary(on: selectedDate)
         } catch {
             errorMessage = "Öğünler yüklenemedi."
         }
+    }
+
+    func changeDate(to date: Date, context: ModelContext, dependencies: DependencyContainer) {
+        selectedDate = date
+        load(context: context, dependencies: dependencies)
     }
 
     func estimateSmartMeal(dependencies: DependencyContainer) async {
@@ -43,6 +58,7 @@ final class NutritionViewModel: ObservableObject {
     func addEstimatedResult(_ result: EstimatedMealResult, context: ModelContext, dependencies: DependencyContainer) async {
         do {
             let meal = MealEntry(
+                date: selectedDate,
                 mealType: selectedMealType,
                 name: result.name,
                 calories: result.calories,
@@ -79,6 +95,7 @@ final class NutritionViewModel: ObservableObject {
     func addFoodSearchResult(_ result: FoodSearchResult, context: ModelContext, dependencies: DependencyContainer) async {
         do {
             let meal = MealEntry(
+                date: selectedDate,
                 mealType: selectedMealType,
                 name: result.name,
                 calories: result.calories,
@@ -97,5 +114,18 @@ final class NutritionViewModel: ObservableObject {
         } catch {
             errorMessage = "Arama sonucundan öğün eklenemedi."
         }
+    }
+
+    func delete(_ meal: MealEntry, context: ModelContext, dependencies: DependencyContainer) {
+        do {
+            try dependencies.nutritionRepository(context: context).deleteMeal(meal)
+            load(context: context, dependencies: dependencies)
+        } catch {
+            errorMessage = "Öğün silinemedi."
+        }
+    }
+
+    func startEditing(_ meal: MealEntry) {
+        editingMeal = meal
     }
 }

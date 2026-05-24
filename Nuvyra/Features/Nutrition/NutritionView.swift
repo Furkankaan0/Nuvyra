@@ -1,4 +1,4 @@
-﻿import SwiftData
+import SwiftData
 import SwiftUI
 
 struct NutritionView: View {
@@ -11,22 +11,11 @@ struct NutritionView: View {
             NuvyraBackground()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
-                    NuvyraSectionHeader(title: "Beslenme", subtitle: "Manuel giriş ve hızlı favorilerle günü sade takip et.")
-                    Picker("Öğün tipi", selection: $viewModel.selectedMealType) {
-                        ForEach(MealType.allCases) { type in Text(type.title).tag(type) }
-                    }
-                    .pickerStyle(.segmented)
-                    HStack(spacing: NuvyraSpacing.sm) {
-                        NuvyraPrimaryButton(title: "Manuel öğün ekle", systemImage: "plus") {
-                            viewModel.showingAddMeal = true
-                        }
-                        NuvyraSecondaryButton(title: "Kamerayla tara", systemImage: "camera.viewfinder") {
-                            viewModel.showingCamera = true
-                        }
-                    }
-                    NuvyraSecondaryButton(title: "Besin veritabanında ara", systemImage: "magnifyingglass") {
-                        viewModel.showingFoodSearch = true
-                    }
+                    header
+                    dateSelector
+                    dailyTotalsCard
+                    quickActions
+                    mealSections
                     SmartMealEntryCard(
                         text: $viewModel.smartMealText,
                         results: viewModel.estimatedResults,
@@ -43,7 +32,6 @@ struct NutritionView: View {
                         Task { await viewModel.addQuickFood(food, context: modelContext, dependencies: dependencies) }
                     }
                     FavoriteMealsView(favorites: viewModel.favorites)
-                    MealListView(meals: viewModel.meals)
                 }
                 .padding(NuvyraSpacing.lg)
             }
@@ -51,7 +39,10 @@ struct NutritionView: View {
         .navigationTitle("Beslenme")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $viewModel.showingAddMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
-            AddMealView(defaultMealType: viewModel.selectedMealType)
+            AddFoodView(mode: .create(defaultMealType: viewModel.selectedMealType))
+        }
+        .sheet(item: $viewModel.editingMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) { meal in
+            AddFoodView(mode: .edit(meal))
         }
         .fullScreenCover(isPresented: $viewModel.showingCamera) {
             CameraView { detection in
@@ -66,6 +57,101 @@ struct NutritionView: View {
             }
         }
         .task { viewModel.load(context: modelContext, dependencies: dependencies) }
+    }
+
+    private var header: some View {
+        NuvyraSectionHeader(
+            title: "Beslenme",
+            subtitle: "Öğünlerini ekle, düzenle, sil — günlük makroların otomatik güncellensin."
+        )
+    }
+
+    private var dateSelector: some View {
+        DatePicker(
+            "Tarih",
+            selection: Binding(
+                get: { viewModel.selectedDate },
+                set: { viewModel.changeDate(to: $0, context: modelContext, dependencies: dependencies) }
+            ),
+            in: ...Date(),
+            displayedComponents: .date
+        )
+        .datePickerStyle(.compact)
+        .labelsHidden()
+        .padding(.horizontal, NuvyraSpacing.md)
+        .padding(.vertical, NuvyraSpacing.sm)
+        .background(.ultraThinMaterial, in: Capsule())
+    }
+
+    private var dailyTotalsCard: some View {
+        NuvyraGlassCard {
+            VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Günlük toplam")
+                            .font(NuvyraTypography.section)
+                        Text("\(viewModel.summary.mealCount) kayıt")
+                            .font(NuvyraTypography.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text("\(viewModel.summary.totals.calories) kcal")
+                        .font(.title2.weight(.heavy))
+                        .foregroundStyle(NuvyraColors.accent)
+                        .contentTransition(.numericText())
+                }
+                HStack(spacing: NuvyraSpacing.sm) {
+                    macroTotal("Protein", grams: viewModel.summary.totals.protein, tint: NuvyraColors.mutedCoral)
+                    macroTotal("Karb.", grams: viewModel.summary.totals.carbs, tint: NuvyraColors.paleLime)
+                    macroTotal("Yağ", grams: viewModel.summary.totals.fat, tint: NuvyraColors.softSand)
+                }
+            }
+        }
+    }
+
+    private func macroTotal(_ title: String, grams: Double, tint: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+            Text("\(grams.cleanFormatted) g")
+                .font(.subheadline.weight(.heavy))
+                .foregroundStyle(tint)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(tint.opacity(0.12), in: RoundedRectangle(cornerRadius: NuvyraRadius.sm, style: .continuous))
+    }
+
+    private var quickActions: some View {
+        HStack(spacing: NuvyraSpacing.sm) {
+            NuvyraPrimaryButton(title: "Yemek ekle", systemImage: "plus") {
+                viewModel.showingAddMeal = true
+            }
+            NuvyraSecondaryButton(title: "Ara", systemImage: "magnifyingglass") {
+                viewModel.showingFoodSearch = true
+            }
+            NuvyraSecondaryButton(title: "Kamera", systemImage: "camera.viewfinder") {
+                viewModel.showingCamera = true
+            }
+        }
+    }
+
+    private var mealSections: some View {
+        VStack(spacing: NuvyraSpacing.md) {
+            ForEach(viewModel.sectionedMeals, id: \.0) { type, entries in
+                MealSectionView(
+                    mealType: type,
+                    entries: entries,
+                    onAdd: {
+                        viewModel.selectedMealType = type
+                        viewModel.showingAddMeal = true
+                    },
+                    onEdit: { meal in viewModel.startEditing(meal) },
+                    onDelete: { meal in viewModel.delete(meal, context: modelContext, dependencies: dependencies) }
+                )
+            }
+        }
     }
 }
 
@@ -92,7 +178,7 @@ private struct SmartMealEntryCard: View {
                         Label("Akıllı kayıt", systemImage: "sparkles")
                             .font(NuvyraTypography.section)
                             .foregroundStyle(NuvyraColors.primaryText(scheme))
-                        Text("Şimdilik cihaz içi Türkçe tahmin katmanını kullanır. Gerçek AI ve barkod adapter’ları bu katmana bağlanacak.")
+                        Text("Cihaz içi Türkçe tahmin katmanı. Barkod ve bulut adapter'ları buraya bağlanır.")
                             .font(NuvyraTypography.caption)
                             .foregroundStyle(NuvyraColors.secondaryText(scheme))
                     }
