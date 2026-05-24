@@ -27,11 +27,19 @@ struct WaterTrackingView: View {
                         summary: viewModel.summary,
                         label: Calendar.nuvyra.isDateInToday(viewModel.selectedDate) ? "Bugün" : viewModel.selectedDate.formatted(date: .abbreviated, time: .omitted)
                     )
+                    drinkPickerSection
                     quickAddSection
                     manualInputSection
                     if !viewModel.entries.isEmpty {
                         todayEntriesSection
                     }
+                    DrinkBreakdownCard(
+                        breakdown: viewModel.breakdown,
+                        totalFluidMl: viewModel.totalFluidMl,
+                        hydrationMl: viewModel.totalHydrationMl,
+                        waterGoalMl: viewModel.goal.dailyTargetMl
+                    )
+                    CaffeineCard(totalMg: viewModel.totalCaffeineMg, limitMg: viewModel.caffeineLimitMg)
                     WeeklyWaterChart(totals: viewModel.weeklyTotals, goalMl: viewModel.goal.dailyTargetMl)
                     disclaimer
                 }
@@ -77,13 +85,26 @@ struct WaterTrackingView: View {
     }
 
     // MARK: - Sections
+
+    private var drinkPickerSection: some View {
+        NuvyraCard {
+            VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
+                NuvyraSectionHeader(
+                    title: "İçecek tipi",
+                    subtitle: "Su dışında kahve, çay, smoothie ve diğer içecekleri de kaydedebilirsin."
+                )
+                DrinkTypePicker(selection: $viewModel.selectedDrinkType)
+            }
+        }
+    }
+
     private var quickAddSection: some View {
         NuvyraCard {
             VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-                NuvyraSectionHeader(title: "Hızlı ekle", subtitle: "Tek dokunuşla kaydet")
+                NuvyraSectionHeader(title: "Hızlı ekle", subtitle: "Seçili: \(viewModel.selectedDrinkType.title)")
                 HStack(spacing: NuvyraSpacing.sm) {
                     ForEach(WaterGoal.quickAddPresets, id: \.self) { amount in
-                        QuickWaterButton(amountMl: amount) {
+                        QuickWaterButton(amountMl: amount, tint: viewModel.selectedDrinkType.tint) {
                             Task { await viewModel.add(amount: amount, context: modelContext, dependencies: dependencies) }
                         }
                     }

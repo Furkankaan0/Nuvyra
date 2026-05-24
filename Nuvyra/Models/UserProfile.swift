@@ -18,6 +18,7 @@ final class UserProfile: Identifiable {
     var dailySodiumTargetMg: Int = 2_300
     var dailySugarTargetGrams: Int = 50
     var dailySaturatedFatTargetGrams: Int = 22
+    var dailyCaffeineLimitMg: Int = 400
     var dailyStepTarget: Int
     var dailyWaterTargetMl: Int
     var goalType: GoalType
@@ -42,6 +43,7 @@ final class UserProfile: Identifiable {
         dailySodiumTargetMg: Int = 2_300,
         dailySugarTargetGrams: Int = 50,
         dailySaturatedFatTargetGrams: Int = 22,
+        dailyCaffeineLimitMg: Int = 400,
         dailyStepTarget: Int = 7_500,
         dailyWaterTargetMl: Int = 2_000,
         goalType: GoalType = .walkMore,
@@ -65,6 +67,7 @@ final class UserProfile: Identifiable {
         self.dailySodiumTargetMg = dailySodiumTargetMg
         self.dailySugarTargetGrams = dailySugarTargetGrams
         self.dailySaturatedFatTargetGrams = dailySaturatedFatTargetGrams
+        self.dailyCaffeineLimitMg = dailyCaffeineLimitMg
         self.dailyStepTarget = dailyStepTarget
         self.dailyWaterTargetMl = dailyWaterTargetMl
         self.goalType = goalType
