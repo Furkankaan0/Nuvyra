@@ -15,7 +15,7 @@ final class AuthManager: ObservableObject {
 
     /// Shared instance used by `LoginView` / `ProfileAuthSection`. Avoids
     /// touching `DependencyContainer` so the rest of the app stays untouched.
-    nonisolated(unsafe) static let shared: AuthManager = AuthManager()
+    static let shared: AuthManager = AuthManager()
 
     init(signInService: AppleSignInService? = nil, keychain: KeychainStore = .session) {
         self.signInService = signInService ?? LiveAppleSignInService()
