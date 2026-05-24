@@ -1,4 +1,4 @@
-﻿import Foundation
+import Foundation
 
 enum GoalType: String, CaseIterable, Codable, Identifiable {
     case loseWeight
@@ -117,7 +117,7 @@ enum GoalPace: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum MealType: String, CaseIterable, Codable, Identifiable {
+enum MealType: String, CaseIterable, Codable, Identifiable, Sendable {
     case breakfast
     case lunch
     case dinner

@@ -14,8 +14,8 @@ final class AICoachViewModel: ObservableObject {
     private let service: AICoachService
     private var contextSnapshot: AICoachContext = .empty
 
-    init(service: AICoachService = MockAICoachService()) {
-        self.service = service
+    init(service: AICoachService? = nil) {
+        self.service = service ?? MockAICoachService()
     }
 
     var hasMessages: Bool { !messages.isEmpty }
