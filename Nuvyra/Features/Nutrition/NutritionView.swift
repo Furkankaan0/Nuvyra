@@ -51,6 +51,14 @@ struct NutritionView: View {
                 Task { await viewModel.estimateSmartMeal(dependencies: dependencies) }
             }
         }
+        .fullScreenCover(isPresented: $viewModel.showingBarcodeScanner, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
+            BarcodeScannerView(viewModel: makeBarcodeScannerViewModel()) { product in
+                Task {
+                    await viewModel.addScannedProduct(product, context: modelContext, dependencies: dependencies)
+                    viewModel.showingBarcodeScanner = false
+                }
+            }
+        }
         .sheet(isPresented: $viewModel.showingFoodSearch, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
             FoodSearchView { result in
                 Task { await viewModel.addFoodSearchResult(result, context: modelContext, dependencies: dependencies) }
@@ -124,17 +132,34 @@ struct NutritionView: View {
     }
 
     private var quickActions: some View {
-        HStack(spacing: NuvyraSpacing.sm) {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: NuvyraSpacing.sm) {
             NuvyraPrimaryButton(title: "Yemek ekle", systemImage: "plus") {
                 viewModel.showingAddMeal = true
             }
             NuvyraSecondaryButton(title: "Ara", systemImage: "magnifyingglass") {
                 viewModel.showingFoodSearch = true
             }
+            NuvyraSecondaryButton(title: "Barkod", systemImage: "barcode.viewfinder") {
+                viewModel.showingBarcodeScanner = true
+            }
             NuvyraSecondaryButton(title: "Kamera", systemImage: "camera.viewfinder") {
                 viewModel.showingCamera = true
             }
         }
+    }
+
+    private func makeBarcodeScannerViewModel() -> BarcodeScannerViewModel {
+        let client = HTTPClient()
+        let providers: [any NutritionProvider] = [
+            OpenFoodFactsProvider(client: client)
+        ]
+        return BarcodeScannerViewModel(
+            scanner: BarcodeScannerService(),
+            api: NutritionAPIService(
+                providers: providers,
+                diskCache: try? ProductCacheService()
+            )
+        )
     }
 
     private var mealSections: some View {

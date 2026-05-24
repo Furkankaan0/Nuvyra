@@ -1,17 +1,16 @@
-import Combine
 import AVFoundation
+import Combine
 import Foundation
 import Vision
 
 final class CameraViewModel: ObservableObject {
     @Published private(set) var authorizationState: CameraAuthorizationState = .notDetermined
     @Published private(set) var detections: [CameraDetection] = []
-    @Published private(set) var statusMessage = "Kamera hazırlanıyor."
+    @Published private(set) var statusMessage = "Kamera hazirlaniyor."
     @Published private(set) var isRunning = false
 
     private let frameCaptureService: CameraFrameCaptureService
     private let objectDetector: CoreMLObjectDetectionService
-    private var didPublishModelMissingState = false
 
     var previewSession: AVCaptureSession {
         frameCaptureService.captureSession
@@ -37,7 +36,7 @@ final class CameraViewModel: ObservableObject {
         let granted = await frameCaptureService.requestAccessIfNeeded()
         guard granted else {
             authorizationState = .denied
-            statusMessage = "Kamera izni kapalı. Fotoğrafla öğün tanıma için Ayarlar'dan kamera iznini açabilirsin."
+            statusMessage = "Kamera izni kapali. Fotografli ogun tanima icin Ayarlar'dan kamera iznini acabilirsin."
             isRunning = false
             return
         }
@@ -48,8 +47,8 @@ final class CameraViewModel: ObservableObject {
             try frameCaptureService.startRunning()
             isRunning = true
             statusMessage = objectDetector.isModelAvailable
-                ? "Kamera aktif. Öğünü kadraja al."
-                : "Core ML modeli eklenmedi. NuvyraFoodDetector.mlmodel eklendiğinde canlı tahmin başlayacak."
+                ? "Kamera aktif. Ogunu kadraja al."
+                : "Kamera aktif. Core ML modeli yokken Vision fallback ile tahmini etiket olusturuluyor."
         } catch {
             authorizationState = .unavailable
             isRunning = false
@@ -64,33 +63,21 @@ final class CameraViewModel: ObservableObject {
     }
 
     private func processFrame(_ sampleBuffer: CMSampleBuffer) {
-        guard objectDetector.isModelAvailable else {
-            publishModelMissingStateIfNeeded()
-            return
-        }
-
         do {
             let results = try objectDetector.detectObjects(in: sampleBuffer)
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 self.detections = results
                 self.statusMessage = results.first.map {
-                    "\($0.label): %\($0.confidencePercent) olasılık"
-                } ?? "Kadraja bir öğün aldığında tahmin burada görünür."
+                    "\($0.label): %\($0.confidencePercent) olasilik"
+                } ?? (self.objectDetector.usesVisionFallbackClassifier
+                    ? "Vision fallback aktif. Ogunu daha aydinlik ve yakin kadraja al."
+                    : "Kadraja bir ogun aldiginda tahmin burada gorunur.")
             }
         } catch {
             DispatchQueue.main.async { [weak self] in
-                self?.statusMessage = "Görüntü analiz edilemedi. Kamerayı biraz daha sabit tut."
+                self?.statusMessage = "Goruntu analiz edilemedi. Kamerayi biraz daha sabit tut."
             }
-        }
-    }
-
-    private func publishModelMissingStateIfNeeded() {
-        guard !didPublishModelMissingState else { return }
-        didPublishModelMissingState = true
-        DispatchQueue.main.async { [weak self] in
-            self?.detections = []
-            self?.statusMessage = "Core ML modeli bekleniyor. Model eklendiğinde kareler VNCoreMLRequest ile analiz edilecek."
         }
     }
 }
@@ -108,7 +95,7 @@ extension CameraViewModel {
                 boundingBox: CGRect(x: 0.18, y: 0.24, width: 0.42, height: 0.38)
             )
         ]
-        viewModel.statusMessage = "Elma: %90 olasılık"
+        viewModel.statusMessage = "Elma: %90 olasilik"
         return viewModel
     }
 }

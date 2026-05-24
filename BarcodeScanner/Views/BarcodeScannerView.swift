@@ -13,14 +13,20 @@ public struct BarcodeScannerView: View {
 
     // MARK: - State
 
+    @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: BarcodeScannerViewModel
+    private let onAddProduct: (ScannedProduct) -> Void
 
     // MARK: - Init
 
     /// Default constructor — kendi VM'ini oluşturur.
     /// Production'da credential'ları enjekte etmek için diğer init'i tercih edin.
-    public init(viewModel: BarcodeScannerViewModel) {
+    public init(
+        viewModel: BarcodeScannerViewModel,
+        onAddProduct: @escaping (ScannedProduct) -> Void = { _ in }
+    ) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.onAddProduct = onAddProduct
     }
 
     // MARK: - Body
@@ -60,6 +66,17 @@ public struct BarcodeScannerView: View {
 
     private var topBar: some View {
         HStack {
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(.black.opacity(0.35), in: Circle())
+            }
+            .accessibilityLabel("Barkod taramayı kapat")
+
             Image(systemName: "barcode.viewfinder")
                 .font(.title2)
                 .foregroundStyle(.white)
@@ -103,13 +120,19 @@ public struct BarcodeScannerView: View {
         case .product(let p):
             ProductCardSheet(
                 product: p,
-                onAdd: { _ in viewModel.resumeAfterSheet() },
+                onAdd: { product in
+                    onAddProduct(product)
+                    viewModel.resumeAfterSheet()
+                    dismiss()
+                },
                 onCancel: { viewModel.resumeAfterSheet() }
             )
         case .notFound(let barcode):
             ManualProductEntryView(barcode: barcode) { product in
                 Task {
                     await viewModel.saveManualEntry(product)
+                    onAddProduct(product)
+                    dismiss()
                 }
             }
         case .scanning, .error:

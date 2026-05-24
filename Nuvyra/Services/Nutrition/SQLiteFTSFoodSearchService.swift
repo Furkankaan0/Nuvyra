@@ -138,29 +138,21 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
     }
 
     private func seedDemoFoodsIfNeeded() throws {
-        guard try itemCount() == 0 else { return }
+        guard try itemCount() < 60 else { return }
 
-        let quickFoods = QuickFood.turkishDefaults.map {
+        let quickFoods = QuickFood.turkishDefaults.enumerated().map { index, food in
             FoodSearchRecord(
-                id: nil,
-                name: $0.name,
+                id: Int64(1_000 + index),
+                name: food.name,
                 brand: nil,
-                calories: $0.calories,
-                servingDescription: $0.portion,
-                keywords: "\($0.name) türk yemeği hızlı öğün"
+                calories: food.calories,
+                servingDescription: food.portion,
+                keywords: "\(food.name) turk yemegi hizli ogun"
             )
         }
 
-        let demoFoods: [FoodSearchRecord] = [
-            FoodSearchRecord(id: nil, name: "Şeftali", brand: nil, calories: 58, servingDescription: "1 orta boy", keywords: "seftali meyve yaz"),
-            FoodSearchRecord(id: nil, name: "Şeftali suyu", brand: nil, calories: 130, servingDescription: "1 bardak", keywords: "seftali suyu içecek"),
-            FoodSearchRecord(id: nil, name: "Yeşil elma", brand: nil, calories: 95, servingDescription: "1 adet", keywords: "elma meyve"),
-            FoodSearchRecord(id: nil, name: "Çilek", brand: nil, calories: 45, servingDescription: "1 kase", keywords: "cilek meyve")
-        ]
-
-        try upsertSync(records: quickFoods + demoFoods)
+        try upsertSync(records: quickFoods + Self.turkishSeedFoods)
     }
-
     private func upsertSync(records: [FoodSearchRecord]) throws {
         guard !records.isEmpty else { return }
 
@@ -240,6 +232,59 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
             ?? FileManager.default.temporaryDirectory
         return baseURL.appendingPathComponent("NuvyraFoodSearch.sqlite")
     }
+
+    private static let turkishSeedFoods: [FoodSearchRecord] = [
+        FoodSearchRecord(id: 2_001, name: "Seftali", brand: nil, calories: 58, servingDescription: "1 orta boy", keywords: "seftali peach meyve yaz"),
+        FoodSearchRecord(id: 2_002, name: "Seftali suyu", brand: nil, calories: 130, servingDescription: "1 bardak", keywords: "seftali suyu icecek meyve"),
+        FoodSearchRecord(id: 2_003, name: "Yesil elma", brand: nil, calories: 95, servingDescription: "1 adet", keywords: "elma meyve yesil"),
+        FoodSearchRecord(id: 2_004, name: "Cilek", brand: nil, calories: 45, servingDescription: "1 kase", keywords: "cilek meyve"),
+        FoodSearchRecord(id: 2_005, name: "Muz", brand: nil, calories: 105, servingDescription: "1 orta boy", keywords: "muz banana meyve"),
+        FoodSearchRecord(id: 2_006, name: "Portakal", brand: nil, calories: 62, servingDescription: "1 adet", keywords: "portakal meyve c vitamini"),
+        FoodSearchRecord(id: 2_007, name: "Domates", brand: nil, calories: 22, servingDescription: "1 orta boy", keywords: "domates sebze salata"),
+        FoodSearchRecord(id: 2_008, name: "Salatalik", brand: nil, calories: 12, servingDescription: "1 adet", keywords: "salatalik salata sebze"),
+        FoodSearchRecord(id: 2_009, name: "Beyaz peynir", brand: nil, calories: 95, servingDescription: "1 dilim", keywords: "peynir kahvalti protein"),
+        FoodSearchRecord(id: 2_010, name: "Kasar peyniri", brand: nil, calories: 120, servingDescription: "1 dilim", keywords: "kasar peynir kahvalti tost"),
+        FoodSearchRecord(id: 2_011, name: "Zeytin", brand: nil, calories: 45, servingDescription: "5 adet", keywords: "zeytin kahvalti"),
+        FoodSearchRecord(id: 2_012, name: "Tam bugday ekmegi", brand: nil, calories: 70, servingDescription: "1 dilim", keywords: "ekmek tam bugday kahvalti"),
+        FoodSearchRecord(id: 2_013, name: "Beyaz ekmek", brand: nil, calories: 80, servingDescription: "1 dilim", keywords: "ekmek beyaz"),
+        FoodSearchRecord(id: 2_014, name: "Yulaf ezmesi", brand: nil, calories: 150, servingDescription: "40 g", keywords: "yulaf kahvalti oats"),
+        FoodSearchRecord(id: 2_015, name: "Bal", brand: nil, calories: 64, servingDescription: "1 tatli kasigi", keywords: "bal kahvalti tatli"),
+        FoodSearchRecord(id: 2_016, name: "Fistik ezmesi", brand: nil, calories: 95, servingDescription: "1 yemek kasigi", keywords: "fistik ezmesi peanut protein"),
+        FoodSearchRecord(id: 2_017, name: "Tahin pekmez", brand: nil, calories: 180, servingDescription: "1 yemek kasigi", keywords: "tahin pekmez kahvalti"),
+        FoodSearchRecord(id: 2_018, name: "Tavuk gogsu", brand: nil, calories: 165, servingDescription: "100 g", keywords: "tavuk gogsu protein izgara"),
+        FoodSearchRecord(id: 2_019, name: "Izgara kofte", brand: nil, calories: 320, servingDescription: "4 adet", keywords: "kofte izgara et protein"),
+        FoodSearchRecord(id: 2_020, name: "Et doner", brand: nil, calories: 620, servingDescription: "1 porsiyon", keywords: "doner et durum"),
+        FoodSearchRecord(id: 2_021, name: "Tavuk sis", brand: nil, calories: 340, servingDescription: "1 porsiyon", keywords: "tavuk sis izgara"),
+        FoodSearchRecord(id: 2_022, name: "Somon izgara", brand: nil, calories: 360, servingDescription: "1 fileto", keywords: "somon balik omega protein"),
+        FoodSearchRecord(id: 2_023, name: "Ton baligi", brand: nil, calories: 140, servingDescription: "100 g", keywords: "ton baligi protein konserve"),
+        FoodSearchRecord(id: 2_024, name: "Bulgur pilavi", brand: nil, calories: 260, servingDescription: "1 tabak", keywords: "bulgur pilav ev yemegi"),
+        FoodSearchRecord(id: 2_025, name: "Makarna", brand: nil, calories: 310, servingDescription: "1 tabak", keywords: "makarna pasta"),
+        FoodSearchRecord(id: 2_026, name: "Kuru fasulye", brand: nil, calories: 300, servingDescription: "1 tabak", keywords: "kuru fasulye bakliyat ev yemegi"),
+        FoodSearchRecord(id: 2_027, name: "Nohut yemegi", brand: nil, calories: 320, servingDescription: "1 tabak", keywords: "nohut bakliyat ev yemegi"),
+        FoodSearchRecord(id: 2_028, name: "Zeytinyagli fasulye", brand: nil, calories: 210, servingDescription: "1 tabak", keywords: "zeytinyagli fasulye sebze"),
+        FoodSearchRecord(id: 2_029, name: "Dolma", brand: nil, calories: 240, servingDescription: "4 adet", keywords: "dolma sarma ev yemegi"),
+        FoodSearchRecord(id: 2_030, name: "Lahmacun", brand: nil, calories: 330, servingDescription: "1 adet", keywords: "lahmacun firin"),
+        FoodSearchRecord(id: 2_031, name: "Pide", brand: nil, calories: 720, servingDescription: "1 adet", keywords: "pide kiymali kasarli"),
+        FoodSearchRecord(id: 2_032, name: "Cig kofte durum", brand: nil, calories: 430, servingDescription: "1 durum", keywords: "cig kofte durum"),
+        FoodSearchRecord(id: 2_033, name: "Ezogelin corbasi", brand: nil, calories: 180, servingDescription: "1 kase", keywords: "ezogelin corba"),
+        FoodSearchRecord(id: 2_034, name: "Tarhana corbasi", brand: nil, calories: 160, servingDescription: "1 kase", keywords: "tarhana corba"),
+        FoodSearchRecord(id: 2_035, name: "Coban salata", brand: nil, calories: 90, servingDescription: "1 kase", keywords: "coban salata sebze"),
+        FoodSearchRecord(id: 2_036, name: "Mevsim salata", brand: nil, calories: 80, servingDescription: "1 kase", keywords: "mevsim salata"),
+        FoodSearchRecord(id: 2_037, name: "Cacik", brand: nil, calories: 110, servingDescription: "1 kase", keywords: "cacik yogurt salatalik"),
+        FoodSearchRecord(id: 2_038, name: "Kefir", brand: nil, calories: 120, servingDescription: "1 bardak", keywords: "kefir icecek probiyotik"),
+        FoodSearchRecord(id: 2_039, name: "Sut", brand: nil, calories: 122, servingDescription: "1 bardak", keywords: "sut icecek"),
+        FoodSearchRecord(id: 2_040, name: "Filtre kahve", brand: nil, calories: 5, servingDescription: "1 kupa", keywords: "kahve filtre sekersiz"),
+        FoodSearchRecord(id: 2_041, name: "Turk kahvesi", brand: nil, calories: 7, servingDescription: "1 fincan", keywords: "turk kahvesi sekersiz"),
+        FoodSearchRecord(id: 2_042, name: "Latte", brand: nil, calories: 150, servingDescription: "1 bardak", keywords: "latte kahve sutlu"),
+        FoodSearchRecord(id: 2_043, name: "Kola", brand: nil, calories: 139, servingDescription: "330 ml", keywords: "kola gazli icecek"),
+        FoodSearchRecord(id: 2_044, name: "Soda", brand: nil, calories: 0, servingDescription: "1 sise", keywords: "soda maden suyu"),
+        FoodSearchRecord(id: 2_045, name: "Baklava", brand: nil, calories: 280, servingDescription: "2 dilim", keywords: "baklava tatli"),
+        FoodSearchRecord(id: 2_046, name: "Sutlac", brand: nil, calories: 260, servingDescription: "1 kase", keywords: "sutlac tatli"),
+        FoodSearchRecord(id: 2_047, name: "Dondurma", brand: nil, calories: 180, servingDescription: "2 top", keywords: "dondurma tatli"),
+        FoodSearchRecord(id: 2_048, name: "Ceviz", brand: nil, calories: 185, servingDescription: "30 g", keywords: "ceviz kuruyemis omega"),
+        FoodSearchRecord(id: 2_049, name: "Badem", brand: nil, calories: 170, servingDescription: "30 g", keywords: "badem kuruyemis"),
+        FoodSearchRecord(id: 2_050, name: "Findik", brand: nil, calories: 175, servingDescription: "30 g", keywords: "findik kuruyemis")
+    ]
 
     static let schemaSQL = """
     PRAGMA journal_mode = WAL;

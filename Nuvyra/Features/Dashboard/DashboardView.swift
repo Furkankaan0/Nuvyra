@@ -97,9 +97,11 @@ struct DashboardView: View {
                         Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
                     }
             case .barcode:
-                CameraView { _ in
-                    presentedSheet = nil
-                    Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+                BarcodeScannerView(viewModel: makeBarcodeScannerViewModel()) { product in
+                    Task {
+                        await addScannedProduct(product)
+                        presentedSheet = nil
+                    }
                 }
             }
         }
@@ -162,6 +164,41 @@ struct DashboardView: View {
         case 11..<16: return .lunch
         case 16..<22: return .dinner
         default: return .snack
+        }
+    }
+
+    private func makeBarcodeScannerViewModel() -> BarcodeScannerViewModel {
+        let client = HTTPClient()
+        let providers: [any NutritionProvider] = [OpenFoodFactsProvider(client: client)]
+        return BarcodeScannerViewModel(
+            scanner: BarcodeScannerService(),
+            api: NutritionAPIService(
+                providers: providers,
+                diskCache: try? ProductCacheService()
+            )
+        )
+    }
+
+    private func addScannedProduct(_ product: ScannedProduct) async {
+        do {
+            let meal = MealEntry(
+                mealType: currentMealSlot(),
+                name: product.name,
+                calories: Int(product.caloriesPer100g.rounded()),
+                protein: product.protein,
+                carbs: product.carbs,
+                fat: product.fat,
+                portionDescription: "100 g - barkod",
+                isFavorite: false,
+                isVerifiedTurkishFood: product.source == .openFoodFacts,
+                isEstimated: true
+            )
+            try dependencies.nutritionRepository(context: modelContext).addMeal(meal)
+            dependencies.haptics.mealLogged()
+            await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "dashboard_barcode"]))
+            await viewModel.load(context: modelContext, dependencies: dependencies)
+        } catch {
+            await viewModel.load(context: modelContext, dependencies: dependencies)
         }
     }
 }

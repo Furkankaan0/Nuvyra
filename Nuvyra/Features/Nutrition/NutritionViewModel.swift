@@ -11,6 +11,7 @@ final class NutritionViewModel: ObservableObject {
     @Published var selectedDate: Date = Date()
     @Published var showingAddMeal = false
     @Published var showingCamera = false
+    @Published var showingBarcodeScanner = false
     @Published var showingFoodSearch = false
     @Published var editingMeal: MealEntry?
     @Published var errorMessage: String?
@@ -114,6 +115,30 @@ final class NutritionViewModel: ObservableObject {
             load(context: context, dependencies: dependencies)
         } catch {
             errorMessage = "Arama sonucundan öğün eklenemedi."
+        }
+    }
+
+    func addScannedProduct(_ product: ScannedProduct, context: ModelContext, dependencies: DependencyContainer) async {
+        do {
+            let meal = MealEntry(
+                date: selectedDate,
+                mealType: selectedMealType,
+                name: product.name,
+                calories: Int(product.caloriesPer100g.rounded()),
+                protein: product.protein,
+                carbs: product.carbs,
+                fat: product.fat,
+                portionDescription: "100 g - barkod",
+                isFavorite: false,
+                isVerifiedTurkishFood: product.source == .openFoodFacts,
+                isEstimated: true
+            )
+            try dependencies.nutritionRepository(context: context).addMeal(meal)
+            dependencies.haptics.mealLogged()
+            await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "barcode", "provider": product.source.rawValue]))
+            load(context: context, dependencies: dependencies)
+        } catch {
+            errorMessage = "Barkoddan gelen ürün öğüne eklenemedi."
         }
     }
 

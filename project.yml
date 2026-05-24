@@ -24,6 +24,7 @@ targets:
           - Resources
           - Tests
           - Widgets
+      - path: BarcodeScanner
       - path: Nuvyra/Resources/Assets.xcassets
         buildPhase: resources
       - path: Nuvyra/Resources/AppIconFiles

@@ -33,11 +33,18 @@ final class CoreMLObjectDetectionService {
         return false
     }
 
+    var usesVisionFallbackClassifier: Bool {
+        !isModelAvailable
+    }
+
     func detectObjects(
         in sampleBuffer: CMSampleBuffer,
         orientation: CGImagePropertyOrientation = .right
     ) throws -> [CameraDetection] {
-        let model = try modelLoadResult.get()
+        guard case .success(let model) = modelLoadResult else {
+            return try classifyImage(in: sampleBuffer, orientation: orientation)
+        }
+
         let request = VNCoreMLRequest(model: model)
         request.imageCropAndScaleOption = .centerCrop
 
@@ -75,5 +82,29 @@ final class CoreMLObjectDetectionService {
         }
 
         return []
+    }
+
+    private func classifyImage(
+        in sampleBuffer: CMSampleBuffer,
+        orientation: CGImagePropertyOrientation
+    ) throws -> [CameraDetection] {
+        let request = VNClassifyImageRequest()
+        let handler = VNImageRequestHandler(
+            cmSampleBuffer: sampleBuffer,
+            orientation: orientation,
+            options: [:]
+        )
+        try handler.perform([request])
+
+        return (request.results ?? [])
+            .filter { $0.confidence >= 0.18 }
+            .prefix(3)
+            .map { observation in
+                CameraDetection(
+                    label: observation.identifier,
+                    confidence: observation.confidence,
+                    boundingBox: CGRect(x: 0.14, y: 0.18, width: 0.72, height: 0.64)
+                )
+            }
     }
 }

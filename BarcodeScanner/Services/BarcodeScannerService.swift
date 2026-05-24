@@ -10,8 +10,8 @@
 //
 
 import Foundation
-import AVFoundation
-import UIKit
+@preconcurrency import AVFoundation
+@preconcurrency import UIKit
 
 /// Tarama olaylarını dinleyen delegate.
 @MainActor
@@ -59,10 +59,10 @@ public final class BarcodeScannerService: NSObject {
 
     // MARK: - Private
 
-    private let session: AVCaptureSession
-    private let metadataOutput: AVCaptureMetadataOutput
-    private let sessionQueue = DispatchQueue(label: "nuvyra.scanner.session")
-    private let metadataQueue = DispatchQueue(label: "nuvyra.scanner.metadata")
+    private nonisolated(unsafe) let session: AVCaptureSession
+    private nonisolated(unsafe) let metadataOutput: AVCaptureMetadataOutput
+    private nonisolated(unsafe) let sessionQueue = DispatchQueue(label: "nuvyra.scanner.session")
+    private nonisolated(unsafe) let metadataQueue = DispatchQueue(label: "nuvyra.scanner.metadata")
     private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
     /// Duplicate prevention: barkod → son okuma zamanı.
@@ -97,53 +97,61 @@ public final class BarcodeScannerService: NSObject {
             throw BarcodeScannerError.permissionDenied
         }
 
-        try await Task.detached(priority: .userInitiated) { [session, metadataOutput, metadataQueue] in
-            session.beginConfiguration()
-            defer { session.endConfiguration() }
+        try await configureSession()
 
-            session.sessionPreset = .high
-
-            // Input
-            guard let device = AVCaptureDevice.default(
-                .builtInWideAngleCamera, for: .video, position: .back
-            ) else {
-                throw BarcodeScannerError.cameraUnavailable
-            }
-
-            let input: AVCaptureDeviceInput
-            do {
-                input = try AVCaptureDeviceInput(device: device)
-            } catch {
-                throw BarcodeScannerError.configurationFailed
-            }
-
-            // Mevcut input'ları temizle (yeniden prepare çağrılırsa)
-            for existing in session.inputs { session.removeInput(existing) }
-            for existing in session.outputs { session.removeOutput(existing) }
-
-            guard session.canAddInput(input) else {
-                throw BarcodeScannerError.configurationFailed
-            }
-            session.addInput(input)
-
-            // Output
-            guard session.canAddOutput(metadataOutput) else {
-                throw BarcodeScannerError.configurationFailed
-            }
-            session.addOutput(metadataOutput)
-        }.value
-
-        // Delegate ve metadata türleri ana actor'da set edilir.
+        // Delegate ve metadata turleri ana actor'da set edilir.
         metadataOutput.setMetadataObjectsDelegate(self, queue: metadataQueue)
         let supported = Self.supportedSymbologies.filter {
             metadataOutput.availableMetadataObjectTypes.contains($0)
         }
         metadataOutput.metadataObjectTypes = supported
 
-        // Pre-warm haptik
+        // Pre-warm haptic.
         haptic.prepare()
     }
 
+    private func configureSession() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            sessionQueue.async { [session, metadataOutput] in
+                do {
+                    session.beginConfiguration()
+                    defer { session.commitConfiguration() }
+
+                    session.sessionPreset = .high
+
+                    guard let device = AVCaptureDevice.default(
+                        .builtInWideAngleCamera, for: .video, position: .back
+                    ) else {
+                        throw BarcodeScannerError.cameraUnavailable
+                    }
+
+                    let input: AVCaptureDeviceInput
+                    do {
+                        input = try AVCaptureDeviceInput(device: device)
+                    } catch {
+                        throw BarcodeScannerError.configurationFailed
+                    }
+
+                    for existing in session.inputs { session.removeInput(existing) }
+                    for existing in session.outputs { session.removeOutput(existing) }
+
+                    guard session.canAddInput(input) else {
+                        throw BarcodeScannerError.configurationFailed
+                    }
+                    session.addInput(input)
+
+                    guard session.canAddOutput(metadataOutput) else {
+                        throw BarcodeScannerError.configurationFailed
+                    }
+                    session.addOutput(metadataOutput)
+
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
     /// Yakalama oturumunu başlatır.
     public func start() {
         sessionQueue.async { [session] in
