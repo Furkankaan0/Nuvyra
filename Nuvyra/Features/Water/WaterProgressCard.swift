@@ -1,3 +1,4 @@
+import Darwin
 import SwiftUI
 
 /// Premium standalone water progress card — used by both the WaterTracking screen
@@ -115,7 +116,7 @@ struct WaterWaveShape: Shape {
         var x: CGFloat = 0
         while x <= rect.width {
             let relativeX = Double(x / rect.width) * .pi * 2
-            let y = baseline + CGFloat(sin(relativeX + phase) * amplitude)
+            let y = baseline + CGFloat(Darwin.sin(relativeX + phase) * amplitude)
             path.addLine(to: CGPoint(x: x, y: y))
             x += step
         }

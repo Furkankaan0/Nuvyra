@@ -1,3 +1,4 @@
+import Darwin
 import SwiftUI
 
 /// Premium water tracker card with animated wave + add / remove controls.
@@ -42,7 +43,7 @@ struct WaterCard: View {
                         Text("\(summary.consumedMl) ml")
                             .font(.system(size: 30, weight: .heavy, design: .rounded))
                             .contentTransition(.numericText())
-                        Text(summary.isGoalReached ? "Hedef tamamlandı 🎉" : "Hedef: \(summary.targetMl) ml")
+                        Text(summary.isGoalReached ? "Hedef tamamlandi" : "Hedef: \(summary.targetMl) ml")
                             .font(NuvyraTypography.caption)
                             .foregroundStyle(.secondary)
                         Text(summary.isGoalReached ? "Bugün için tebrikler" : "Kalan: \(summary.remainingMl) ml")
@@ -142,26 +143,12 @@ private struct WaterChipButton: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .foregroundStyle(style == .primary ? Color.white : NuvyraColors.accent)
-            .background(backgroundStyle, in: Capsule())
+            .background(style == .primary ? NuvyraColors.accent : NuvyraColors.accent.opacity(0.10), in: Capsule())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)
     }
 
-    private var backgroundStyle: AnyShapeStyle {
-        switch style {
-        case .primary:
-            AnyShapeStyle(
-                LinearGradient(
-                    colors: [NuvyraColors.accent, NuvyraColors.softMint],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-            )
-        case .neutral:
-            AnyShapeStyle(NuvyraColors.accent.opacity(0.10))
-        }
-    }
 }
 
 private struct WaveShape: Shape {
@@ -182,7 +169,7 @@ private struct WaveShape: Shape {
         var x: CGFloat = 0
         while x <= rect.width {
             let relativeX = Double(x / rect.width) * .pi * 2
-            let y = baseline + CGFloat(sin(relativeX + phase) * amplitude)
+            let y = baseline + CGFloat(Darwin.sin(relativeX + phase) * amplitude)
             path.addLine(to: CGPoint(x: x, y: y))
             x += step
         }
