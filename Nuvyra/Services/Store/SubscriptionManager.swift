@@ -1,3 +1,4 @@
+import Combine
 import Foundation
 import StoreKit
 
@@ -36,7 +37,7 @@ final class SubscriptionManager: ObservableObject {
     func startTransactionListener(repository: SubscriptionRepository?) {
         listenerRepository = repository
         guard transactionListener == nil else { return }
-        transactionListener = Task.detached { [weak self] in
+        transactionListener = Task { [weak self] in
             for await result in Transaction.updates {
                 guard !Task.isCancelled else { return }
                 guard case .verified(let transaction) = result else { continue }

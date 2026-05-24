@@ -79,12 +79,13 @@ extension LiveAppleSignInService: ASAuthorizationControllerDelegate {
 
 extension LiveAppleSignInService: ASAuthorizationControllerPresentationContextProviding {
     nonisolated func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
-        // First foreground key window across connected scenes; falls back to a fresh window.
-        let anchor = UIApplication.shared.connectedScenes
-            .compactMap { $0 as? UIWindowScene }
-            .flatMap { $0.windows }
-            .first(where: { $0.isKeyWindow }) ?? ASPresentationAnchor()
-        return anchor
+        MainActor.assumeIsolated {
+            // First foreground key window across connected scenes; falls back to a fresh window.
+            UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first(where: { $0.isKeyWindow }) ?? ASPresentationAnchor()
+        }
     }
 }
 
