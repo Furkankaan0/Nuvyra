@@ -18,11 +18,16 @@ final class NutritionViewModel: ObservableObject {
     @Published var smartMealText = ""
     @Published var estimatedResults: [EstimatedMealResult] = []
     @Published var isEstimating = false
+    @Published var actionFeedback: String?
 
     var sectionedMeals: [(MealType, [MealEntry])] {
         MealType.allCases.map { type in
             (type, meals.filter { $0.mealType == type })
         }
+    }
+
+    var isViewingToday: Bool {
+        Calendar.nuvyra.isDateInToday(selectedDate)
     }
 
     func load(context: ModelContext, dependencies: DependencyContainer) {
@@ -39,6 +44,11 @@ final class NutritionViewModel: ObservableObject {
     func changeDate(to date: Date, context: ModelContext, dependencies: DependencyContainer) {
         selectedDate = date
         load(context: context, dependencies: dependencies)
+    }
+
+    func moveDate(by days: Int, context: ModelContext, dependencies: DependencyContainer) {
+        guard let next = Calendar.nuvyra.date(byAdding: .day, value: days, to: selectedDate), next <= Date() else { return }
+        changeDate(to: next, context: context, dependencies: dependencies)
     }
 
     func estimateSmartMeal(dependencies: DependencyContainer) async {
@@ -73,6 +83,7 @@ final class NutritionViewModel: ObservableObject {
                 isEstimated: result.isEstimated
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
+            await dependencies.healthService.saveNutrition(for: meal)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "smart_text", "estimated": "true"]))
             smartMealText = ""
@@ -85,7 +96,21 @@ final class NutritionViewModel: ObservableObject {
 
     func addQuickFood(_ food: QuickFood, context: ModelContext, dependencies: DependencyContainer) async {
         do {
-            try dependencies.nutritionRepository(context: context).addQuickFood(food, mealType: selectedMealType)
+            let meal = MealEntry(
+                date: selectedDate,
+                mealType: selectedMealType,
+                name: food.name,
+                calories: food.calories,
+                protein: food.protein,
+                carbs: food.carbs,
+                fat: food.fat,
+                portionDescription: food.portion,
+                isFavorite: false,
+                isVerifiedTurkishFood: true,
+                isEstimated: true
+            )
+            try dependencies.nutritionRepository(context: context).addMeal(meal)
+            await dependencies.healthService.saveNutrition(for: meal)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "quick_food", "name": food.name]))
             load(context: context, dependencies: dependencies)
@@ -110,6 +135,7 @@ final class NutritionViewModel: ObservableObject {
                 isEstimated: true
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
+            await dependencies.healthService.saveNutrition(for: meal)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "fts_food_search"]))
             load(context: context, dependencies: dependencies)
@@ -134,6 +160,7 @@ final class NutritionViewModel: ObservableObject {
                 isEstimated: true
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
+            await dependencies.healthService.saveNutrition(for: meal)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "barcode", "provider": product.source.rawValue]))
             load(context: context, dependencies: dependencies)
@@ -153,5 +180,40 @@ final class NutritionViewModel: ObservableObject {
 
     func startEditing(_ meal: MealEntry) {
         editingMeal = meal
+    }
+
+    func copyPreviousDayMeals(context: ModelContext, dependencies: DependencyContainer) async {
+        guard let sourceDate = Calendar.nuvyra.date(byAdding: .day, value: -1, to: selectedDate) else { return }
+        do {
+            let count = try dependencies.nutritionRepository(context: context).copyMeals(from: sourceDate, to: selectedDate)
+            let copiedMeals = try dependencies.nutritionRepository(context: context).meals(on: selectedDate)
+            for meal in copiedMeals.suffix(count) {
+                await dependencies.healthService.saveNutrition(for: meal)
+            }
+            load(context: context, dependencies: dependencies)
+            flash(count > 0 ? "\(count) öğün kopyalandı" : "Kopyalanacak öğün yok")
+        } catch {
+            errorMessage = "Öğünler kopyalanamadı."
+        }
+    }
+
+    func copyMealToToday(_ meal: MealEntry, context: ModelContext, dependencies: DependencyContainer) async {
+        do {
+            try dependencies.nutritionRepository(context: context).copyMeal(meal, to: Date())
+            if isViewingToday {
+                load(context: context, dependencies: dependencies)
+            }
+            flash("Öğün bugüne kopyalandı")
+        } catch {
+            errorMessage = "Öğün bugüne kopyalanamadı."
+        }
+    }
+
+    private func flash(_ message: String) {
+        actionFeedback = message
+        Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run { self?.actionFeedback = nil }
+        }
     }
 }

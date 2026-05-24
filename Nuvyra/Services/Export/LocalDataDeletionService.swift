@@ -15,6 +15,7 @@ final class LocalDataDeletionService {
         try delete(MealEntry.self)
         try delete(WaterEntry.self)
         try delete(WalkingLog.self)
+        try delete(WeightLog.self)
         try delete(NutritionGoal.self)
         try delete(AppSettings.self)
         try context.save()

@@ -11,10 +11,12 @@ struct WaterProgressCard: View {
     @State private var animatedFill: Double = 0
 
     var summary: WaterSummary
+    var label: String
     var goalReached: Bool { summary.isGoalReached }
 
-    init(summary: WaterSummary) {
+    init(summary: WaterSummary, label: String = "Bugün") {
         self.summary = summary
+        self.label = label
     }
 
     var body: some View {
@@ -22,7 +24,7 @@ struct WaterProgressCard: View {
             HStack(alignment: .center, spacing: NuvyraSpacing.lg) {
                 bottle
                 VStack(alignment: .leading, spacing: NuvyraSpacing.xs) {
-                    Text("Bugün")
+                    Text(label)
                         .font(NuvyraTypography.caption)
                         .foregroundStyle(.secondary)
                     Text("\(summary.consumedMl) ml")

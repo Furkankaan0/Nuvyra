@@ -7,6 +7,7 @@ final class WaterTrackingViewModel: ObservableObject {
     @Published var profile: UserProfile?
     @Published var entries: [WaterEntry] = []
     @Published var weeklyTotals: [WaterDayTotal] = []
+    @Published var selectedDate: Date = Date()
     @Published var manualAmountMl: Int = 250
     @Published var isLoading = false
     @Published var showGoalCelebration = false
@@ -28,8 +29,8 @@ final class WaterTrackingViewModel: ObservableObject {
             let userRepository = dependencies.userRepository(context: context)
             let waterRepository = dependencies.waterRepository(context: context)
             profile = try userRepository.profile()
-            entries = try waterRepository.entries(on: Date())
-            weeklyTotals = try waterRepository.weeklyTotals(endingOn: Date())
+            entries = try waterRepository.entries(on: selectedDate)
+            weeklyTotals = try waterRepository.weeklyTotals(endingOn: selectedDate)
             // Reset the celebration flag if the user dropped below the goal.
             if summary.consumedMl < summary.targetMl {
                 hasCelebratedToday = false
@@ -44,12 +45,12 @@ final class WaterTrackingViewModel: ObservableObject {
         let safe = max(min(amount, 2_000), 50)
         do {
             let wasGoalReached = summary.isGoalReached
-            try dependencies.waterRepository(context: context).addWater(amountMl: safe, date: Date())
+            try dependencies.waterRepository(context: context).addWater(amountMl: safe, date: selectedDate)
             dependencies.haptics.waterAdded()
             await dependencies.analytics.track(.waterAdded, payload: AnalyticsPayload(values: ["amount_ml": "\(safe)"]))
             await load(context: context, dependencies: dependencies)
             flash("+\(safe) ml eklendi")
-            if !wasGoalReached, summary.isGoalReached, !hasCelebratedToday {
+            if Calendar.nuvyra.isDateInToday(selectedDate), !wasGoalReached, summary.isGoalReached, !hasCelebratedToday {
                 hasCelebratedToday = true
                 dependencies.haptics.goalCompleted()
                 showGoalCelebration = true
@@ -68,7 +69,7 @@ final class WaterTrackingViewModel: ObservableObject {
 
     func removeLast(context: ModelContext, dependencies: DependencyContainer) async {
         do {
-            let removed = try dependencies.waterRepository(context: context).removeLastEntry(on: Date())
+            let removed = try dependencies.waterRepository(context: context).removeLastEntry(on: selectedDate)
             if removed > 0 { flash("-\(removed) ml geri alındı") }
             await load(context: context, dependencies: dependencies)
         } catch {}
@@ -76,10 +77,15 @@ final class WaterTrackingViewModel: ObservableObject {
 
     func clearToday(context: ModelContext, dependencies: DependencyContainer) async {
         do {
-            try dependencies.waterRepository(context: context).clearDay(Date())
+            try dependencies.waterRepository(context: context).clearDay(selectedDate)
             await load(context: context, dependencies: dependencies)
-            flash("Bugün sıfırlandı")
+            flash("Gün sıfırlandı")
         } catch {}
+    }
+
+    func changeDate(to date: Date, context: ModelContext, dependencies: DependencyContainer) {
+        selectedDate = date
+        Task { await load(context: context, dependencies: dependencies) }
     }
 
     private func flash(_ message: String) {
@@ -90,4 +96,3 @@ final class WaterTrackingViewModel: ObservableObject {
         }
     }
 }
-

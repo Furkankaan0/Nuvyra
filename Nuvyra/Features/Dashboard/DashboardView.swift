@@ -194,6 +194,7 @@ struct DashboardView: View {
                 isEstimated: true
             )
             try dependencies.nutritionRepository(context: modelContext).addMeal(meal)
+            await dependencies.healthService.saveNutrition(for: meal)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "dashboard_barcode"]))
             await viewModel.load(context: modelContext, dependencies: dependencies)

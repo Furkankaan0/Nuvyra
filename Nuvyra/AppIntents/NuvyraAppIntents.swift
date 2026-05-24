@@ -120,6 +120,7 @@ private enum IntentActionStore {
             isEstimated: true
         )
         try SwiftDataNutritionRepository(context: container.mainContext).addMeal(meal)
+        await LiveHealthService().saveNutrition(for: meal)
         return "\(estimate.name), tahmini \(estimate.calories) kcal olarak kaydedildi."
     }
 

@@ -7,6 +7,7 @@ enum SeedData {
         ensureSettings(in: context)
         ensureSubscription(in: context)
         ensureNutritionGoal(in: context)
+        ensureWeightLog(in: context)
         seedDemoDailyDataIfNeeded(in: context)
         try? context.save()
     }
@@ -23,6 +24,7 @@ enum SeedData {
         context.insert(settings)
         context.insert(subscription)
         context.insert(goal)
+        seedPreviewWeights(in: context, currentWeight: profile.weightKg)
         context.insert(DailyLog(date: today, totalCalories: 1_120, caloriesBurned: 280, steps: 5_360, waterMl: 1_250, streakCompleted: false, mood: .calm))
         context.insert(WalkingLog(date: today, steps: 5_360, activeEnergy: 280, distanceKm: 3.8, goalCompleted: false))
         context.insert(WaterEntry(date: today, amountMl: 750))
@@ -57,10 +59,28 @@ enum SeedData {
     }
 
     @MainActor
+    private static func ensureWeightLog(in context: ModelContext) {
+        let descriptor = FetchDescriptor<WeightLog>()
+        guard (try? context.fetch(descriptor).isEmpty) == true else { return }
+        let profile = try? context.fetch(FetchDescriptor<UserProfile>()).first
+        context.insert(WeightLog(weightKg: profile?.weightKg ?? 78, source: "seed", note: "İlk kilo kaydı"))
+    }
+
+    @MainActor
     private static func seedDemoDailyDataIfNeeded(in context: ModelContext) {
         let logDescriptor = FetchDescriptor<DailyLog>()
         guard (try? context.fetch(logDescriptor).isEmpty) == true else { return }
         let today = Date()
         context.insert(DailyLog(date: today, totalCalories: 0, caloriesBurned: 0, steps: 0, waterMl: 0))
+    }
+
+    @MainActor
+    private static func seedPreviewWeights(in context: ModelContext, currentWeight: Double) {
+        let today = Calendar.nuvyra.startOfDay(for: Date())
+        let values: [Double] = [currentWeight + 1.2, currentWeight + 0.8, currentWeight + 0.4, currentWeight]
+        for (index, value) in values.enumerated() {
+            let date = Calendar.nuvyra.date(byAdding: .day, value: -(21 - (index * 7)), to: today) ?? today
+            context.insert(WeightLog(date: date, weightKg: value, source: "preview"))
+        }
     }
 }

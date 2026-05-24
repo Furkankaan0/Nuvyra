@@ -40,6 +40,9 @@ protocol NutritionRepository {
     func updateMeal(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool) throws
     func deleteMeal(_ meal: MealEntry) throws
     func addQuickFood(_ food: QuickFood, mealType: MealType) throws
+    func addQuickFood(_ food: QuickFood, mealType: MealType, date: Date) throws
+    func copyMeal(_ meal: MealEntry, to date: Date) throws
+    func copyMeals(from sourceDate: Date, to targetDate: Date) throws -> Int
     func favoriteMeals() throws -> [MealEntry]
     func totalCalories(on date: Date) throws -> Int
     func dailySummary(on date: Date) throws -> DailyMealSummary
@@ -88,7 +91,12 @@ final class SwiftDataNutritionRepository: NutritionRepository {
     }
 
     func addQuickFood(_ food: QuickFood, mealType: MealType) throws {
+        try addQuickFood(food, mealType: mealType, date: Date())
+    }
+
+    func addQuickFood(_ food: QuickFood, mealType: MealType, date: Date) throws {
         let meal = MealEntry(
+            date: date,
             mealType: mealType,
             name: food.name,
             calories: food.calories,
@@ -101,6 +109,31 @@ final class SwiftDataNutritionRepository: NutritionRepository {
             isEstimated: true
         )
         try addMeal(meal)
+    }
+
+    func copyMeal(_ meal: MealEntry, to date: Date) throws {
+        let copy = MealEntry(
+            date: date,
+            mealType: meal.mealType,
+            name: meal.name,
+            calories: meal.calories,
+            protein: meal.protein,
+            carbs: meal.carbs,
+            fat: meal.fat,
+            portionDescription: meal.portionDescription,
+            isFavorite: meal.isFavorite,
+            isVerifiedTurkishFood: meal.isVerifiedTurkishFood,
+            isEstimated: meal.isEstimated
+        )
+        try addMeal(copy)
+    }
+
+    func copyMeals(from sourceDate: Date, to targetDate: Date) throws -> Int {
+        let sourceMeals = try meals(on: sourceDate)
+        for meal in sourceMeals {
+            try copyMeal(meal, to: targetDate)
+        }
+        return sourceMeals.count
     }
 
     func favoriteMeals() throws -> [MealEntry] {

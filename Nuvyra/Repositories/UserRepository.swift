@@ -11,6 +11,12 @@ protocol UserRepository {
         input: NutritionGoalCalculationInput,
         targets: CalculatedNutritionTargets
     ) throws -> UserProfile
+    func updateProfile(
+        _ profile: UserProfile,
+        name: String,
+        input: NutritionGoalCalculationInput,
+        targets: CalculatedNutritionTargets
+    ) throws -> UserProfile
     func markOnboardingCompleted() throws
 }
 
@@ -69,6 +75,7 @@ final class SwiftDataUserRepository: UserRepository {
         profile.dailyStepTarget = targets.stepTarget
         profile.dailyWaterTargetMl = targets.waterMl
         profile.updatedAt = Date()
+        try upsertTodayWeight(weightKg: input.weightKg, note: "Onboarding")
 
         let nutritionGoal = try currentNutritionGoal()
         nutritionGoal.dailyCalories = targets.dailyCalories
@@ -78,6 +85,41 @@ final class SwiftDataUserRepository: UserRepository {
         nutritionGoal.updatedAt = Date()
 
         try markOnboardingCompleted()
+        try context.save()
+        return profile
+    }
+
+    func updateProfile(
+        _ profile: UserProfile,
+        name: String,
+        input: NutritionGoalCalculationInput,
+        targets: CalculatedNutritionTargets
+    ) throws -> UserProfile {
+        profile.name = name.isEmpty ? "Nuvyra" : name
+        profile.age = input.age
+        profile.gender = input.gender
+        profile.heightCm = input.heightCm
+        profile.weightKg = input.weightKg
+        profile.targetWeightKg = input.targetWeightKg
+        profile.goalType = input.goalType
+        profile.activityLevel = input.activityLevel
+        profile.goalPace = input.goalType.isPaceSensitive ? input.goalPace : nil
+        profile.dailyCalorieTarget = targets.dailyCalories
+        profile.dailyProteinTargetGrams = targets.proteinGrams
+        profile.dailyCarbsTargetGrams = targets.carbsGrams
+        profile.dailyFatTargetGrams = targets.fatGrams
+        profile.dailyStepTarget = targets.stepTarget
+        profile.dailyWaterTargetMl = targets.waterMl
+        profile.updatedAt = Date()
+
+        let nutritionGoal = try currentNutritionGoal()
+        nutritionGoal.dailyCalories = targets.dailyCalories
+        nutritionGoal.proteinGrams = Double(targets.proteinGrams)
+        nutritionGoal.carbsGrams = Double(targets.carbsGrams)
+        nutritionGoal.fatGrams = Double(targets.fatGrams)
+        nutritionGoal.updatedAt = Date()
+
+        try upsertTodayWeight(weightKg: input.weightKg, note: "Profil guncellemesi")
         try context.save()
         return profile
     }
@@ -96,5 +138,21 @@ final class SwiftDataUserRepository: UserRepository {
         let goal = NutritionGoal()
         context.insert(goal)
         return goal
+    }
+
+    private func upsertTodayWeight(weightKg: Double, note: String?) throws {
+        let calendar = Calendar.nuvyra
+        let (start, end) = calendar.startAndEndOfDay(for: Date())
+        let descriptor = FetchDescriptor<WeightLog>(
+            predicate: #Predicate { $0.date >= start && $0.date < end },
+            sortBy: [SortDescriptor(\.date, order: .reverse)]
+        )
+        if let existing = try context.fetch(descriptor).first {
+            existing.weightKg = weightKg
+            existing.note = note
+            existing.source = "manual"
+        } else {
+            context.insert(WeightLog(weightKg: weightKg, source: "manual", note: note))
+        }
     }
 }

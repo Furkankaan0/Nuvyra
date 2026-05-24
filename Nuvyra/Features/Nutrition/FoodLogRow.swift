@@ -6,6 +6,7 @@ struct FoodLogRow: View {
     var meal: MealEntry
     var onEdit: () -> Void
     var onDelete: () -> Void
+    var onCopyToToday: () -> Void = {}
 
     var body: some View {
         Button(action: onEdit) {
@@ -58,6 +59,10 @@ struct FoodLogRow: View {
                 Label("Düzenle", systemImage: "pencil")
             }
             .tint(NuvyraColors.accent)
+            Button(action: onCopyToToday) {
+                Label("Bugüne kopyala", systemImage: "doc.on.doc")
+            }
+            .tint(NuvyraColors.softSand)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(meal.name), \(meal.calories) kalori, \(meal.portionDescription)")

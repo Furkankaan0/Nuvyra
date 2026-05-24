@@ -16,7 +16,17 @@ struct WaterTrackingView: View {
                         title: "Su takibi",
                         subtitle: "Günlük hedefini takip et, küçük molalarla ritmini koru."
                     )
-                    WaterProgressCard(summary: viewModel.summary)
+                    NuvyraDateNavigator(
+                        date: Binding(
+                            get: { viewModel.selectedDate },
+                            set: { viewModel.changeDate(to: $0, context: modelContext, dependencies: dependencies) }
+                        ),
+                        title: "Su tarihi"
+                    )
+                    WaterProgressCard(
+                        summary: viewModel.summary,
+                        label: Calendar.nuvyra.isDateInToday(viewModel.selectedDate) ? "Bugün" : viewModel.selectedDate.formatted(date: .abbreviated, time: .omitted)
+                    )
                     quickAddSection
                     manualInputSection
                     if !viewModel.entries.isEmpty {
@@ -114,7 +124,7 @@ struct WaterTrackingView: View {
         NuvyraCard {
             VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
                 HStack {
-                    NuvyraSectionHeader(title: "Bugünkü kayıtlar", subtitle: nil)
+                    NuvyraSectionHeader(title: Calendar.nuvyra.isDateInToday(viewModel.selectedDate) ? "Bugünkü kayıtlar" : "Seçili gün kayıtları", subtitle: nil)
                     Spacer()
                     Button(role: .destructive) {
                         Task { await viewModel.clearToday(context: modelContext, dependencies: dependencies) }

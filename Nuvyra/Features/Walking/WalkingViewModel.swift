@@ -12,11 +12,13 @@ final class WalkingViewModel: ObservableObject {
     @Published var motionState: MotionActivityState = .unknown
     @Published var walkingFocusActive = false
     @Published var walkingFocusStartedAt: Date?
+    @Published var selectedDate: Date = Date()
     private var didPlayGoalHaptic = false
     private var didPlayHalfwayHaptic = false
 
     var stepGoal: Int { profile?.dailyStepTarget ?? 7_500 }
     var remainingSteps: Int { max(stepGoal - snapshot.steps, 0) }
+    var isViewingToday: Bool { Calendar.nuvyra.isDateInToday(selectedDate) }
     var streak: Int { logs.reversed().prefix { $0.goalCompleted }.count }
     var focusElapsedMinutes: Int {
         guard let walkingFocusStartedAt else { return 0 }
@@ -26,6 +28,9 @@ final class WalkingViewModel: ObservableObject {
     var insight: String {
         if walkingFocusActive {
             return "Yürüyüş odağı açık. Kilit ekranından ritmini izleyebilirsin."
+        }
+        if !isViewingToday {
+            return "Bu günün yürüyüş ritmini inceliyorsun. Geçmiş günleri görmek, hedeflerini gerçek hayata göre ayarlamana yardımcı olur."
         }
         if motionState == .automotive {
             return "Şu an araç hareketi algılanıyor. Yürüyüş önerisini daha sakin bir zamana bırakalım."
@@ -45,34 +50,47 @@ final class WalkingViewModel: ObservableObject {
     func load(context: ModelContext, dependencies: DependencyContainer) async {
         do {
             profile = try dependencies.userRepository(context: context).profile()
-            snapshot = await dependencies.healthService.todaySnapshot()
-            if snapshot.steps == 0 {
+            let repository = dependencies.activityRepository(context: context)
+            if isViewingToday {
+                snapshot = await dependencies.healthService.todaySnapshot()
+            } else if let log = try repository.walkingLog(on: selectedDate) {
+                snapshot = HealthSnapshot(steps: log.steps, activeEnergy: log.activeEnergy, distanceKm: log.distanceKm, authorizationStatus: .sharingDenied, source: .manualFallback)
+            } else {
+                snapshot = HealthSnapshot(steps: 0, activeEnergy: 0, distanceKm: nil, authorizationStatus: .sharingDenied, source: .manualFallback)
+            }
+            if isViewingToday, snapshot.steps == 0 {
                 let fallbackSteps = await dependencies.motionService.todayStepsFallback()
                 snapshot = HealthSnapshot(steps: fallbackSteps, activeEnergy: 0, distanceKm: nil, authorizationStatus: .sharingDenied, source: .coreMotion)
             }
             motionState = await dependencies.motionService.currentActivityState()
-            let repository = dependencies.activityRepository(context: context)
-            try repository.upsertWalkingSnapshot(date: Date(), steps: snapshot.steps, activeEnergy: snapshot.activeEnergy, distanceKm: snapshot.distanceKm, goal: stepGoal)
-            logs = try repository.walkingLogs(days: 7)
-            averageSteps = try repository.averageSteps(days: 3)
-            completionRate = try repository.completionRate(days: 7, goal: stepGoal)
+            if isViewingToday {
+                try repository.upsertWalkingSnapshot(date: selectedDate, steps: snapshot.steps, activeEnergy: snapshot.activeEnergy, distanceKm: snapshot.distanceKm, goal: stepGoal)
+            }
+            logs = try repository.walkingLogs(days: 7, endingOn: selectedDate)
+            averageSteps = try repository.averageSteps(days: 3, endingOn: selectedDate)
+            completionRate = try repository.completionRate(days: 7, endingOn: selectedDate, goal: stepGoal)
             walkingFocusActive = dependencies.walkingLiveActivityService.isActive
             if walkingFocusActive {
                 await dependencies.walkingLiveActivityService.update(steps: snapshot.steps, goal: stepGoal, elapsedMinutes: focusElapsedMinutes)
             }
-            if snapshot.steps >= stepGoal / 2, snapshot.steps < stepGoal, !didPlayHalfwayHaptic {
+            if isViewingToday, snapshot.steps >= stepGoal / 2, snapshot.steps < stepGoal, !didPlayHalfwayHaptic {
                 didPlayHalfwayHaptic = true
                 dependencies.haptics.walkingHalfwayReached()
             } else if snapshot.steps < stepGoal / 2 {
                 didPlayHalfwayHaptic = false
             }
-            if snapshot.steps >= stepGoal, !didPlayGoalHaptic {
+            if isViewingToday, snapshot.steps >= stepGoal, !didPlayGoalHaptic {
                 didPlayGoalHaptic = true
                 dependencies.haptics.goalCompleted()
             } else if snapshot.steps < stepGoal {
                 didPlayGoalHaptic = false
             }
         } catch {}
+    }
+
+    func changeDate(to date: Date, context: ModelContext, dependencies: DependencyContainer) {
+        selectedDate = date
+        Task { await load(context: context, dependencies: dependencies) }
     }
 
     func startWalkingFocus(dependencies: DependencyContainer) async {

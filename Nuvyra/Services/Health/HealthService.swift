@@ -28,6 +28,7 @@ protocol HealthService {
     var isHealthDataAvailable: Bool { get }
     func requestAuthorization() async -> HealthAuthorizationState
     func todaySnapshot() async -> HealthSnapshot
+    func saveNutrition(for meal: MealEntry) async
 }
 
 final class LiveHealthService: HealthService {
@@ -43,9 +44,10 @@ final class LiveHealthService: HealthService {
     func requestAuthorization() async -> HealthAuthorizationState {
         guard isHealthDataAvailable else { return .unavailable }
         let readTypes = quantityTypes()
-        guard !readTypes.isEmpty else { return .unavailable }
+        let shareTypes = nutritionShareTypes()
+        guard !readTypes.isEmpty || !shareTypes.isEmpty else { return .unavailable }
         return await withCheckedContinuation { continuation in
-            store.requestAuthorization(toShare: Set<HKSampleType>(), read: readTypes) { success, _ in
+            store.requestAuthorization(toShare: shareTypes, read: readTypes) { success, _ in
                 continuation.resume(returning: success ? .sharingAuthorized : .sharingDenied)
             }
         }
@@ -73,6 +75,87 @@ final class LiveHealthService: HealthService {
         return Set(identifiers.compactMap { HKQuantityType.quantityType(forIdentifier: $0) })
     }
 
+    private func nutritionShareTypes() -> Set<HKSampleType> {
+        let identifiers: [HKQuantityTypeIdentifier] = [
+            .dietaryEnergyConsumed,
+            .dietaryProtein,
+            .dietaryCarbohydrates,
+            .dietaryFatTotal
+        ]
+        return Set(identifiers.compactMap { HKQuantityType.quantityType(forIdentifier: $0) })
+    }
+
+    func saveNutrition(for meal: MealEntry) async {
+        guard isHealthDataAvailable else { return }
+        let shareTypes = nutritionShareTypes()
+        guard !shareTypes.isEmpty else { return }
+
+        let state = await requestAuthorization()
+        guard state == .sharingAuthorized else { return }
+
+        var samples: [HKQuantitySample] = []
+        let metadata = [HKMetadataKeyFoodType: meal.name]
+        appendSample(
+            to: &samples,
+            identifier: .dietaryEnergyConsumed,
+            value: Double(meal.calories),
+            unit: .kilocalorie(),
+            date: meal.date,
+            metadata: metadata
+        )
+        appendSample(
+            to: &samples,
+            identifier: .dietaryProtein,
+            value: meal.protein ?? 0,
+            unit: .gram(),
+            date: meal.date,
+            metadata: metadata
+        )
+        appendSample(
+            to: &samples,
+            identifier: .dietaryCarbohydrates,
+            value: meal.carbs ?? 0,
+            unit: .gram(),
+            date: meal.date,
+            metadata: metadata
+        )
+        appendSample(
+            to: &samples,
+            identifier: .dietaryFatTotal,
+            value: meal.fat ?? 0,
+            unit: .gram(),
+            date: meal.date,
+            metadata: metadata
+        )
+        guard !samples.isEmpty else { return }
+        let objects = samples.map { $0 as HKObject }
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            store.save(objects) { _, _ in
+                continuation.resume()
+            }
+        }
+    }
+
+    private func appendSample(
+        to samples: inout [HKQuantitySample],
+        identifier: HKQuantityTypeIdentifier,
+        value: Double,
+        unit: HKUnit,
+        date: Date,
+        metadata: [String: Any]
+    ) {
+        guard value > 0, let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return }
+        let sample = HKQuantitySample(
+            type: type,
+            quantity: HKQuantity(unit: unit, doubleValue: value),
+            start: date,
+            end: date,
+            metadata: metadata
+        )
+        samples.append(sample)
+    }
+
     private func cumulativeValue(for identifier: HKQuantityTypeIdentifier, unit: HKUnit) async -> Double? {
         guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return nil }
         let (start, end) = calendar.startAndEndOfDay(for: Date())
@@ -91,4 +174,5 @@ struct MockHealthService: HealthService {
     var isHealthDataAvailable: Bool { true }
     func requestAuthorization() async -> HealthAuthorizationState { snapshot.authorizationStatus }
     func todaySnapshot() async -> HealthSnapshot { snapshot }
+    func saveNutrition(for meal: MealEntry) async {}
 }

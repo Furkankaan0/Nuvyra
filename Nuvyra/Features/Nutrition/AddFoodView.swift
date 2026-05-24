@@ -235,6 +235,7 @@ struct AddFoodView: View {
                         isEstimated: true
                     )
                     try repository.addMeal(meal)
+                    await dependencies.healthService.saveNutrition(for: meal)
                     dependencies.haptics.mealLogged()
                     await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "add_food_view"]))
                 case .edit(let meal):
@@ -247,6 +248,7 @@ struct AddFoodView: View {
                         date: date,
                         isFavorite: isFavorite
                     )
+                    await dependencies.healthService.saveNutrition(for: meal)
                 }
                 dismiss()
             } catch {

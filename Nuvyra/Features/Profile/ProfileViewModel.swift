@@ -7,6 +7,7 @@ final class ProfileViewModel: ObservableObject {
     @Published private(set) var profile: UserProfile?
     @Published private(set) var subscriptionState = SubscriptionState()
     @Published private(set) var healthSnapshot = HealthSnapshot.fallback
+    @Published private(set) var weightTrend = WeightTrendSummary.empty
     @Published private(set) var isLoading = false
     @Published var alertMessage: String?
 
@@ -33,6 +34,7 @@ final class ProfileViewModel: ObservableObject {
         do {
             profile = try dependencies.userRepository(context: context).profile()
             subscriptionState = try dependencies.subscriptionRepository(context: context).state()
+            weightTrend = try dependencies.weightRepository(context: context).trendSummary(days: 90, targetWeightKg: profile?.targetWeightKg)
             healthSnapshot = await dependencies.healthService.todaySnapshot()
         } catch {
             alertMessage = "Profil bilgileri yüklenemedi."
@@ -61,6 +63,24 @@ final class ProfileViewModel: ObservableObject {
             self.profile = profile
         } catch {
             alertMessage = "Hedeflerin kaydedilemedi."
+        }
+    }
+
+    func updateProfile(context: ModelContext, dependencies: DependencyContainer, name: String, input: NutritionGoalCalculationInput) {
+        guard let profile else { return }
+        let targets = NutritionGoalCalculator.calculate(for: input)
+        do {
+            let updated = try dependencies.userRepository(context: context).updateProfile(
+                profile,
+                name: name,
+                input: input,
+                targets: targets
+            )
+            self.profile = updated
+            weightTrend = try dependencies.weightRepository(context: context).trendSummary(days: 90, targetWeightKg: updated.targetWeightKg)
+            alertMessage = "Profilin ve hedeflerin güncellendi."
+        } catch {
+            alertMessage = "Profil güncellenemedi."
         }
     }
 }

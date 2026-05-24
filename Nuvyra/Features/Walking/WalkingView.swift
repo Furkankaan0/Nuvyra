@@ -12,14 +12,23 @@ struct WalkingView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     NuvyraSectionHeader(title: "Yürüyüş", subtitle: "Bugün düşük tempoda kalmak da sorun değil. Devamlılık daha önemli.")
-                    StepGoalCard(steps: viewModel.snapshot.steps, goal: viewModel.stepGoal, remaining: viewModel.remainingSteps)
-                    WalkingFocusCard(
-                        isActive: viewModel.walkingFocusActive,
-                        motionState: viewModel.motionState,
-                        elapsedMinutes: viewModel.focusElapsedMinutes,
-                        onStart: { Task { await viewModel.startWalkingFocus(dependencies: dependencies) } },
-                        onEnd: { Task { await viewModel.endWalkingFocus(dependencies: dependencies) } }
+                    NuvyraDateNavigator(
+                        date: Binding(
+                            get: { viewModel.selectedDate },
+                            set: { viewModel.changeDate(to: $0, context: modelContext, dependencies: dependencies) }
+                        ),
+                        title: "Yürüyüş tarihi"
                     )
+                    StepGoalCard(steps: viewModel.snapshot.steps, goal: viewModel.stepGoal, remaining: viewModel.remainingSteps)
+                    if viewModel.isViewingToday {
+                        WalkingFocusCard(
+                            isActive: viewModel.walkingFocusActive,
+                            motionState: viewModel.motionState,
+                            elapsedMinutes: viewModel.focusElapsedMinutes,
+                            onStart: { Task { await viewModel.startWalkingFocus(dependencies: dependencies) } },
+                            onEnd: { Task { await viewModel.endWalkingFocus(dependencies: dependencies) } }
+                        )
+                    }
                     WalkingStreakCard(streak: viewModel.streak, averageSteps: viewModel.averageSteps, completionRate: viewModel.completionRate)
                     WeeklyStepsChart(logs: viewModel.logs, goal: viewModel.stepGoal)
                     NuvyraGlassCard {

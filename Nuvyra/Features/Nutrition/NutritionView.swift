@@ -35,6 +35,21 @@ struct NutritionView: View {
                 }
                 .padding(NuvyraSpacing.lg)
             }
+
+            if let feedback = viewModel.actionFeedback {
+                VStack {
+                    Spacer()
+                    Text(feedback)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 10)
+                        .background(NuvyraColors.accent.opacity(0.92), in: Capsule())
+                        .padding(.bottom, NuvyraSpacing.xl)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .allowsHitTesting(false)
+            }
         }
         .navigationTitle("Beslenme")
         .navigationBarTitleDisplayMode(.inline)
@@ -75,20 +90,18 @@ struct NutritionView: View {
     }
 
     private var dateSelector: some View {
-        DatePicker(
-            "Tarih",
-            selection: Binding(
-                get: { viewModel.selectedDate },
-                set: { viewModel.changeDate(to: $0, context: modelContext, dependencies: dependencies) }
-            ),
-            in: ...Date(),
-            displayedComponents: .date
-        )
-        .datePickerStyle(.compact)
-        .labelsHidden()
-        .padding(.horizontal, NuvyraSpacing.md)
-        .padding(.vertical, NuvyraSpacing.sm)
-        .background(.ultraThinMaterial, in: Capsule())
+        VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
+            NuvyraDateNavigator(
+                date: Binding(
+                    get: { viewModel.selectedDate },
+                    set: { viewModel.changeDate(to: $0, context: modelContext, dependencies: dependencies) }
+                ),
+                title: "Öğün tarihi"
+            )
+            NuvyraSecondaryButton(title: "Önceki günü bu tarihe kopyala", systemImage: "doc.on.doc") {
+                Task { await viewModel.copyPreviousDayMeals(context: modelContext, dependencies: dependencies) }
+            }
+        }
     }
 
     private var dailyTotalsCard: some View {
@@ -173,7 +186,10 @@ struct NutritionView: View {
                         viewModel.showingAddMeal = true
                     },
                     onEdit: { meal in viewModel.startEditing(meal) },
-                    onDelete: { meal in viewModel.delete(meal, context: modelContext, dependencies: dependencies) }
+                    onDelete: { meal in viewModel.delete(meal, context: modelContext, dependencies: dependencies) },
+                    onCopyToToday: { meal in
+                        Task { await viewModel.copyMealToToday(meal, context: modelContext, dependencies: dependencies) }
+                    }
                 )
             }
         }

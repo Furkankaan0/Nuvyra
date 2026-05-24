@@ -1,3 +1,5 @@
+import Charts
+import Foundation
 import SwiftData
 import SwiftUI
 
@@ -7,6 +9,7 @@ struct ProfileView: View {
     @Query private var settings: [AppSettings]
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showsGoalEditor = false
+    @State private var showsProfileEditor = false
 
     var body: some View {
         ZStack {
@@ -16,6 +19,8 @@ struct ProfileView: View {
                     headerCard
                     ProfileAuthSection()
                     profileInfoSection
+                    weightTrendSection
+                    bodyMeasurementsSection
                     goalsSection
                     premiumSection
                     healthSection
@@ -34,6 +39,13 @@ struct ProfileView: View {
             if let profile = viewModel.profile {
                 GoalEditorSheet(profile: profile) { calories, water, steps in
                     viewModel.updateGoals(context: modelContext, calories: calories, waterMl: water, steps: steps)
+                }
+            }
+        }
+        .sheet(isPresented: $showsProfileEditor) {
+            if let profile = viewModel.profile {
+                ProfileEditorSheet(profile: profile) { name, input in
+                    viewModel.updateProfile(context: modelContext, dependencies: dependencies, name: name, input: input)
                 }
             }
         }
@@ -71,6 +83,10 @@ struct ProfileView: View {
                     ProfilePill(title: "Boy", value: "\(Int(profile?.heightCm ?? 175)) cm")
                     ProfilePill(title: "Kilo", value: "\(Int(profile?.weightKg ?? 78)) kg")
                 }
+
+                NuvyraSecondaryButton(title: "Profili düzenle", systemImage: "pencil") {
+                    showsProfileEditor = true
+                }
             }
         }
     }
@@ -83,6 +99,26 @@ struct ProfileView: View {
             SettingsRow(title: "Aktivite", subtitle: profile?.activityLevel.title ?? "Hafif aktif", systemImage: "figure.walk")
             SettingsDivider()
             SettingsRow(title: "Hedef temposu", subtitle: profile?.goalPace?.title ?? "Dengeli", systemImage: "speedometer")
+        }
+    }
+
+    private var weightTrendSection: some View {
+        WeightTrendCard(summary: viewModel.weightTrend, targetWeightKg: viewModel.profile?.targetWeightKg)
+    }
+
+    private var bodyMeasurementsSection: some View {
+        SettingsSection(title: "Vücut ölçüleri", subtitle: "Bel, kalça, vücut yağı gibi kompozisyon değişimleri.") {
+            NavigationLink {
+                BodyMeasurementsView()
+            } label: {
+                SettingsRow(
+                    title: "Tüm ölçümler",
+                    subtitle: "Trend, geçmiş ve yeni kayıt.",
+                    systemImage: "ruler",
+                    tint: NuvyraColors.accent
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -184,7 +220,7 @@ struct ProfileView: View {
             NavigationLink {
                 AccountManagementView()
             } label: {
-                SettingsRow(title: "Hesabı yönet", subtitle: "Veri dışa aktarma, hesap silme ve çıkış.", systemImage: "person.crop.circle.badge.exclamationmark")
+                SettingsRow(title: "Hesabı yönet", subtitle: "Veri dışa aktarma, yerel veri silme ve oturum bilgileri.", systemImage: "person.crop.circle.badge.exclamationmark")
             }
             .buttonStyle(.plain)
         }
@@ -236,6 +272,79 @@ private struct ProfilePill: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .background(NuvyraColors.card(scheme).opacity(0.62), in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous))
+    }
+}
+
+private struct WeightTrendCard: View {
+    @Environment(\.colorScheme) private var scheme
+    var summary: WeightTrendSummary
+    var targetWeightKg: Double?
+
+    var body: some View {
+        NuvyraGlassCard {
+            VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Kilo trendi")
+                            .font(NuvyraTypography.section)
+                        Text(subtitle)
+                            .font(NuvyraTypography.caption)
+                            .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                    }
+                    Spacer()
+                    if let latest = summary.latestWeightKg {
+                        Text("\(latest, specifier: "%.1f") kg")
+                            .font(.headline.weight(.heavy))
+                            .foregroundStyle(NuvyraColors.accent)
+                    }
+                }
+
+                if summary.logs.count >= 2 {
+                    Chart(summary.logs) { log in
+                        LineMark(
+                            x: .value("Tarih", log.date),
+                            y: .value("Kilo", log.weightKg)
+                        )
+                        .interpolationMethod(.catmullRom)
+                        .foregroundStyle(NuvyraColors.accent)
+
+                        PointMark(
+                            x: .value("Tarih", log.date),
+                            y: .value("Kilo", log.weightKg)
+                        )
+                        .foregroundStyle(NuvyraColors.accent)
+                    }
+                    .frame(height: 150)
+                    .chartXAxis(.hidden)
+                    .accessibilityLabel("Kilo trend grafiği")
+                    .accessibilityValue(accessibilitySummary)
+                } else {
+                    HStack(spacing: NuvyraSpacing.sm) {
+                        Image(systemName: "chart.xyaxis.line")
+                            .foregroundStyle(NuvyraColors.accent)
+                        Text("Trend için en az iki kilo kaydı gerekir. Profilini güncellediğinde kayıt otomatik oluşur.")
+                            .font(NuvyraTypography.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    private var subtitle: String {
+        if let projected = summary.projectedGoalDate {
+            return "Bu tempoyla hedefe yaklaşık \(projected.formatted(date: .abbreviated, time: .omitted)) civarında ulaşabilirsin."
+        }
+        if summary.deltaKg == 0 {
+            return targetWeightKg == nil ? "Hedef kilo ekleyerek projeksiyon alabilirsin." : "Trend oluşması için birkaç kayıt daha yeterli."
+        }
+        let sign = summary.deltaKg > 0 ? "+" : ""
+        return "Son 90 günde \(sign)\(String(format: "%.1f", summary.deltaKg)) kg değişim."
+    }
+
+    private var accessibilitySummary: String {
+        guard let latest = summary.latestWeightKg else { return "Henüz kilo kaydı yok." }
+        return "Son kilo \(String(format: "%.1f", latest)) kilogram. Değişim \(String(format: "%.1f", summary.deltaKg)) kilogram."
     }
 }
 

@@ -8,6 +8,7 @@ struct MealSectionView: View {
     var onAdd: () -> Void
     var onEdit: (MealEntry) -> Void
     var onDelete: (MealEntry) -> Void
+    var onCopyToToday: (MealEntry) -> Void = { _ in }
 
     private var totalCalories: Int {
         entries.reduce(0) { $0 + $1.calories }
@@ -28,7 +29,8 @@ struct MealSectionView: View {
                             FoodLogRow(
                                 meal: meal,
                                 onEdit: { onEdit(meal) },
-                                onDelete: { onDelete(meal) }
+                                onDelete: { onDelete(meal) },
+                                onCopyToToday: { onCopyToToday(meal) }
                             )
                         }
                     }

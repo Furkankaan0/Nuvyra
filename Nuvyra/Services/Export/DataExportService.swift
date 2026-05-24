@@ -76,6 +76,22 @@ final class DataExportService {
             ])
         }
 
+        let weightLogs = try context.fetch(FetchDescriptor<WeightLog>(sortBy: [SortDescriptor(\.date, order: .reverse)]))
+        for weight in weightLogs {
+            rows.append([
+                "weight",
+                weight.id.uuidString,
+                iso(weight.date),
+                weight.source,
+                "Kilo kaydi",
+                String(format: "%.1f", weight.weightKg),
+                "",
+                "",
+                "",
+                weight.note ?? ""
+            ])
+        }
+
         let walks = try context.fetch(FetchDescriptor<WalkingLog>(sortBy: [SortDescriptor(\.date, order: .reverse)]))
         for walk in walks {
             rows.append([
