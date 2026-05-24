@@ -22,8 +22,11 @@ struct DashboardView: View {
                     CalorieBalanceCard(summary: viewModel.nutritionSummary)
                         .dashboardSlide(index: 0, animated: didAnimateAppearance)
 
-                    MacroSummaryCard(macros: viewModel.macroSummaries)
+                    EnergyBalanceCard(balance: viewModel.energyBalance)
                         .dashboardSlide(index: 1, animated: didAnimateAppearance)
+
+                    MacroSummaryCard(macros: viewModel.macroSummaries)
+                        .dashboardSlide(index: 2, animated: didAnimateAppearance)
 
                     QuickActionsCard { handle($0) }
                         .dashboardSlide(index: 2, animated: didAnimateAppearance)

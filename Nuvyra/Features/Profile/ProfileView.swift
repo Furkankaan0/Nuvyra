@@ -20,6 +20,7 @@ struct ProfileView: View {
                     ProfileAuthSection()
                     profileInfoSection
                     weightTrendSection
+                    bodyMetricsSection
                     bodyMeasurementsSection
                     goalsSection
                     premiumSection
@@ -104,6 +105,13 @@ struct ProfileView: View {
 
     private var weightTrendSection: some View {
         WeightTrendCard(summary: viewModel.weightTrend, targetWeightKg: viewModel.profile?.targetWeightKg)
+    }
+
+    @ViewBuilder
+    private var bodyMetricsSection: some View {
+        if let profile = viewModel.profile {
+            BodyMetricsCard(summary: BodyMetricsCalculator.summary(for: profile))
+        }
     }
 
     private var bodyMeasurementsSection: some View {

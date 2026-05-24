@@ -62,6 +62,17 @@ final class DashboardViewModel: ObservableObject {
         )
     }
 
+    /// Today's TDEE-based deficit/surplus snapshot. Empty when there's no profile yet.
+    var energyBalance: EnergyBalanceSummary {
+        guard let profile else { return .empty }
+        let metrics = BodyMetricsCalculator.summary(for: profile)
+        return BodyMetricsCalculator.energyBalance(
+            summary: metrics,
+            caloriesConsumed: totalCalories,
+            caloriesBurned: Int(healthSnapshot.activeEnergy.rounded())
+        )
+    }
+
     var recentFoods: [RecentFoodLog] {
         meals
             .sorted { $0.createdAt > $1.createdAt }
