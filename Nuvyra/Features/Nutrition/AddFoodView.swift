@@ -1,5 +1,7 @@
 import SwiftData
 import SwiftUI
+import PhotosUI
+import UIKit
 
 /// Premium add / edit food sheet — supports grams / portion / piece units, date,
 /// meal type, live macro preview and toggleable favourite. Used by Dashboard,
@@ -26,6 +28,10 @@ struct AddFoodView: View {
     @State private var carbs: Double
     @State private var fat: Double
     @State private var isFavorite: Bool
+    @State private var selectedPhotoItem: PhotosPickerItem?
+    @State private var photoData: Data?
+    @State private var isLoadingPhoto = false
+    @State private var showingCameraCapture = false
     @State private var isSaving = false
     @State private var errorMessage: String?
 
@@ -50,6 +56,7 @@ struct AddFoodView: View {
             _carbs = State(initialValue: 35)
             _fat = State(initialValue: 12)
             _isFavorite = State(initialValue: false)
+            _photoData = State(initialValue: nil)
             _fiber = State(initialValue: nil)
             _sodium = State(initialValue: nil)
             _sugar = State(initialValue: nil)
@@ -66,6 +73,7 @@ struct AddFoodView: View {
             _carbs = State(initialValue: meal.carbs ?? 0)
             _fat = State(initialValue: meal.fat ?? 0)
             _isFavorite = State(initialValue: meal.isFavorite)
+            _photoData = State(initialValue: meal.photoData)
             _fiber = State(initialValue: meal.fiberGrams)
             _sodium = State(initialValue: meal.sodiumMg)
             _sugar = State(initialValue: meal.sugarGrams)
@@ -90,6 +98,7 @@ struct AddFoodView: View {
                 ScrollView(showsIndicators: false) {
                     VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                         identitySection
+                        photoSection
                         portionSection
                         macroSection
                         microSection
@@ -131,6 +140,13 @@ struct AddFoodView: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            .task(id: selectedPhotoItem) {
+                await loadSelectedPhoto()
+            }
+            .sheet(isPresented: $showingCameraCapture) {
+                MealCameraCaptureView(photoData: $photoData)
+                    .ignoresSafeArea()
+            }
         }
     }
 
@@ -180,6 +196,69 @@ struct AddFoodView: View {
                     allowsFraction: unit != .piece,
                     range: 0...5_000
                 )
+            }
+        }
+    }
+
+    private var photoSection: some View {
+        NuvyraCard {
+            VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
+                NuvyraSectionHeader(
+                    title: "Öğün fotoğrafı",
+                    subtitle: "İstersen bu kaydı görsel bir hafızaya dönüştür."
+                )
+
+                HStack(alignment: .center, spacing: NuvyraSpacing.md) {
+                    MealPhotoThumbnail(
+                        data: photoData,
+                        fallbackSystemImage: "camera.macro",
+                        size: 84,
+                        cornerRadius: NuvyraRadius.lg
+                    )
+
+                    VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
+                        Text(photoData == nil ? "Fotoğraf ekle" : "Fotoğraf hazır")
+                            .font(.headline.weight(.semibold))
+                        Text(photoData == nil ? "Galeri veya kamera ile öğününü kaydet." : "Bu görsel sadece cihazındaki yemek kaydında saklanır.")
+                            .font(NuvyraTypography.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HStack(spacing: NuvyraSpacing.sm) {
+                            PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                                Label("Galeri", systemImage: "photo.on.rectangle")
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+
+                            if UIImagePickerController.isSourceTypeAvailable(.camera) {
+                                Button {
+                                    showingCameraCapture = true
+                                } label: {
+                                    Label("Kamera", systemImage: "camera")
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                            }
+                        }
+
+                        if isLoadingPhoto {
+                            ProgressView("Fotoğraf hazırlanıyor")
+                                .font(NuvyraTypography.caption)
+                        }
+                    }
+                }
+
+                if photoData != nil {
+                    Button(role: .destructive) {
+                        selectedPhotoItem = nil
+                        photoData = nil
+                    } label: {
+                        Label("Fotoğrafı kaldır", systemImage: "trash")
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
@@ -291,7 +370,8 @@ struct AddFoodView: View {
                         fiberGrams: values.fiber > 0 ? values.fiber : nil,
                         sodiumMg: values.sodium > 0 ? values.sodium : nil,
                         sugarGrams: values.sugar > 0 ? values.sugar : nil,
-                        saturatedFatGrams: values.saturatedFat > 0 ? values.saturatedFat : nil
+                        saturatedFatGrams: values.saturatedFat > 0 ? values.saturatedFat : nil,
+                        photoData: photoData
                     )
                     try repository.addMeal(meal)
                     await dependencies.healthService.saveNutrition(for: meal)
@@ -305,7 +385,8 @@ struct AddFoodView: View {
                         portion: portion,
                         mealType: mealType,
                         date: date,
-                        isFavorite: isFavorite
+                        isFavorite: isFavorite,
+                        photoData: photoData
                     )
                     await dependencies.healthService.saveNutrition(for: meal)
                 }
@@ -314,6 +395,33 @@ struct AddFoodView: View {
                 errorMessage = "Kayıt başarısız oldu. Tekrar dene."
             }
         }
+    }
+
+    @MainActor
+    private func loadSelectedPhoto() async {
+        guard let selectedPhotoItem else { return }
+        isLoadingPhoto = true
+        defer { isLoadingPhoto = false }
+        do {
+            guard let data = try await selectedPhotoItem.loadTransferable(type: Data.self) else { return }
+            photoData = compressPhotoData(data)
+        } catch {
+            errorMessage = "Fotoğraf eklenemedi. Daha küçük bir görsel deneyebilirsin."
+        }
+    }
+
+    private func compressPhotoData(_ data: Data) -> Data {
+        guard let image = UIImage(data: data) else { return data }
+        let maxSide: CGFloat = 1_400
+        let longestSide = max(image.size.width, image.size.height)
+        let scale = min(1, maxSide / max(longestSide, 1))
+        let targetSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+
+        let renderer = UIGraphicsImageRenderer(size: targetSize)
+        let rendered = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
+        }
+        return rendered.jpegData(compressionQuality: 0.72) ?? data
     }
 
     private func delete(_ meal: MealEntry) {

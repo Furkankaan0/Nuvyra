@@ -46,11 +46,12 @@ private struct RecentFoodRow: View {
 
     var body: some View {
         HStack(spacing: NuvyraSpacing.md) {
-            Image(systemName: entry.mealType.systemImage)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(NuvyraColors.accent)
-                .frame(width: 38, height: 38)
-                .background(NuvyraColors.accent.opacity(0.12), in: Circle())
+            MealPhotoThumbnail(
+                data: entry.photoData,
+                fallbackSystemImage: entry.mealType.systemImage,
+                size: 40,
+                cornerRadius: 14
+            )
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.name)
                     .font(.subheadline.weight(.semibold))

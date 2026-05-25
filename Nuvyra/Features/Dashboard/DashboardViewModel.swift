@@ -96,6 +96,51 @@ final class DashboardViewModel: ObservableObject {
             .map(RecentFoodLog.init(meal:))
     }
 
+    var shareableAchievement: ShareableAchievement? {
+        if stepSummary.isGoalReached {
+            let steps = stepSummary.steps.formatted()
+            return ShareableAchievement(
+                kind: .steps,
+                title: "Bugünkü yürüyüş ritmi tamam",
+                subtitle: "Adım hedefini sakin ve sürdürülebilir şekilde tamamladın.",
+                metric: steps,
+                shareText: "Bugün Nuvyra ile \(steps) adım attım. Günlük ritmimi nazikçe tamamladım."
+            )
+        }
+
+        if waterStreak.currentStreak >= 3 {
+            return ShareableAchievement(
+                kind: .waterStreak,
+                title: "\(waterStreak.currentStreak) günlük su ritmi",
+                subtitle: "Küçük tekrarlar güçlü bir alışkanlığa dönüşüyor.",
+                metric: "\(waterStreak.currentStreak) gün",
+                shareText: "Nuvyra ile \(waterStreak.currentStreak) gündür su ritmimi koruyorum."
+            )
+        }
+
+        if mealStreak.currentStreak >= 3 {
+            return ShareableAchievement(
+                kind: .mealStreak,
+                title: "\(mealStreak.currentStreak) günlük öğün kaydı",
+                subtitle: "Beslenmeni suçlulukla değil, farkındalıkla takip ediyorsun.",
+                metric: "\(mealStreak.currentStreak) gün",
+                shareText: "Nuvyra ile \(mealStreak.currentStreak) gündür öğünlerimi düzenli kaydediyorum."
+            )
+        }
+
+        if waterSummary.isGoalReached {
+            return ShareableAchievement(
+                kind: .waterGoal,
+                title: "Bugünkü su hedefi tamam",
+                subtitle: "Vücuduna iyi gelen basit bir ritmi bugün de korudun.",
+                metric: "\(waterMl) ml",
+                shareText: "Bugün Nuvyra ile su hedefimi tamamladım: \(waterMl) ml."
+            )
+        }
+
+        return nil
+    }
+
     // MARK: - AI insight (lightweight, on-device, non-medical)
     var insight: String {
         let summary = nutritionSummary

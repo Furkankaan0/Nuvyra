@@ -13,7 +13,7 @@ protocol LocalNutritionStore {
 
     func refresh(on date: Date) async
     func add(_ meal: MealEntry) async throws
-    func update(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool) async throws
+    func update(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool, photoData: Data?) async throws
     func delete(_ meal: MealEntry) async throws
 }
 
@@ -49,8 +49,8 @@ final class DefaultLocalNutritionStore: LocalNutritionStore, ObservableObject {
         await refresh(on: cachedDate)
     }
 
-    func update(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool) async throws {
-        try repository.updateMeal(meal, with: values, name: name, portion: portion, mealType: mealType, date: date, isFavorite: isFavorite)
+    func update(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool, photoData: Data?) async throws {
+        try repository.updateMeal(meal, with: values, name: name, portion: portion, mealType: mealType, date: date, isFavorite: isFavorite, photoData: photoData)
         await refresh(on: cachedDate)
     }
 

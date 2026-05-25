@@ -37,7 +37,7 @@ struct DailyMealSummary: Equatable {
 protocol NutritionRepository {
     func meals(on date: Date) throws -> [MealEntry]
     func addMeal(_ meal: MealEntry) throws
-    func updateMeal(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool) throws
+    func updateMeal(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool, photoData: Data?) throws
     func deleteMeal(_ meal: MealEntry) throws
     func addQuickFood(_ food: QuickFood, mealType: MealType) throws
     func addQuickFood(_ food: QuickFood, mealType: MealType, date: Date) throws
@@ -73,7 +73,7 @@ final class SwiftDataNutritionRepository: NutritionRepository {
         try context.save()
     }
 
-    func updateMeal(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool) throws {
+    func updateMeal(_ meal: MealEntry, with values: NutritionValues, name: String, portion: String, mealType: MealType, date: Date, isFavorite: Bool, photoData: Data?) throws {
         meal.name = name
         meal.calories = values.calories
         meal.protein = values.protein
@@ -87,6 +87,7 @@ final class SwiftDataNutritionRepository: NutritionRepository {
         meal.mealType = mealType
         meal.date = date
         meal.isFavorite = isFavorite
+        meal.photoData = photoData
         try context.save()
     }
 
@@ -128,7 +129,12 @@ final class SwiftDataNutritionRepository: NutritionRepository {
             portionDescription: meal.portionDescription,
             isFavorite: meal.isFavorite,
             isVerifiedTurkishFood: meal.isVerifiedTurkishFood,
-            isEstimated: meal.isEstimated
+            isEstimated: meal.isEstimated,
+            fiberGrams: meal.fiberGrams,
+            sodiumMg: meal.sodiumMg,
+            sugarGrams: meal.sugarGrams,
+            saturatedFatGrams: meal.saturatedFatGrams,
+            photoData: meal.photoData
         )
         try addMeal(copy)
     }

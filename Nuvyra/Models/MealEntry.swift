@@ -22,6 +22,7 @@ final class MealEntry: Identifiable {
     var sodiumMg: Double?
     var sugarGrams: Double?
     var saturatedFatGrams: Double?
+    @Attribute(.externalStorage) var photoData: Data?
 
     init(
         id: UUID = UUID(),
@@ -40,7 +41,8 @@ final class MealEntry: Identifiable {
         fiberGrams: Double? = nil,
         sodiumMg: Double? = nil,
         sugarGrams: Double? = nil,
-        saturatedFatGrams: Double? = nil
+        saturatedFatGrams: Double? = nil,
+        photoData: Data? = nil
     ) {
         self.id = id
         self.date = date
@@ -59,6 +61,7 @@ final class MealEntry: Identifiable {
         self.sodiumMg = sodiumMg
         self.sugarGrams = sugarGrams
         self.saturatedFatGrams = saturatedFatGrams
+        self.photoData = photoData
     }
 
     /// True if any micronutrient field is populated — used to drive UI badges.

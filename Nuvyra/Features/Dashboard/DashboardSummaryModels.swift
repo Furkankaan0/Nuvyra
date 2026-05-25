@@ -101,6 +101,17 @@ struct RecentFoodLog: Identifiable, Equatable {
     let portion: String
     let mealType: MealType
     let createdAt: Date
+    let photoData: Data?
+
+    init(id: UUID, name: String, calories: Int, portion: String, mealType: MealType, createdAt: Date, photoData: Data? = nil) {
+        self.id = id
+        self.name = name
+        self.calories = calories
+        self.portion = portion
+        self.mealType = mealType
+        self.createdAt = createdAt
+        self.photoData = photoData
+    }
 
     var relativeTimeText: String {
         let formatter = RelativeDateTimeFormatter()
@@ -118,7 +129,8 @@ extension RecentFoodLog {
             calories: meal.calories,
             portion: meal.portionDescription,
             mealType: meal.mealType,
-            createdAt: meal.createdAt
+            createdAt: meal.createdAt,
+            photoData: meal.photoData
         )
     }
 }

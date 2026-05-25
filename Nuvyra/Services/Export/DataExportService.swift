@@ -56,7 +56,7 @@ final class DataExportService {
                 gram(meal.protein),
                 gram(meal.carbs),
                 gram(meal.fat),
-                "portion=\(meal.portionDescription);estimated=\(meal.isEstimated);favorite=\(meal.isFavorite)"
+                "portion=\(meal.portionDescription);estimated=\(meal.isEstimated);favorite=\(meal.isFavorite);has_photo=\(meal.photoData != nil)"
             ])
         }
 
