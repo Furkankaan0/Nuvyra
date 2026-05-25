@@ -9,6 +9,7 @@ enum NuvyraModelContainer {
         WaterEntry.self,
         WalkingLog.self,
         WeightLog.self,
+        WorkoutLog.self,
         NutritionGoal.self,
         SubscriptionState.self,
         AppSettings.self

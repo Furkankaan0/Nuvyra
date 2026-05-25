@@ -29,6 +29,7 @@ protocol HealthService {
     func requestAuthorization() async -> HealthAuthorizationState
     func todaySnapshot() async -> HealthSnapshot
     func saveNutrition(for meal: MealEntry) async
+    func todayWorkouts() async -> [WorkoutEntry]
 }
 
 final class LiveHealthService: HealthService {
@@ -167,12 +168,68 @@ final class LiveHealthService: HealthService {
             store.execute(query)
         }
     }
+
+    // MARK: - Workouts
+    func todayWorkouts() async -> [WorkoutEntry] {
+        guard isHealthDataAvailable else { return [] }
+        let workoutType = HKObjectType.workoutType()
+        let (start, end) = calendar.startAndEndOfDay(for: Date())
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+        let samples: [HKWorkout] = await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: workoutType, predicate: predicate, limit: 32, sortDescriptors: [sort]) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKWorkout]) ?? [])
+            }
+            store.execute(query)
+        }
+        return samples.map { workout in
+            let kcal: Int
+            if let energy = workout.statistics(for: HKQuantityType(.activeEnergyBurned))?.sumQuantity()?.doubleValue(for: .kilocalorie()) {
+                kcal = Int(energy.rounded())
+            } else {
+                kcal = 0
+            }
+            let distanceKm: Double? = workout.statistics(for: HKQuantityType(.distanceWalkingRunning))?.sumQuantity()?.doubleValue(for: .meterUnit(with: .kilo))
+                ?? workout.statistics(for: HKQuantityType(.distanceCycling))?.sumQuantity()?.doubleValue(for: .meterUnit(with: .kilo))
+                ?? workout.statistics(for: HKQuantityType(.distanceSwimming))?.sumQuantity()?.doubleValue(for: .meterUnit(with: .kilo))
+            return WorkoutEntry(
+                id: workout.uuid,
+                date: workout.startDate,
+                type: WorkoutType.from(activity: workout.workoutActivityType),
+                durationMinutes: Int((workout.duration / 60).rounded()),
+                caloriesBurned: kcal,
+                distanceKm: distanceKm,
+                note: nil,
+                source: .healthKit
+            )
+        }
+    }
 }
 
 struct MockHealthService: HealthService {
     var snapshot: HealthSnapshot = HealthSnapshot(steps: 5_360, activeEnergy: 280, distanceKm: 3.8, authorizationStatus: .sharingAuthorized, source: .healthKit)
+    var workouts: [WorkoutEntry] = []
     var isHealthDataAvailable: Bool { true }
     func requestAuthorization() async -> HealthAuthorizationState { snapshot.authorizationStatus }
     func todaySnapshot() async -> HealthSnapshot { snapshot }
     func saveNutrition(for meal: MealEntry) async {}
+    func todayWorkouts() async -> [WorkoutEntry] { workouts }
+}
+
+private extension WorkoutType {
+    /// Map HealthKit's exhaustive `HKWorkoutActivityType` to the smaller user-facing buckets.
+    static func from(activity: HKWorkoutActivityType) -> WorkoutType {
+        switch activity {
+        case .running, .crossTraining: .running
+        case .cycling, .handCycling: .cycling
+        case .swimming, .waterSports: .swimming
+        case .walking, .hiking: .walking
+        case .highIntensityIntervalTraining, .mixedCardio, .stairClimbing, .stairs, .stepTraining: .hiit
+        case .traditionalStrengthTraining, .functionalStrengthTraining, .coreTraining: .gym
+        case .yoga, .mindAndBody, .flexibility: .yoga
+        case .pilates, .barre: .pilates
+        case .soccer, .basketball, .volleyball, .americanFootball, .baseball, .hockey, .rugby, .tennis, .badminton, .tableTennis, .racquetball, .squash, .cricket: .sports
+        default: .other
+        }
+    }
 }

@@ -89,6 +89,10 @@ final class DependencyContainer: ObservableObject {
         SwiftDataWeightRepository(context: context)
     }
 
+    func workoutRepository(context: ModelContext) -> WorkoutRepository {
+        SwiftDataWorkoutRepository(context: context)
+    }
+
     func subscriptionRepository(context: ModelContext) -> SubscriptionRepository {
         SwiftDataSubscriptionRepository(context: context)
     }

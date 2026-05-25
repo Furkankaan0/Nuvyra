@@ -22,6 +22,7 @@ struct ProfileView: View {
                     weightTrendSection
                     bodyMetricsSection
                     bodyMeasurementsSection
+                    workoutsSection
                     goalsSection
                     premiumSection
                     healthSection
@@ -124,6 +125,22 @@ struct ProfileView: View {
                     subtitle: "Trend, geçmiş ve yeni kayıt.",
                     systemImage: "ruler",
                     tint: NuvyraColors.accent
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var workoutsSection: some View {
+        SettingsSection(title: "Egzersizler", subtitle: "Koşu, bisiklet, gym ve diğer aktivite kayıtların.") {
+            NavigationLink {
+                WorkoutsView()
+            } label: {
+                SettingsRow(
+                    title: "Tüm egzersizler",
+                    subtitle: "Apple Health + manuel kayıtlar tek listede.",
+                    systemImage: "figure.run.circle.fill",
+                    tint: NuvyraColors.mutedCoral
                 )
             }
             .buttonStyle(.plain)
