@@ -1,6 +1,6 @@
 import Foundation
 
-enum GoalType: String, CaseIterable, Codable, Identifiable {
+enum GoalType: String, CaseIterable, Codable, Identifiable, Equatable, Hashable {
     case loseWeight
     case maintain
     case gainHealthy
@@ -35,7 +35,7 @@ enum GoalType: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum Gender: String, CaseIterable, Codable, Identifiable {
+enum Gender: String, CaseIterable, Codable, Identifiable, Equatable, Hashable {
     case female
     case male
     case other
@@ -53,7 +53,7 @@ enum Gender: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum ActivityLevel: String, CaseIterable, Codable, Identifiable {
+enum ActivityLevel: String, CaseIterable, Codable, Identifiable, Equatable, Hashable {
     case sedentary
     case lightlyActive
     case moderatelyActive
@@ -93,7 +93,7 @@ enum ActivityLevel: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum GoalPace: String, CaseIterable, Codable, Identifiable {
+enum GoalPace: String, CaseIterable, Codable, Identifiable, Equatable, Hashable {
     case slow
     case balanced
     case fast
@@ -117,7 +117,7 @@ enum GoalPace: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum MealType: String, CaseIterable, Codable, Identifiable, Sendable {
+enum MealType: String, CaseIterable, Codable, Identifiable, Equatable, Hashable, Sendable {
     case breakfast
     case lunch
     case dinner
@@ -144,7 +144,7 @@ enum MealType: String, CaseIterable, Codable, Identifiable, Sendable {
     }
 }
 
-enum Mood: String, CaseIterable, Codable, Identifiable {
+enum Mood: String, CaseIterable, Codable, Identifiable, Equatable, Hashable {
     case calm
     case energetic
     case tired
@@ -162,7 +162,7 @@ enum Mood: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum EntitlementSource: String, Codable {
+enum EntitlementSource: String, Codable, Equatable, Hashable {
     case storeKit
     case localFallback
 }

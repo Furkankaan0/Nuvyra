@@ -7,7 +7,7 @@ import UIKit
 /// meal type, live macro preview and toggleable favourite. Used by Dashboard,
 /// Nutrition and the Today-meals card.
 struct AddFoodView: View {
-    enum Mode: Equatable {
+    enum Mode {
         case create(defaultMealType: MealType)
         case edit(MealEntry)
     }

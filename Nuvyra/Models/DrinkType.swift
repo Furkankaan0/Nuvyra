@@ -5,7 +5,7 @@ import SwiftUI
 /// separate hidrasyon (sıvı) from kafein takibi and surface a per-drink
 /// breakdown without breaking the existing water flow — old rows with
 /// `drinkType == nil` are treated as `.water`.
-enum DrinkType: String, CaseIterable, Codable, Identifiable {
+enum DrinkType: String, CaseIterable, Codable, Identifiable, Equatable, Hashable {
     case water
     case coffee
     case tea

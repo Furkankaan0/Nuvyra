@@ -5,7 +5,7 @@ import SwiftUI
 /// User-facing workout categories. Each carries its own icon/tint plus a rough
 /// MET (metabolic equivalent) value used to estimate calories when the user
 /// doesn't supply one manually. MET sources: 2011 Compendium of Physical Activities.
-enum WorkoutType: String, CaseIterable, Codable, Identifiable {
+enum WorkoutType: String, CaseIterable, Codable, Identifiable, Equatable, Hashable {
     case running
     case cycling
     case swimming
@@ -95,7 +95,7 @@ enum WorkoutType: String, CaseIterable, Codable, Identifiable {
     }
 }
 
-enum WorkoutSource: String, Codable {
+enum WorkoutSource: String, Codable, Equatable, Hashable {
     case manual
     case healthKit
 }

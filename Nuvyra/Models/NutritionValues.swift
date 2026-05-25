@@ -112,7 +112,7 @@ extension MacroTarget {
 }
 
 /// Portion measurement unit a user can pick while logging food.
-enum PortionUnit: String, CaseIterable, Codable, Identifiable {
+enum PortionUnit: String, CaseIterable, Codable, Identifiable, Equatable, Hashable {
     case grams
     case portion
     case piece

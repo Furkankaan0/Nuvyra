@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 struct AddWorkoutSheet: View {
-    enum Mode: Equatable {
+    enum Mode {
         case create
         case edit(WorkoutLog)
     }

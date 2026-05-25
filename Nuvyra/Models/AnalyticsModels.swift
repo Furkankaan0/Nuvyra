@@ -1,6 +1,6 @@
 import Foundation
 
-enum AnalyticsPeriod: String, CaseIterable, Identifiable {
+enum AnalyticsPeriod: String, CaseIterable, Identifiable, Equatable, Hashable {
     case weekly
     case monthly
 
@@ -32,7 +32,7 @@ struct ChartDataPoint: Identifiable, Equatable {
     }
 }
 
-enum MacroKind: String, CaseIterable, Identifiable {
+enum MacroKind: String, CaseIterable, Identifiable, Equatable, Hashable {
     case protein
     case carbs
     case fat
