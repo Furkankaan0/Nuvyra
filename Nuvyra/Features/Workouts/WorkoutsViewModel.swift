@@ -47,7 +47,8 @@ final class WorkoutsViewModel: ObservableObject {
 
     func startEditing(_ entry: WorkoutEntry, context: ModelContext) {
         guard entry.source == .manual else { return }
-        let descriptor = FetchDescriptor<WorkoutLog>(predicate: #Predicate { $0.id == entry.id })
+        let entryID = entry.id
+        let descriptor = FetchDescriptor<WorkoutLog>(predicate: #Predicate { $0.id == entryID })
         if let log = try? context.fetch(descriptor).first {
             editingLog = log
         }

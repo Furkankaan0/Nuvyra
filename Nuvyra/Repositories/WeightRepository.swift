@@ -163,7 +163,8 @@ final class SwiftDataWeightRepository: WeightRepository {
             if let note = snapshot.note { existing.note = note }
             existing.source = "manual"
         } else {
-            let weight = snapshot.weightKg ?? (try latestLog()?.weightKg ?? 0)
+            let latestWeight = try latestLog()?.weightKg
+            let weight = snapshot.weightKg ?? latestWeight ?? 0
             let log = WeightLog(
                 date: day,
                 weightKg: weight,
