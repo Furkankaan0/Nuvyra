@@ -75,8 +75,10 @@ targets:
     platform: iOS
     sources:
       - path: Nuvyra/Widgets
-      - path: Nuvyra/DesignSystem
       - path: Nuvyra/Shared
+      - path: Nuvyra/DesignSystem/NuvyraColors.swift
+      - path: Nuvyra/DesignSystem/NuvyraProgressRing.swift
+      - path: Nuvyra/DesignSystem/NuvyraTypography.swift
     dependencies:
       - sdk: WidgetKit.framework
       - sdk: ActivityKit.framework
