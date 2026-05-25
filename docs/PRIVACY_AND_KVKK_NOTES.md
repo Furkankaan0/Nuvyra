@@ -30,8 +30,15 @@ MVP'de hedeflenen veri türleri:
 
 - Açık rıza ve aydınlatma metni yayına almadan önce hukuk danışmanı ile doğrulanmalıdır.
 - Kullanıcı veri silme talebi için destek kanalı oluşturulmalıdır.
+- Kullanıcı `Hesap > Yedekleme ve yeni cihaz` üzerinden tam JSON yedek alabilir ve yeni cihazda içe aktarabilir.
+- CSV dışa aktarım analiz/KVKK okunabilirliği içindir; yeni cihaz geçişi için JSON yedek kullanılmalıdır.
+- JSON yedek kişisel wellness verisi ve öğün fotoğrafları içerebilir; uygulama içinde kullanıcıya güvenli saklama uyarısı gösterilir.
 - Gereksiz üçüncü taraf SDK eklenmemelidir.
 - Eğer ileride backend veya AI provider eklenirse veri işleyen, yurt dışına aktarım ve saklama süreleri ayrıca dokümante edilmelidir.
+
+## iCloud / CloudKit notu
+
+Bu fazda otomatik CloudKit sync kapalıdır. SwiftData CloudKit'e geçiş ayrı bir migration olarak ele alınmalıdır; App ID iCloud capability, iCloud container, entitlement, Codemagic signing ve mevcut `@Model` şemasının CloudKit uyumluluğu birlikte test edilmeden production archive'a açılmamalıdır. Kullanıcı veri taşınabilirliği bugün manuel JSON yedek/import akışıyla karşılanır.
 
 ## Privacy manifest
 
