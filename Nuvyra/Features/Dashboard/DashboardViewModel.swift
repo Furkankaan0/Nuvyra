@@ -133,6 +133,25 @@ final class DashboardViewModel: ObservableObject {
             // Streak rollups — repository runs a single 60-day fetch + fast in-memory scan.
             waterStreak = (try? waterRepository.waterStreak(daysBack: 60, targetMl: waterTarget)) ?? .empty
             mealStreak = (try? nutritionRepository.mealStreak(daysBack: 60)) ?? .empty
+
+            // Re-plan today's smart reminders against the freshly loaded context.
+            let hasLunch = meals.contains { $0.mealType == .lunch }
+            let hasDinner = meals.contains { $0.mealType == .dinner }
+            let context = ReminderContext(
+                firstName: profile?.name.isEmpty == false ? profile!.name : "Hoş geldin",
+                caloriesConsumed: totalCalories,
+                calorieTarget: calorieTarget,
+                hasLunchLogged: hasLunch,
+                hasDinnerLogged: hasDinner,
+                waterMl: waterMl,
+                waterTargetMl: waterTarget,
+                steps: healthSnapshot.steps,
+                stepTarget: stepTarget,
+                waterStreakDays: waterStreak.currentStreak,
+                mealStreakDays: mealStreak.currentStreak
+            )
+            await dependencies.smartReminderEngine.reschedule(context: context)
+
             if healthSnapshot.steps >= stepTarget, !didPlayStepGoalHaptic {
                 didPlayStepGoalHaptic = true
                 dependencies.haptics.goalCompleted()

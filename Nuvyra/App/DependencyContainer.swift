@@ -14,6 +14,7 @@ final class DependencyContainer: ObservableObject {
     let haptics: HapticsService
     let walkingLiveActivityService: WalkingLiveActivityService
     let analytics: AnalyticsService
+    let smartReminderEngine: SmartReminderEngine
     @Published var subscriptionManager: SubscriptionManager
 
     init(
@@ -24,7 +25,8 @@ final class DependencyContainer: ObservableObject {
         foodIntelligenceService: FoodIntelligenceService,
         haptics: HapticsService,
         walkingLiveActivityService: WalkingLiveActivityService,
-        analytics: AnalyticsService
+        analytics: AnalyticsService,
+        smartReminderEngine: SmartReminderEngine? = nil
     ) {
         self.healthService = healthService
         self.motionService = motionService
@@ -36,6 +38,7 @@ final class DependencyContainer: ObservableObject {
         self.haptics = haptics
         self.walkingLiveActivityService = walkingLiveActivityService
         self.analytics = analytics
+        self.smartReminderEngine = smartReminderEngine ?? LiveSmartReminderEngine(notificationService: notificationService)
         self.subscriptionManager = SubscriptionManager(storeKitService: storeKitService)
     }
 
@@ -61,7 +64,8 @@ final class DependencyContainer: ObservableObject {
             foodIntelligenceService: MockFoodIntelligenceService(),
             haptics: MockHapticsService(),
             walkingLiveActivityService: MockWalkingLiveActivityService(),
-            analytics: MockAnalyticsService()
+            analytics: MockAnalyticsService(),
+            smartReminderEngine: MockSmartReminderEngine()
         )
     }
 
