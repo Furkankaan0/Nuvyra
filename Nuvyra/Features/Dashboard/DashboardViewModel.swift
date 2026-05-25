@@ -11,6 +11,8 @@ final class DashboardViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var lastUpdated: Date = Date()
     @Published var actionFeedback: String?
+    @Published var waterStreak: StreakInsight = .empty
+    @Published var mealStreak: StreakInsight = .empty
 
     private var didPlayStepGoalHaptic = false
 
@@ -128,6 +130,9 @@ final class DashboardViewModel: ObservableObject {
                 distanceKm: healthSnapshot.distanceKm,
                 goal: stepTarget
             )
+            // Streak rollups — repository runs a single 60-day fetch + fast in-memory scan.
+            waterStreak = (try? waterRepository.waterStreak(daysBack: 60, targetMl: waterTarget)) ?? .empty
+            mealStreak = (try? nutritionRepository.mealStreak(daysBack: 60)) ?? .empty
             if healthSnapshot.steps >= stepTarget, !didPlayStepGoalHaptic {
                 didPlayStepGoalHaptic = true
                 dependencies.haptics.goalCompleted()

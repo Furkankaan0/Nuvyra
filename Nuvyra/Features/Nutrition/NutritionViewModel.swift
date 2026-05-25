@@ -8,6 +8,7 @@ final class NutritionViewModel: ObservableObject {
     @Published var meals: [MealEntry] = []
     @Published var favorites: [MealEntry] = []
     @Published var summary: DailyMealSummary = .empty
+    @Published var streak: StreakInsight = .empty
     @Published var selectedMealType: MealType = .breakfast
     @Published var selectedDate: Date = Date()
     @Published var showingAddMeal = false
@@ -38,6 +39,7 @@ final class NutritionViewModel: ObservableObject {
             favorites = try repository.favoriteMeals()
             summary = try repository.dailySummary(on: selectedDate)
             profile = try? dependencies.userRepository(context: context).profile()
+            streak = (try? repository.mealStreak(daysBack: 60)) ?? .empty
         } catch {
             errorMessage = "Öğünler yüklenemedi."
         }

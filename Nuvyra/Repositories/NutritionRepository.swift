@@ -46,6 +46,7 @@ protocol NutritionRepository {
     func favoriteMeals() throws -> [MealEntry]
     func totalCalories(on date: Date) throws -> Int
     func dailySummary(on date: Date) throws -> DailyMealSummary
+    func mealStreak(daysBack: Int) throws -> StreakInsight
 }
 
 @MainActor
@@ -167,5 +168,23 @@ final class SwiftDataNutritionRepository: NutritionRepository {
             )
         }
         return DailyMealSummary(date: date, totals: totals, mealCount: items.count)
+    }
+
+    /// "Logged a meal that day" streak. We use *any* meal — even a quick water
+    /// or snack — because the engagement signal is the act of logging, not
+    /// hitting a calorie threshold (that's covered separately by the calorie ring).
+    func mealStreak(daysBack: Int = 60) throws -> StreakInsight {
+        // Cache 60 days into memory in one query to avoid one fetch per day.
+        let endOfToday = calendar.startAndEndOfDay(for: Date()).1
+        let startDay = calendar.date(byAdding: .day, value: -(daysBack - 1), to: calendar.startOfDay(for: Date())) ?? Date()
+        let descriptor = FetchDescriptor<MealEntry>(
+            predicate: #Predicate { $0.date >= startDay && $0.date < endOfToday }
+        )
+        let rows = try context.fetch(descriptor)
+        // Group by start-of-day for fast O(1) lookup.
+        let completedDays: Set<Date> = Set(rows.map { calendar.startOfDay(for: $0.date) })
+        return StreakCalculator.calculate(daysBack: daysBack, calendar: calendar) { day in
+            completedDays.contains(calendar.startOfDay(for: day))
+        }
     }
 }

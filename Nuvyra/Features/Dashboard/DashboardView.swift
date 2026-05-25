@@ -57,11 +57,17 @@ struct DashboardView: View {
                     }
                     .dashboardSlide(index: 6, animated: didAnimateAppearance)
 
+                    HStack(spacing: NuvyraSpacing.sm) {
+                        StreakCard(kind: .meal, insight: viewModel.mealStreak)
+                        StreakCard(kind: .water, insight: viewModel.waterStreak)
+                    }
+                    .dashboardSlide(index: 7, animated: didAnimateAppearance)
+
                     NavigationLink(value: DashboardDestination.coach) {
                         DailyInsightCard(text: viewModel.insight, onAskCoach: nil)
                     }
                     .buttonStyle(.plain)
-                    .dashboardSlide(index: 7, animated: didAnimateAppearance)
+                    .dashboardSlide(index: 8, animated: didAnimateAppearance)
 
                     if !viewModel.hasAnyData {
                         DashboardEmptyStateCard(

@@ -34,6 +34,7 @@ protocol WaterRepository {
     @discardableResult func removeLastEntry(on date: Date) throws -> Int
     func clearDay(_ date: Date) throws
     func weeklyTotals(endingOn date: Date) throws -> [WaterDayTotal]
+    func waterStreak(daysBack: Int, targetMl: Int) throws -> StreakInsight
 }
 
 @MainActor
@@ -122,6 +123,26 @@ final class SwiftDataWaterRepository: WaterRepository {
             let day = calendar.date(byAdding: .day, value: -offset, to: startOfToday) ?? startOfToday
             let total = try totalWater(on: day)
             return WaterDayTotal(date: day, totalMl: total)
+        }
+    }
+
+    /// "Hit the water goal that day" streak. Counts ml from `.water` entries only.
+    /// Caches the whole window in one query (one fetch → N day lookups in memory).
+    func waterStreak(daysBack: Int = 60, targetMl: Int) throws -> StreakInsight {
+        let endOfToday = calendar.startAndEndOfDay(for: Date()).1
+        let startDay = calendar.date(byAdding: .day, value: -(daysBack - 1), to: calendar.startOfDay(for: Date())) ?? Date()
+        let descriptor = FetchDescriptor<WaterEntry>(
+            predicate: #Predicate { $0.date >= startDay && $0.date < endOfToday }
+        )
+        let rows = try context.fetch(descriptor)
+        // Sum per day for .water only (legacy rows where drinkTypeRaw == nil count as water).
+        var totalsByDay: [Date: Int] = [:]
+        for row in rows where row.drinkType == .water {
+            let day = calendar.startOfDay(for: row.date)
+            totalsByDay[day, default: 0] += row.amountMl
+        }
+        return StreakCalculator.calculate(daysBack: daysBack, calendar: calendar) { day in
+            (totalsByDay[calendar.startOfDay(for: day)] ?? 0) >= targetMl
         }
     }
 }

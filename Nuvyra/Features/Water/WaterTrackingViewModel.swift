@@ -14,6 +14,7 @@ final class WaterTrackingViewModel: ObservableObject {
     @Published var totalFluidMl: Int = 0
     @Published var totalHydrationMl: Int = 0
     @Published var totalCaffeineMg: Double = 0
+    @Published var streak: StreakInsight = .empty
     @Published var isLoading = false
     @Published var showGoalCelebration = false
     @Published var actionFeedback: String?
@@ -45,6 +46,7 @@ final class WaterTrackingViewModel: ObservableObject {
             totalHydrationMl = try waterRepository.totalHydrationMl(on: selectedDate)
             totalCaffeineMg = try waterRepository.totalCaffeine(on: selectedDate)
             weeklyTotals = try waterRepository.weeklyTotals(endingOn: selectedDate)
+            streak = (try? waterRepository.waterStreak(daysBack: 60, targetMl: goal.dailyTargetMl)) ?? .empty
             // Reset the celebration flag if the user dropped below the goal.
             if summary.consumedMl < summary.targetMl {
                 hasCelebratedToday = false

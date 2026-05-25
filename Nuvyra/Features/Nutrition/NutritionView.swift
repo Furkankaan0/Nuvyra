@@ -14,6 +14,7 @@ struct NutritionView: View {
                     header
                     dateSelector
                     dailyTotalsCard
+                    StreakCard(kind: .meal, insight: viewModel.streak)
                     FoodQualityCard(totals: viewModel.summary.totals, target: viewModel.macroTarget)
                     quickActions
                     mealSections

@@ -27,6 +27,7 @@ struct WaterTrackingView: View {
                         summary: viewModel.summary,
                         label: Calendar.nuvyra.isDateInToday(viewModel.selectedDate) ? "Bugün" : viewModel.selectedDate.formatted(date: .abbreviated, time: .omitted)
                     )
+                    StreakCard(kind: .water, insight: viewModel.streak)
                     drinkPickerSection
                     quickAddSection
                     manualInputSection
