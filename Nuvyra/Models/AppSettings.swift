@@ -8,6 +8,8 @@ final class AppSettings: Identifiable {
     var notificationsEnabled: Bool
     var healthPermissionAsked: Bool
     var reducedInsightCopy: Bool
+    /// Set to true when the user finishes (or dismisses) the day-one guided tour.
+    var didCompleteDayOneTour: Bool = false
     var createdAt: Date
     var updatedAt: Date
 
@@ -17,6 +19,7 @@ final class AppSettings: Identifiable {
         notificationsEnabled: Bool = false,
         healthPermissionAsked: Bool = false,
         reducedInsightCopy: Bool = false,
+        didCompleteDayOneTour: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -25,6 +28,7 @@ final class AppSettings: Identifiable {
         self.notificationsEnabled = notificationsEnabled
         self.healthPermissionAsked = healthPermissionAsked
         self.reducedInsightCopy = reducedInsightCopy
+        self.didCompleteDayOneTour = didCompleteDayOneTour
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

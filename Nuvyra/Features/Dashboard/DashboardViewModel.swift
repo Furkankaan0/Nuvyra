@@ -13,8 +13,22 @@ final class DashboardViewModel: ObservableObject {
     @Published var actionFeedback: String?
     @Published var waterStreak: StreakInsight = .empty
     @Published var mealStreak: StreakInsight = .empty
+    @Published var didCompleteDayOneTour: Bool = false
 
     private var didPlayStepGoalHaptic = false
+
+    /// Day-one onboarding checklist state — derived live from today's data.
+    var dayOneCompletedSteps: Set<DayOneTourCard.Step> {
+        var done: Set<DayOneTourCard.Step> = []
+        if !meals.isEmpty { done.insert(.firstMeal) }
+        if waterMl > 0 { done.insert(.firstWater) }
+        if healthSnapshot.steps > 0 { done.insert(.viewSteps) }
+        return done
+    }
+
+    var shouldShowDayOneTour: Bool {
+        !didCompleteDayOneTour && dayOneCompletedSteps.count < DayOneTourCard.Step.allCases.count
+    }
 
     // MARK: - Targets
     var calorieTarget: Int { profile?.dailyCalorieTarget ?? 1_900 }
@@ -107,6 +121,20 @@ final class DashboardViewModel: ObservableObject {
         return "Bugünkü dengeni korumak için küçük bir yürüyüş veya bir bardak daha su iyi gelecek."
     }
 
+    /// Persist the dismiss / completion flag onto AppSettings.
+    func dismissDayOneTour(context: ModelContext) {
+        didCompleteDayOneTour = true
+        let descriptor = FetchDescriptor<AppSettings>()
+        if let settings = (try? context.fetch(descriptor))?.first {
+            settings.didCompleteDayOneTour = true
+            settings.updatedAt = Date()
+        } else {
+            let settings = AppSettings(didCompleteDayOneTour: true)
+            context.insert(settings)
+        }
+        try? context.save()
+    }
+
     // MARK: - Load
     func load(context: ModelContext, dependencies: DependencyContainer) async {
         isLoading = true
@@ -133,6 +161,13 @@ final class DashboardViewModel: ObservableObject {
             // Streak rollups — repository runs a single 60-day fetch + fast in-memory scan.
             waterStreak = (try? waterRepository.waterStreak(daysBack: 60, targetMl: waterTarget)) ?? .empty
             mealStreak = (try? nutritionRepository.mealStreak(daysBack: 60)) ?? .empty
+
+            // Day-one tour flag — read from AppSettings, auto-complete once every step is done.
+            let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first
+            didCompleteDayOneTour = settings?.didCompleteDayOneTour ?? false
+            if !didCompleteDayOneTour, dayOneCompletedSteps.count == DayOneTourCard.Step.allCases.count {
+                dismissDayOneTour(context: context)
+            }
 
             // Re-plan today's smart reminders against the freshly loaded context.
             let hasLunch = meals.contains { $0.mealType == .lunch }

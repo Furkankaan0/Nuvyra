@@ -69,12 +69,28 @@ struct DashboardView: View {
                     .buttonStyle(.plain)
                     .dashboardSlide(index: 8, animated: didAnimateAppearance)
 
-                    if !viewModel.hasAnyData {
+                    if viewModel.shouldShowDayOneTour {
+                        DayOneTourCard(
+                            completed: viewModel.dayOneCompletedSteps,
+                            onTapStep: { step in
+                                switch step {
+                                case .firstMeal:
+                                    presentedSheet = .addMeal(.breakfast)
+                                case .firstWater:
+                                    Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: 200) }
+                                case .viewSteps:
+                                    router.selectedTab = .walking
+                                }
+                            },
+                            onDismiss: { viewModel.dismissDayOneTour(context: modelContext) }
+                        )
+                        .dashboardSlide(index: 9, animated: didAnimateAppearance)
+                    } else if !viewModel.hasAnyData {
                         DashboardEmptyStateCard(
                             onAddFirstMeal: { presentedSheet = .addMeal(.breakfast) },
                             onAddWater: { Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: 250) } }
                         )
-                        .dashboardSlide(index: 8, animated: didAnimateAppearance)
+                        .dashboardSlide(index: 9, animated: didAnimateAppearance)
                     }
 
                     Color.clear.frame(height: NuvyraSpacing.md)
