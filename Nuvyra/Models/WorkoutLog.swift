@@ -138,13 +138,11 @@ final class WorkoutLog: Identifiable {
     }
 
     var type: WorkoutType {
-        get { WorkoutType(rawValue: typeRaw) ?? .other }
-        set { typeRaw = newValue.rawValue }
+        WorkoutType(rawValue: typeRaw) ?? .other
     }
 
     var source: WorkoutSource {
-        get { WorkoutSource(rawValue: sourceRaw) ?? .manual }
-        set { sourceRaw = newValue.rawValue }
+        WorkoutSource(rawValue: sourceRaw) ?? .manual
     }
 }
 

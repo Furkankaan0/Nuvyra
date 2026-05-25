@@ -29,8 +29,7 @@ final class WaterEntry: Identifiable {
     /// Convenience accessor — `nil` raw value is treated as plain water so
     /// pre-v1.3 rows roll up correctly.
     var drinkType: DrinkType {
-        get { drinkTypeRaw.flatMap(DrinkType.init(rawValue:)) ?? .water }
-        set { drinkTypeRaw = newValue.rawValue }
+        drinkTypeRaw.flatMap(DrinkType.init(rawValue:)) ?? .water
     }
 
     /// Litres counted toward the daily hydration goal — applies the drink-type

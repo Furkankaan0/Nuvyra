@@ -36,11 +36,13 @@
             -scheme "$XCODE_SCHEME"
       - name: Validate simulator build
         script: |
+          set -o pipefail
+          mkdir -p /tmp/xcodebuild_logs
           xcodebuild build \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_TEST_SCHEME" \
             -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcodebuild_logs/validate-simulator-build.log
     artifacts:
       - /tmp/xcodebuild_logs/*.log
       - $HOME/Library/Developer/Xcode/DerivedData/**/Logs/Test/*.xcresult
@@ -96,11 +98,13 @@
             -scheme "$XCODE_SCHEME"
       - name: Validate simulator build
         script: |
+          set -o pipefail
+          mkdir -p /tmp/xcodebuild_logs
           xcodebuild build \
             -project "$XCODE_PROJECT" \
             -scheme "$XCODE_TEST_SCHEME" \
             -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcodebuild_logs/validate-simulator-build.log
       - name: Set up code signing
         script: |
           xcode-project use-profiles

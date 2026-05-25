@@ -220,7 +220,7 @@ struct AddWorkoutSheet: View {
                     try repo.add(log)
                 case .edit(let log):
                     log.date = snap.date
-                    log.type = snap.type
+                    log.typeRaw = snap.type.rawValue
                     log.durationMinutes = snap.minutes
                     log.caloriesBurned = snap.kcal
                     log.distanceKm = snap.km
