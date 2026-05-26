@@ -8,6 +8,7 @@ struct ProfileView: View {
     @EnvironmentObject private var dependencies: DependencyContainer
     @Query private var settings: [AppSettings]
     @StateObject private var viewModel = ProfileViewModel()
+    @StateObject private var auth = AuthManager.shared
     @State private var showsGoalEditor = false
     @State private var showsProfileEditor = false
 
@@ -36,7 +37,10 @@ struct ProfileView: View {
         }
         .navigationTitle("Profil")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+        .task {
+            await auth.restoreSession()
+            await viewModel.load(context: modelContext, dependencies: dependencies)
+        }
         .sheet(isPresented: $showsGoalEditor) {
             if let profile = viewModel.profile {
                 GoalEditorSheet(profile: profile) { calories, water, steps in
@@ -64,7 +68,7 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(profile?.name ?? "Nuvyra")
+                        Text(headerDisplayName)
                             .font(.system(.largeTitle, design: .rounded).weight(.heavy))
                         Text(profile?.goalType.title ?? "Ritmini kurmaya hazırsın")
                             .font(.headline.weight(.medium))
@@ -91,6 +95,19 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    private var headerDisplayName: String {
+        cleanProfileName(viewModel.profile?.name)
+            ?? cleanProfileName(auth.state.session?.displayName)
+            ?? "Profilini tamamla"
+    }
+
+    private func cleanProfileName(_ name: String?) -> String? {
+        guard let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else {
+            return nil
+        }
+        return trimmed == "Nuvyra" ? nil : trimmed
     }
 
     private var profileInfoSection: some View {

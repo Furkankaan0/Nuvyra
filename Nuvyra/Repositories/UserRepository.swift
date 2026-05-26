@@ -59,7 +59,7 @@ final class SwiftDataUserRepository: UserRepository {
             profile = UserProfile()
             context.insert(profile)
         }
-        profile.name = name.isEmpty ? "Nuvyra" : name
+        profile.name = resolvedProfileName(from: name, existingName: profile.name)
         profile.age = input.age
         profile.gender = input.gender
         profile.heightCm = input.heightCm
@@ -95,7 +95,7 @@ final class SwiftDataUserRepository: UserRepository {
         input: NutritionGoalCalculationInput,
         targets: CalculatedNutritionTargets
     ) throws -> UserProfile {
-        profile.name = name.isEmpty ? "Nuvyra" : name
+        profile.name = resolvedProfileName(from: name, existingName: profile.name)
         profile.age = input.age
         profile.gender = input.gender
         profile.heightCm = input.heightCm
@@ -138,6 +138,18 @@ final class SwiftDataUserRepository: UserRepository {
         let goal = NutritionGoal()
         context.insert(goal)
         return goal
+    }
+
+    private func resolvedProfileName(from input: String, existingName: String?) -> String {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty { return trimmed }
+
+        if let existingName {
+            let existing = existingName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !existing.isEmpty, existing != "Nuvyra" { return existing }
+        }
+
+        return "Apple kullanıcısı"
     }
 
     private func upsertTodayWeight(weightKg: Double, note: String?) throws {

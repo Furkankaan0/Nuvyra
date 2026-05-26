@@ -18,7 +18,8 @@ struct ProfileEditorSheet: View {
     let onSave: (String, NutritionGoalCalculationInput) -> Void
 
     init(profile: UserProfile, onSave: @escaping (String, NutritionGoalCalculationInput) -> Void) {
-        _name = State(initialValue: profile.name)
+        let profileName = profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        _name = State(initialValue: profileName == "Nuvyra" ? "" : profileName)
         _age = State(initialValue: profile.age)
         _gender = State(initialValue: profile.gender ?? .preferNotToSay)
         _heightCm = State(initialValue: Int(profile.heightCm.rounded()))
