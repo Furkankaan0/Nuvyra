@@ -37,12 +37,13 @@ struct DrinkTypeChip: View {
             .padding(.vertical, 9)
             .foregroundStyle(isSelected ? .white : type.tint)
             .background(
-                isSelected ? type.tint : type.tint.opacity(0.14),
+                isSelected ? type.tint : type.tint.opacity(scheme == .dark ? 0.20 : 0.14),
                 in: Capsule()
             )
             .overlay(
-                Capsule().stroke(type.tint.opacity(isSelected ? 0 : 0.25), lineWidth: 1)
+                Capsule().stroke(type.tint.opacity(isSelected ? 0 : (scheme == .dark ? 0.38 : 0.25)), lineWidth: 1)
             )
+            .shadow(color: isSelected ? type.tint.opacity(scheme == .dark ? 0.30 : 0.18) : .clear, radius: 10, y: 4)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(type.title)

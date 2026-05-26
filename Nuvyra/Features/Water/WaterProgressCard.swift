@@ -26,18 +26,18 @@ struct WaterProgressCard: View {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.xs) {
                     Text(label)
                         .font(NuvyraTypography.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(NuvyraColors.secondaryText(scheme))
                     Text("\(summary.consumedMl) ml")
                         .font(.system(size: 36, weight: .heavy, design: .rounded))
                         .contentTransition(.numericText())
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(NuvyraColors.primaryText(scheme))
                     HStack(spacing: 4) {
                         Image(systemName: goalReached ? "checkmark.seal.fill" : "target")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(goalReached ? NuvyraColors.accent : .secondary)
+                            .foregroundStyle(goalReached ? NuvyraColors.accent : NuvyraColors.secondaryText(scheme))
                         Text(goalReached ? "Hedef tamamlandı" : "Hedef \(summary.targetMl) ml")
                             .font(NuvyraTypography.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(NuvyraColors.secondaryText(scheme))
                     }
                     if !goalReached {
                         Text("\(summary.remainingMl) ml kaldı")
@@ -63,11 +63,12 @@ struct WaterProgressCard: View {
     private var bottle: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(scheme == .dark ? 0.18 : 0.5), lineWidth: 1)
+                .stroke(Color.white.opacity(scheme == .dark ? 0.24 : 0.5), lineWidth: 1)
                 .background(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
-                        .fill(Color.white.opacity(0.06))
+                        .fill(Color.white.opacity(scheme == .dark ? 0.10 : 0.06))
                 )
+                .shadow(color: Color(red: 0.20, green: 0.56, blue: 0.95).opacity(scheme == .dark ? 0.28 : 0), radius: 18, y: 10)
             GeometryReader { proxy in
                 WaterWaveShape(phase: wavePhase, amplitude: 5, fillProgress: animatedFill)
                     .fill(

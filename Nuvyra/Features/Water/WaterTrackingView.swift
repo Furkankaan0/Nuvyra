@@ -4,6 +4,7 @@ import SwiftUI
 struct WaterTrackingView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var scheme
     @EnvironmentObject private var dependencies: DependencyContainer
     @StateObject private var viewModel = WaterTrackingViewModel()
 
@@ -67,22 +68,50 @@ struct WaterTrackingView: View {
     // MARK: - Background
     @ViewBuilder
     private var softBlueBackground: some View {
-        LinearGradient(
+        waterGradient
+            .ignoresSafeArea()
+            .overlay(alignment: .topTrailing) {
+                Circle()
+                    .fill(waterGlow.opacity(scheme == .dark ? 0.30 : 0.18))
+                    .frame(width: 280, height: 280)
+                    .blur(radius: scheme == .dark ? 72 : 60)
+                    .offset(x: 120, y: -130)
+            }
+            .overlay(alignment: .bottomLeading) {
+                Circle()
+                    .fill(NuvyraColors.softMint.opacity(scheme == .dark ? 0.14 : 0.08))
+                    .frame(width: 240, height: 240)
+                    .blur(radius: 70)
+                    .offset(x: -120, y: 120)
+            }
+    }
+
+    private var waterGradient: LinearGradient {
+        if scheme == .dark {
+            return LinearGradient(
+                colors: [
+                    Color(red: 0.025, green: 0.055, blue: 0.080),
+                    Color(red: 0.035, green: 0.125, blue: 0.155),
+                    Color(red: 0.015, green: 0.035, blue: 0.055)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+
+        return LinearGradient(
             colors: [
                 Color(red: 0.86, green: 0.94, blue: 0.99),
                 Color(red: 0.97, green: 0.99, blue: 1.00),
                 Color(red: 0.78, green: 0.89, blue: 0.97)
             ],
-            startPoint: .topLeading, endPoint: .bottomTrailing
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
         )
-        .ignoresSafeArea()
-        .overlay(alignment: .topTrailing) {
-            Circle()
-                .fill(Color(red: 0.35, green: 0.65, blue: 0.95).opacity(0.18))
-                .frame(width: 280, height: 280)
-                .blur(radius: 60)
-                .offset(x: 120, y: -130)
-        }
+    }
+
+    private var waterGlow: Color {
+        scheme == .dark ? Color(red: 0.18, green: 0.66, blue: 0.92) : Color(red: 0.35, green: 0.65, blue: 0.95)
     }
 
     // MARK: - Sections
