@@ -129,6 +129,9 @@ struct WaterTrackingView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    .accessibilityLabel("Manuel su miktarı")
+                    .accessibilityValue("\(viewModel.manualAmountMl) mililitre")
+                    .accessibilityHint("25 mililitre adımlarla artar veya azalır")
                 }
                 HStack(spacing: NuvyraSpacing.sm) {
                     NuvyraPrimaryButton(title: "Ekle", systemImage: "drop.fill") {

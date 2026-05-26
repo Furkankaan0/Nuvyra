@@ -39,6 +39,8 @@ struct NutritionInputField: View {
             Spacer(minLength: 0)
             Stepper("", value: $value, in: range, step: allowsFraction ? 0.5 : 1)
                 .labelsHidden()
+                .accessibilityLabel("\(title) artır veya azalt")
+                .accessibilityValue("\(value.cleanFormatted) \(unit)")
         }
         .padding(.horizontal, NuvyraSpacing.md)
         .padding(.vertical, NuvyraSpacing.sm)
@@ -48,6 +50,9 @@ struct NutritionInputField: View {
                 .stroke(focused ? tint.opacity(0.55) : tint.opacity(0.12), lineWidth: focused ? 1.5 : 1)
         )
         .animation(.easeInOut(duration: 0.18), value: focused)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(title)
+        .accessibilityValue("\(value.cleanFormatted) \(unit)")
     }
 
     private var numberFormat: FloatingPointFormatStyle<Double> {

@@ -76,6 +76,11 @@ struct WeeklyWaterChart: View {
         }
         .chartLegend(.hidden)
         .frame(height: 168)
+        .nuvyraChartSummary(
+            label: "Haftalık su grafiği",
+            value: ChartAccessibilitySummary.summary(intValues: totals.map(\.totalMl), unit: "mililitre"),
+            hint: "\(daysHit) günde hedefe ulaştın. Detay için aşağı kaydır."
+        )
     }
 
     private var emptyState: some View {

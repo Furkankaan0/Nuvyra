@@ -131,7 +131,11 @@ struct BodyMeasurementTrendCard: View {
             AxisMarks(position: .leading)
         }
         .frame(height: 168)
-        .accessibilityLabel("\(metric.title) trendi")
+        .nuvyraChartSummary(
+            label: "\(metric.title) trendi",
+            value: ChartAccessibilitySummary.summary(values: points.map(\.value), unit: metric.unit),
+            hint: delta.map { "Son ölçümde \($0 > 0 ? "+" : "")\($0.cleanFormatted) \(metric.unit) değişim." }
+        )
     }
 
     private var emptyState: some View {

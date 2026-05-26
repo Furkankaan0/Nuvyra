@@ -55,6 +55,11 @@ struct WeeklyWorkoutChart: View {
         }
         .chartYAxis { AxisMarks(position: .leading) }
         .frame(height: 168)
+        .nuvyraChartSummary(
+            label: "Haftalık aktif kalori grafiği",
+            value: ChartAccessibilitySummary.summary(intValues: totals.map(\.calories), unit: "kalori"),
+            hint: "Son 7 günün egzersiz kaynaklı kalori dağılımı."
+        )
     }
 
     private var emptyState: some View {

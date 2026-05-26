@@ -62,7 +62,11 @@ struct WeeklyStepsChart: View {
                         .background(.thinMaterial, in: Capsule())
                 }
                 .frame(height: 176)
-                .accessibilityLabel("Haftalık adım grafiği")
+                .nuvyraChartSummary(
+                    label: "Haftalık adım grafiği",
+                    value: ChartAccessibilitySummary.summary(intValues: chartDays.map(\.steps), unit: "adım"),
+                    hint: "Günlük hedef \(goal.formatted()) adım."
+                )
             }
         }
     }
