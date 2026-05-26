@@ -10,6 +10,7 @@ struct NuvyraApp: App {
     @StateObject private var dependencies: DependencyContainer
     @StateObject private var router = AppRouter()
     private let modelContainer: ModelContainer
+    private let watchWaterSyncService = WatchWaterSyncService()
 
     init() {
         let isUITesting = CommandLine.arguments.contains("-ui-testing")
@@ -36,6 +37,7 @@ struct NuvyraApp: App {
     }
 
     private func refreshForegroundState() async {
+        watchWaterSyncService.activate(modelContainer: modelContainer)
         SeedData.ensureMinimumData(in: modelContainer.mainContext)
         await dependencies.subscriptionManager.loadProducts()
         await dependencies.subscriptionManager.refresh(

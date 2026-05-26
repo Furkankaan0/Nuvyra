@@ -63,10 +63,21 @@ struct AICoachView: View {
     private var insightsSection: some View {
         NuvyraSectionHeader(title: "Bugünkü içgörüler", subtitle: viewModel.isLoadingInsights ? "Hazırlanıyor..." : nil)
         if let error = viewModel.errorMessage, viewModel.insights.isEmpty {
+            NuvyraErrorStateView(
+                title: String(localized: "ai.insights.error.title"),
+                message: error,
+                onRetry: {
+                    Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+                }
+            )
+        } else if viewModel.insights.isEmpty, viewModel.isLoadingInsights {
             NuvyraGlassCard {
-                Text(error)
-                    .font(NuvyraTypography.caption)
-                    .foregroundStyle(NuvyraColors.mutedCoral)
+                HStack(spacing: NuvyraSpacing.sm) {
+                    ProgressView()
+                    Text("Koç içgörüleri hazırlanıyor...")
+                        .font(NuvyraTypography.body)
+                        .foregroundStyle(.secondary)
+                }
             }
         } else if viewModel.insights.isEmpty {
             NuvyraGlassCard {
@@ -112,9 +123,17 @@ struct AICoachView: View {
                 }
                 composer
                 if let error = viewModel.errorMessage, viewModel.hasMessages {
-                    Text(error)
-                        .font(NuvyraTypography.caption)
-                        .foregroundStyle(NuvyraColors.mutedCoral)
+                    NuvyraErrorStateView(
+                        title: String(localized: "ai.chat.error.title"),
+                        message: error,
+                        style: .compact,
+                        onRetry: {
+                            Task { await viewModel.retryLastFailedReply() }
+                        },
+                        onDismiss: {
+                            viewModel.errorMessage = nil
+                        }
+                    )
                 }
                 SafetyDisclaimerView(style: .compact)
             }

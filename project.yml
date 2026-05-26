@@ -3,6 +3,7 @@ options:
   bundleIdPrefix: com.nuvyra
   deploymentTarget:
     iOS: "17.0"
+    watchOS: "10.0"
   xcodeVersion: "15.0"
 settings:
   base:
@@ -51,6 +52,7 @@ targets:
       - sdk: AppIntents.framework
       - sdk: CoreHaptics.framework
       - sdk: AuthenticationServices.framework
+      - sdk: WatchConnectivity.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app
@@ -96,6 +98,29 @@ targets:
         PRODUCT_BUNDLE_EXTENSION: appex
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
+  NuvyraWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: NuvyraWatch
+    dependencies:
+      - sdk: HealthKit.framework
+      - sdk: WatchConnectivity.framework
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app.watchkitapp
+        PRODUCT_NAME: NuvyraWatch
+        DEVELOPMENT_TEAM: J5CYS3RDGH
+        CODE_SIGN_STYLE: Automatic
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: NuvyraWatch/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NuvyraWatch/NuvyraWatch.entitlements
+        WATCHOS_DEPLOYMENT_TARGET: "10.0"
+        TARGETED_DEVICE_FAMILY: "4"
+        SUPPORTS_MACCATALYST: NO
+        SKIP_INSTALL: NO
   NuvyraTests:
     type: bundle.unit-test
     platform: iOS

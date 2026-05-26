@@ -135,7 +135,19 @@ public struct BarcodeScannerView: View {
                     dismiss()
                 }
             }
-        case .scanning, .error:
+        case .error(let message):
+            NuvyraErrorStateView(
+                title: String(localized: "barcode.product.error.title"),
+                message: message,
+                onRetry: {
+                    viewModel.retryLastScan()
+                },
+                onDismiss: {
+                    viewModel.resumeAfterSheet()
+                }
+            )
+            .padding(.top, 8)
+        case .scanning:
             // Sheet açıkken bu state'lere düşmesi beklenmez
             EmptyView()
         }

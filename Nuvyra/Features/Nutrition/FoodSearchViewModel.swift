@@ -20,6 +20,14 @@ final class FoodSearchViewModel: ObservableObject {
     }
 
     func scheduleSearch() {
+        scheduleSearch(debounce: true)
+    }
+
+    func retrySearch() {
+        scheduleSearch(debounce: false)
+    }
+
+    private func scheduleSearch(debounce: Bool) {
         searchTask?.cancel()
         let currentQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -34,7 +42,9 @@ final class FoodSearchViewModel: ObservableObject {
         errorMessage = nil
 
         searchTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 220_000_000)
+            if debounce {
+                try? await Task.sleep(nanoseconds: 220_000_000)
+            }
             guard !Task.isCancelled, let self else { return }
 
             do {

@@ -43,9 +43,14 @@ struct FoodSearchView: View {
 
                     if let errorMessage = viewModel.errorMessage {
                         Section {
-                            Text(errorMessage)
-                                .font(NuvyraTypography.caption)
-                                .foregroundStyle(NuvyraColors.mutedCoral)
+                            NuvyraErrorStateView(
+                                title: String(localized: "food.search.error.title"),
+                                message: errorMessage,
+                                style: .compact,
+                                onRetry: {
+                                    viewModel.retrySearch()
+                                }
+                            )
                                 .listRowBackground(Color.clear)
                         }
                     }

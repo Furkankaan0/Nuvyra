@@ -30,6 +30,7 @@ public final class BarcodeScannerViewModel: ObservableObject {
 
     public let scanner: BarcodeScannerService
     public let api: NutritionAPIService
+    private var lastScannedBarcode: String?
 
     // MARK: - Init
 
@@ -65,6 +66,14 @@ public final class BarcodeScannerViewModel: ObservableObject {
         scanner.resume()
     }
 
+    public func retryLastScan() {
+        guard let lastScannedBarcode else {
+            resumeAfterSheet()
+            return
+        }
+        processBarcode(lastScannedBarcode)
+    }
+
     /// Manuel girişten kaydet.
     public func saveManualEntry(_ product: ScannedProduct) async {
         await api.saveManual(product)
@@ -76,6 +85,7 @@ public final class BarcodeScannerViewModel: ObservableObject {
 
     /// Bir barkod yakalandığında çağrılır: shimmer → API → bottom sheet.
     private func processBarcode(_ barcode: String) {
+        lastScannedBarcode = barcode
         screenState = .loading(barcode: barcode)
         isSheetPresented = true
 

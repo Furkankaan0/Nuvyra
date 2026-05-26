@@ -13,6 +13,7 @@ final class AICoachViewModel: ObservableObject {
 
     private let service: AICoachService
     private var contextSnapshot: AICoachContext = .empty
+    private var lastFailedPrompt: String?
 
     init(service: AICoachService? = nil) {
         self.service = service ?? MockAICoachService()
@@ -57,15 +58,24 @@ final class AICoachViewModel: ObservableObject {
     func clearChat() {
         messages = []
         errorMessage = nil
+        lastFailedPrompt = nil
+    }
+
+    func retryLastFailedReply() async {
+        guard let lastFailedPrompt, !isCoachTyping else { return }
+        await fetchReply(for: lastFailedPrompt)
     }
 
     private func fetchReply(for text: String) async {
         isCoachTyping = true
+        errorMessage = nil
         defer { isCoachTyping = false }
         do {
             let reply = try await service.reply(to: text, context: contextSnapshot, history: messages)
             messages.append(reply)
+            lastFailedPrompt = nil
         } catch {
+            lastFailedPrompt = text
             errorMessage = (error as? AICoachError)?.errorDescription ?? "Koç şu an cevap veremiyor."
         }
     }
