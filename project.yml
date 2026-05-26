@@ -57,6 +57,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app
         PRODUCT_NAME: Nuvyra
+        PRODUCT_BUNDLE_PACKAGE_TYPE: APPL
         DEVELOPMENT_TEAM: J5CYS3RDGH
         CODE_SIGN_STYLE: Automatic
         GENERATE_INFOPLIST_FILE: NO
@@ -94,7 +95,9 @@ targets:
         INFOPLIST_FILE: Nuvyra/Widgets/Info.plist
         CODE_SIGN_ENTITLEMENTS: Nuvyra/Widgets/NuvyraWidget.entitlements
         APPLICATION_EXTENSION_API_ONLY: YES
-        PRODUCT_BUNDLE_PACKAGE_TYPE: XPC!
+        # PRODUCT_BUNDLE_PACKAGE_TYPE removed — Xcode infers "XPC!" automatically
+        # from the `app-extension` product type. Setting it explicitly with the
+        # legacy "XPC!" string trips Xcode 15/16 archive validation.
         PRODUCT_BUNDLE_EXTENSION: appex
         TARGETED_DEVICE_FAMILY: "1"
         SKIP_INSTALL: YES
@@ -112,6 +115,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app.watchkitapp
         PRODUCT_NAME: NuvyraWatch
+        PRODUCT_BUNDLE_PACKAGE_TYPE: APPL
         DEVELOPMENT_TEAM: J5CYS3RDGH
         CODE_SIGN_STYLE: Automatic
         GENERATE_INFOPLIST_FILE: NO
