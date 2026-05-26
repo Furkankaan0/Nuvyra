@@ -1,7 +1,6 @@
 import Foundation
 import SwiftData
 import WatchConnectivity
-import WidgetKit
 
 @MainActor
 final class WatchWaterSyncService: NSObject {
@@ -35,7 +34,12 @@ final class WatchWaterSyncService: NSObject {
         do {
             try SwiftDataWaterRepository(context: modelContainer.mainContext).addWater(amountMl: amount, date: date)
             if let eventID { markProcessed(eventID) }
-            WidgetCenter.shared.reloadAllTimelines()
+            Task { @MainActor in
+                await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(
+                    context: modelContainer.mainContext,
+                    healthService: LiveHealthService()
+                )
+            }
             NotificationCenter.default.post(name: .nuvyraAppDidBecomeActive, object: nil)
         } catch {
             assertionFailure("Watch water sync failed: \(error.localizedDescription)")

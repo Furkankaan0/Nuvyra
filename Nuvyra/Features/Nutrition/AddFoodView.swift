@@ -390,6 +390,9 @@ struct AddFoodView: View {
                     )
                     await dependencies.healthService.saveNutrition(for: meal)
                 }
+                if Calendar.nuvyra.isDateInToday(date) {
+                    await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: modelContext, healthService: dependencies.healthService)
+                }
                 dismiss()
             } catch {
                 errorMessage = "Kayıt başarısız oldu. Tekrar dene."
@@ -428,6 +431,9 @@ struct AddFoodView: View {
         Task { @MainActor in
             do {
                 try dependencies.nutritionRepository(context: modelContext).deleteMeal(meal)
+                if Calendar.nuvyra.isDateInToday(meal.date) {
+                    await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: modelContext, healthService: dependencies.healthService)
+                }
                 dismiss()
             } catch {
                 errorMessage = "Öğün silinemedi."

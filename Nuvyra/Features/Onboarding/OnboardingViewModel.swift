@@ -171,6 +171,7 @@ final class OnboardingViewModel: ObservableObject {
                 input: calculationInput,
                 targets: targets
             )
+            await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
 
             if wantsNotifications {
                 let granted = await dependencies.notificationService.requestAuthorization()

@@ -52,7 +52,7 @@ final class ProfileViewModel: ObservableObject {
         )
     }
 
-    func updateGoals(context: ModelContext, calories: Int, waterMl: Int, steps: Int) {
+    func updateGoals(context: ModelContext, dependencies: DependencyContainer, calories: Int, waterMl: Int, steps: Int) {
         guard let profile else { return }
         profile.dailyCalorieTarget = min(max(calories, 1_000), 5_000)
         profile.dailyWaterTargetMl = min(max(waterMl, 1_000), 5_000)
@@ -61,6 +61,7 @@ final class ProfileViewModel: ObservableObject {
         do {
             try context.save()
             self.profile = profile
+            refreshWidget(context: context, dependencies: dependencies)
         } catch {
             alertMessage = "Hedeflerin kaydedilemedi."
         }
@@ -78,9 +79,16 @@ final class ProfileViewModel: ObservableObject {
             )
             self.profile = updated
             weightTrend = try dependencies.weightRepository(context: context).trendSummary(days: 90, targetWeightKg: updated.targetWeightKg)
+            refreshWidget(context: context, dependencies: dependencies)
             alertMessage = "Profilin ve hedeflerin güncellendi."
         } catch {
             alertMessage = "Profil güncellenemedi."
+        }
+    }
+
+    private func refreshWidget(context: ModelContext, dependencies: DependencyContainer) {
+        Task { @MainActor in
+            await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
         }
     }
 }

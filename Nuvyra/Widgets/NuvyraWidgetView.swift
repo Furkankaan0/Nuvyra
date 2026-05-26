@@ -1,4 +1,5 @@
-﻿import SwiftUI
+import Foundation
+import SwiftUI
 import WidgetKit
 
 struct NuvyraWidgetView: View {
@@ -6,46 +7,238 @@ struct NuvyraWidgetView: View {
     @Environment(\.colorScheme) private var scheme
     var entry: NuvyraWidgetEntry
 
+    private var snapshot: NuvyraWidgetSnapshot { entry.snapshot }
+
     var body: some View {
-        switch family {
-        case .systemSmall:
-            small
-        default:
-            medium
+        Group {
+            switch family {
+            case .systemSmall:
+                small
+            default:
+                medium
+            }
         }
+        .foregroundStyle(NuvyraColors.primaryText(scheme))
+        .containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
     }
 
     private var small: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Nuvyra")
-                .font(.headline.weight(.bold))
-            Spacer()
-            NuvyraProgressRing(progress: Double(entry.steps) / 7_500, lineWidth: 8, center: entry.steps.formatted(), caption: "adım")
-            Text("\(entry.calorieBalance) kcal kaldı")
+        VStack(alignment: .leading, spacing: 10) {
+            header(compact: true)
+
+            Spacer(minLength: 0)
+
+            HStack(alignment: .firstTextBaseline, spacing: 2) {
+                Text("\(snapshot.rhythmScore)")
+                    .font(.system(size: 38, weight: .heavy, design: .rounded))
+                    .minimumScaleFactor(0.75)
+                Text("%")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundStyle(NuvyraColors.secondaryText(scheme))
+            }
+
+            Text(snapshot.hasLoggedToday ? "Bugünkü ritim" : "Gün başlıyor")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            VStack(spacing: 6) {
+                progressBar(snapshot.waterProgress, tint: .cyan)
+                progressBar(snapshot.stepProgress, tint: NuvyraColors.accent)
+                progressBar(snapshot.proteinProgress, tint: NuvyraColors.paleLime)
+            }
+
+            HStack(spacing: 6) {
+                miniStat(title: "Su", value: shortMl(snapshot.waterMl), tint: .cyan)
+                miniStat(title: "Adım", value: compact(snapshot.steps), tint: NuvyraColors.accent)
+            }
         }
-        .padding()
-        .containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
+        .padding(14)
     }
 
     private var medium: some View {
         HStack(spacing: 14) {
-            NuvyraProgressRing(progress: Double(entry.steps) / 7_500, lineWidth: 10, center: entry.steps.formatted(), caption: "adım")
-                .frame(width: 112, height: 112)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Bugünkü ritmin")
-                    .font(.headline.weight(.bold))
-                Text("Kalori: \(entry.calorieBalance) kcal kaldı")
-                Text("Su: \(entry.waterMl) ml")
-                Text(entry.insight)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+            VStack(alignment: .leading, spacing: 10) {
+                header(compact: false)
+
+                NuvyraProgressRing(
+                    progress: Double(snapshot.rhythmScore) / 100,
+                    lineWidth: 9,
+                    center: "\(snapshot.rhythmScore)",
+                    caption: "ritim"
+                )
+                .frame(width: 100, height: 100)
+
+                HStack(spacing: 6) {
+                    streakChip(icon: "drop.fill", value: "\(snapshot.waterStreakDays)g")
+                    streakChip(icon: "fork.knife", value: "\(snapshot.mealStreakDays)g")
+                }
             }
-            .font(.caption.weight(.semibold))
+            .frame(width: 120, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(snapshot.firstName)
+                    .font(.headline.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                metricRow(
+                    icon: "flame.fill",
+                    title: "Kalori",
+                    value: "\(snapshot.calorieBalance) kaldı",
+                    progress: snapshot.calorieProgress,
+                    tint: NuvyraColors.mutedCoral
+                )
+                metricRow(
+                    icon: "drop.fill",
+                    title: "Su",
+                    value: "\(snapshot.waterMl) / \(snapshot.waterTargetMl) ml",
+                    progress: snapshot.waterProgress,
+                    tint: .cyan
+                )
+                metricRow(
+                    icon: "figure.walk",
+                    title: "Adım",
+                    value: "\(compact(snapshot.steps)) / \(compact(snapshot.stepTarget))",
+                    progress: snapshot.stepProgress,
+                    tint: NuvyraColors.accent
+                )
+                metricRow(
+                    icon: "bolt.heart.fill",
+                    title: "Protein",
+                    value: "\(Int(snapshot.proteinGrams.rounded())) / \(snapshot.proteinTargetGrams) g",
+                    progress: snapshot.proteinProgress,
+                    tint: NuvyraColors.paleLime
+                )
+
+                HStack(spacing: 4) {
+                    Image(systemName: "clock.arrow.circlepath")
+                    Text("Güncellendi \(snapshot.updatedAt.formatted(.dateTime.hour().minute()))")
+                }
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding()
-        .containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
+        .padding(14)
+    }
+
+    private func header(compact: Bool) -> some View {
+        HStack(spacing: 8) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(NuvyraColors.accent)
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: compact ? 12 : 13, weight: .bold))
+                    .foregroundStyle(.white)
+            }
+            .frame(width: compact ? 24 : 28, height: compact ? 24 : 28)
+
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Nuvyra")
+                    .font(.caption.weight(.heavy))
+                if !compact {
+                    Text("Canlı özet")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                }
+            }
+            .lineLimit(1)
+        }
+    }
+
+    private func metricRow(icon: String, title: String, value: String, progress: Double, tint: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(tint)
+                .frame(width: 16)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(title)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                    Spacer(minLength: 4)
+                    Text(value)
+                        .font(.caption.weight(.bold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+                progressBar(progress, tint: tint)
+            }
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(panelFill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(panelStroke, lineWidth: 1)
+        )
+    }
+
+    private func miniStat(title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(NuvyraColors.secondaryText(scheme))
+            Text(value)
+                .font(.caption.weight(.heavy))
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(tint.opacity(scheme == .dark ? 0.18 : 0.13), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func streakChip(icon: String, value: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+            Text(value)
+        }
+        .font(.caption2.weight(.bold))
+        .foregroundStyle(NuvyraColors.secondaryText(scheme))
+        .padding(.horizontal, 7)
+        .padding(.vertical, 5)
+        .background(panelFill, in: Capsule())
+        .overlay(Capsule().stroke(panelStroke, lineWidth: 1))
+    }
+
+    private func progressBar(_ progress: Double, tint: Color) -> some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width * CGFloat(min(max(progress, 0), 1))
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(tint.opacity(scheme == .dark ? 0.18 : 0.20))
+                Capsule()
+                    .fill(tint)
+                    .frame(width: progress > 0 ? max(width, 4) : 0)
+            }
+        }
+        .frame(height: 5)
+    }
+
+    private var panelFill: Color {
+        scheme == .dark ? Color.white.opacity(0.09) : Color.white.opacity(0.56)
+    }
+
+    private var panelStroke: Color {
+        scheme == .dark ? Color.white.opacity(0.13) : Color.white.opacity(0.66)
+    }
+
+    private func compact(_ value: Int) -> String {
+        if value >= 1_000 {
+            let number = Double(value) / 1_000
+            return number >= 10 ? "\(Int(number.rounded()))K" : String(format: "%.1fK", number)
+        }
+        return value.formatted()
+    }
+
+    private func shortMl(_ value: Int) -> String {
+        value >= 1_000 ? String(format: "%.1fL", Double(value) / 1_000) : "\(value)ml"
     }
 }

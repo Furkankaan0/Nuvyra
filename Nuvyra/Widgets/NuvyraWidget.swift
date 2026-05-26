@@ -11,14 +11,15 @@ struct NuvyraWidgetBundle: WidgetBundle {
 }
 
 struct NuvyraWidget: Widget {
-    let kind = "NuvyraWidget"
+    let kind = NuvyraWidgetSnapshotStore.widgetKind
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: NuvyraWidgetProvider()) { entry in
             NuvyraWidgetView(entry: entry)
         }
         .configurationDisplayName("Nuvyra Ritmi")
-        .description("Kalori, adım ve su ritmini tek bakışta gör.")
+        .description("Kalori, adım, su ve protein ritmini tek bakışta gör.")
         .supportedFamilies([.systemSmall, .systemMedium])
+        .contentMarginsDisabled()
     }
 }

@@ -256,7 +256,7 @@ final class DashboardViewModel: ObservableObject {
             // Re-plan today's smart reminders against the freshly loaded context.
             let hasLunch = meals.contains { $0.mealType == .lunch }
             let hasDinner = meals.contains { $0.mealType == .dinner }
-            let context = ReminderContext(
+            let reminderContext = ReminderContext(
                 firstName: profile?.name.isEmpty == false ? profile!.name : "Hoş geldin",
                 caloriesConsumed: totalCalories,
                 calorieTarget: calorieTarget,
@@ -269,7 +269,8 @@ final class DashboardViewModel: ObservableObject {
                 waterStreakDays: waterStreak.currentStreak,
                 mealStreakDays: mealStreak.currentStreak
             )
-            await dependencies.smartReminderEngine.reschedule(context: context)
+            await dependencies.smartReminderEngine.reschedule(context: reminderContext)
+            await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
 
             if healthSnapshot.steps >= stepTarget, !didPlayStepGoalHaptic {
                 didPlayStepGoalHaptic = true

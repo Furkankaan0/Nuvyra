@@ -1,6 +1,5 @@
 import SwiftData
 import SwiftUI
-import WidgetKit
 
 @main
 @MainActor
@@ -43,7 +42,10 @@ struct NuvyraApp: App {
         await dependencies.subscriptionManager.refresh(
             repository: dependencies.subscriptionRepository(context: modelContainer.mainContext)
         )
-        WidgetCenter.shared.reloadAllTimelines()
+        await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(
+            context: modelContainer.mainContext,
+            healthService: dependencies.healthService
+        )
         NotificationCenter.default.post(name: .nuvyraAppDidBecomeActive, object: nil)
     }
 

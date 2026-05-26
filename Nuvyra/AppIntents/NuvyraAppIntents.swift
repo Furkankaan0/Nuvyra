@@ -91,11 +91,12 @@ struct NuvyraShortcuts: AppShortcutsProvider {
 
 private enum IntentActionStore {
     @MainActor
-    static func addWater(amountMl: Int) throws -> String {
+    static func addWater(amountMl: Int) async throws -> String {
         let safeAmount = min(max(amountMl, 50), 2_000)
         let container = NuvyraModelContainer.live()
         SeedData.ensureMinimumData(in: container.mainContext)
         try SwiftDataWaterRepository(context: container.mainContext).addWater(amountMl: safeAmount, date: Date())
+        await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: container.mainContext, healthService: LiveHealthService())
         return "\(safeAmount) ml su Nuvyra’ya eklendi."
     }
 
@@ -121,6 +122,7 @@ private enum IntentActionStore {
         )
         try SwiftDataNutritionRepository(context: container.mainContext).addMeal(meal)
         await LiveHealthService().saveNutrition(for: meal)
+        await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: container.mainContext, healthService: LiveHealthService())
         return "\(estimate.name), tahmini \(estimate.calories) kcal olarak kaydedildi."
     }
 
@@ -132,6 +134,7 @@ private enum IntentActionStore {
         let goal = profile?.dailyStepTarget ?? 7_500
         let snapshot = await LiveHealthService().todaySnapshot()
         await LiveWalkingLiveActivityService().start(goal: goal, initialSteps: snapshot.steps)
+        await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: container.mainContext, healthService: LiveHealthService())
         return "Nuvyra yürüyüş odağı başlatıldı."
     }
 }

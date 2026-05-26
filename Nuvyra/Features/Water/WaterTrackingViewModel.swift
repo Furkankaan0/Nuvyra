@@ -23,7 +23,7 @@ final class WaterTrackingViewModel: ObservableObject {
 
     var goal: WaterGoal { WaterGoal(profile: profile) }
 
-    /// Counts only `.water` entries — this is what the headline / wave is for.
+    /// Counts only `.water` entries; this is what the headline and wave are for.
     var consumedMl: Int {
         entries.filter { $0.drinkType == .water }.map(\.amountMl).reduce(0, +)
     }
@@ -47,7 +47,7 @@ final class WaterTrackingViewModel: ObservableObject {
             totalCaffeineMg = try waterRepository.totalCaffeine(on: selectedDate)
             weeklyTotals = try waterRepository.weeklyTotals(endingOn: selectedDate)
             streak = (try? waterRepository.waterStreak(daysBack: 60, targetMl: goal.dailyTargetMl)) ?? .empty
-            // Reset the celebration flag if the user dropped below the goal.
+
             if summary.consumedMl < summary.targetMl {
                 hasCelebratedToday = false
             }
@@ -74,6 +74,7 @@ final class WaterTrackingViewModel: ObservableObject {
             dependencies.haptics.waterAdded()
             await dependencies.analytics.track(.waterAdded, payload: AnalyticsPayload(values: ["amount_ml": "\(safe)", "drink": drinkType.rawValue]))
             await load(context: context, dependencies: dependencies)
+            await refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
             flash("+\(safe) ml \(drinkType.title.lowercased()) eklendi")
             if drinkType == .water, Calendar.nuvyra.isDateInToday(selectedDate), !wasGoalReached, summary.isGoalReached, !hasCelebratedToday {
                 hasCelebratedToday = true
@@ -88,6 +89,7 @@ final class WaterTrackingViewModel: ObservableObject {
         do {
             try context.save()
             await load(context: context, dependencies: dependencies)
+            await refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
             flash("Kayıt geri alındı")
         } catch {}
     }
@@ -97,6 +99,7 @@ final class WaterTrackingViewModel: ObservableObject {
             let removed = try dependencies.waterRepository(context: context).removeLastEntry(on: selectedDate)
             if removed > 0 { flash("-\(removed) ml geri alındı") }
             await load(context: context, dependencies: dependencies)
+            await refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
         } catch {}
     }
 
@@ -104,6 +107,7 @@ final class WaterTrackingViewModel: ObservableObject {
         do {
             try dependencies.waterRepository(context: context).clearDay(selectedDate)
             await load(context: context, dependencies: dependencies)
+            await refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
             flash("Gün sıfırlandı")
         } catch {}
     }
@@ -111,6 +115,11 @@ final class WaterTrackingViewModel: ObservableObject {
     func changeDate(to date: Date, context: ModelContext, dependencies: DependencyContainer) {
         selectedDate = date
         Task { await load(context: context, dependencies: dependencies) }
+    }
+
+    private func refreshWidgetIfViewingToday(context: ModelContext, dependencies: DependencyContainer) async {
+        guard Calendar.nuvyra.isDateInToday(selectedDate) else { return }
+        await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
     }
 
     private func flash(_ message: String) {

@@ -97,6 +97,7 @@ final class NutritionViewModel: ObservableObject {
             smartMealText = ""
             estimatedResults = []
             load(context: context, dependencies: dependencies)
+            refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
         } catch {
             errorMessage = "Tahmini öğün eklenemedi."
         }
@@ -122,6 +123,7 @@ final class NutritionViewModel: ObservableObject {
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "quick_food", "name": food.name]))
             load(context: context, dependencies: dependencies)
+            refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
         } catch {
             errorMessage = "Öğün eklenemedi."
         }
@@ -147,6 +149,7 @@ final class NutritionViewModel: ObservableObject {
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "fts_food_search"]))
             load(context: context, dependencies: dependencies)
+            refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
         } catch {
             errorMessage = "Arama sonucundan öğün eklenemedi."
         }
@@ -172,6 +175,7 @@ final class NutritionViewModel: ObservableObject {
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "barcode", "provider": product.source.rawValue]))
             load(context: context, dependencies: dependencies)
+            refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
         } catch {
             errorMessage = "Barkoddan gelen ürün öğüne eklenemedi."
         }
@@ -181,6 +185,7 @@ final class NutritionViewModel: ObservableObject {
         do {
             try dependencies.nutritionRepository(context: context).deleteMeal(meal)
             load(context: context, dependencies: dependencies)
+            refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
         } catch {
             errorMessage = "Öğün silinemedi."
         }
@@ -199,6 +204,7 @@ final class NutritionViewModel: ObservableObject {
                 await dependencies.healthService.saveNutrition(for: meal)
             }
             load(context: context, dependencies: dependencies)
+            refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
             flash(count > 0 ? "\(count) öğün kopyalandı" : "Kopyalanacak öğün yok")
         } catch {
             errorMessage = "Öğünler kopyalanamadı."
@@ -211,9 +217,21 @@ final class NutritionViewModel: ObservableObject {
             if isViewingToday {
                 load(context: context, dependencies: dependencies)
             }
+            refreshWidget(context: context, dependencies: dependencies)
             flash("Öğün bugüne kopyalandı")
         } catch {
             errorMessage = "Öğün bugüne kopyalanamadı."
+        }
+    }
+
+    private func refreshWidgetIfViewingToday(context: ModelContext, dependencies: DependencyContainer) {
+        guard isViewingToday else { return }
+        refreshWidget(context: context, dependencies: dependencies)
+    }
+
+    private func refreshWidget(context: ModelContext, dependencies: DependencyContainer) {
+        Task { @MainActor in
+            await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
         }
     }
 

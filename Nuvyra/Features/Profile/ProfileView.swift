@@ -44,7 +44,7 @@ struct ProfileView: View {
         .sheet(isPresented: $showsGoalEditor) {
             if let profile = viewModel.profile {
                 GoalEditorSheet(profile: profile) { calories, water, steps in
-                    viewModel.updateGoals(context: modelContext, calories: calories, waterMl: water, steps: steps)
+                    viewModel.updateGoals(context: modelContext, dependencies: dependencies, calories: calories, waterMl: water, steps: steps)
                 }
             }
         }
