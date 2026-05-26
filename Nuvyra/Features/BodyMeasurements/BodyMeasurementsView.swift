@@ -67,7 +67,7 @@ struct BodyMeasurementsView: View {
                             metricCell("Göğüs", value: log.chestCm, unit: "cm")
                             metricCell("Omuz", value: log.shoulderCm, unit: "cm")
                             metricCell("Boyun", value: log.neckCm, unit: "cm")
-                            metricCell("Pazı", value: log.bicepCm, unit: "cm")
+                            metricCell("Pazı", value: log.bicepsCm, unit: "cm")
                             metricCell("Uyluk", value: log.thighCm, unit: "cm")
                             metricCell("Yağ %", value: log.bodyFatPercent, unit: "%")
                             metricCell("Bel/Kalça", value: log.waistToHipRatio, unit: "", fractionDigits: 2)

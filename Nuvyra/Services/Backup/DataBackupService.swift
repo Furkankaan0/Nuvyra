@@ -431,6 +431,9 @@ private struct WeightBackup: Codable {
     var chestCm: Double?
     var shoulderCm: Double?
     var neckCm: Double?
+    /// JSON key intentionally kept as `bicepCm` so historic backups remain
+    /// importable after the model rename. Swift property maps to `log.bicepsCm`
+    /// internally — the Codable wire format does not change.
     var bicepCm: Double?
     var thighCm: Double?
     var bodyFatPercent: Double?
@@ -447,7 +450,7 @@ private struct WeightBackup: Codable {
         self.chestCm = log.chestCm
         self.shoulderCm = log.shoulderCm
         self.neckCm = log.neckCm
-        self.bicepCm = log.bicepCm
+        self.bicepCm = log.bicepsCm
         self.thighCm = log.thighCm
         self.bodyFatPercent = log.bodyFatPercent
     }
@@ -463,7 +466,7 @@ private struct WeightBackup: Codable {
         log.chestCm = chestCm
         log.shoulderCm = shoulderCm
         log.neckCm = neckCm
-        log.bicepCm = bicepCm
+        log.bicepsCm = bicepCm
         log.thighCm = thighCm
         log.bodyFatPercent = bodyFatPercent
     }

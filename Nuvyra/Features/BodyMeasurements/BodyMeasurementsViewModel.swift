@@ -26,7 +26,7 @@ final class BodyMeasurementsViewModel: ObservableObject {
             (.chest, { $0.chestCm }),
             (.shoulder, { $0.shoulderCm }),
             (.neck, { $0.neckCm }),
-            (.bicep, { $0.bicepCm }),
+            (.bicep, { $0.bicepsCm }),
             (.thigh, { $0.thighCm }),
             (.bodyFat, { $0.bodyFatPercent }),
             (.waistHipRatio, { $0.waistToHipRatio })

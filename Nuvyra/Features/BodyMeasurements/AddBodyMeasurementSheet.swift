@@ -49,7 +49,7 @@ struct AddBodyMeasurementSheet: View {
             _chest = State(initialValue: log.chestCm)
             _shoulder = State(initialValue: log.shoulderCm)
             _neck = State(initialValue: log.neckCm)
-            _bicep = State(initialValue: log.bicepCm)
+            _bicep = State(initialValue: log.bicepsCm)
             _thigh = State(initialValue: log.thighCm)
             _bodyFat = State(initialValue: log.bodyFatPercent)
         }
@@ -190,7 +190,7 @@ struct AddBodyMeasurementSheet: View {
             chestCm: chest,
             shoulderCm: shoulder,
             neckCm: neck,
-            bicepCm: bicep,
+            bicepsCm: bicep,
             thighCm: thigh,
             bodyFatPercent: bodyFat,
             note: note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : note.trimmingCharacters(in: .whitespacesAndNewlines)

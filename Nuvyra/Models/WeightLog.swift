@@ -19,7 +19,10 @@ final class WeightLog: Identifiable {
     var chestCm: Double?
     var shoulderCm: Double?
     var neckCm: Double?
-    var bicepCm: Double?
+    /// Biceps girth (cm). Was previously named `bicepCm` — renamed to the
+    /// anatomically correct "biceps" form. `@Attribute(originalName:)` performs
+    /// a SwiftData lightweight migration so existing rows are preserved.
+    @Attribute(originalName: "bicepCm") var bicepsCm: Double?
     var thighCm: Double?
     var bodyFatPercent: Double?
 
@@ -35,7 +38,7 @@ final class WeightLog: Identifiable {
         chestCm: Double? = nil,
         shoulderCm: Double? = nil,
         neckCm: Double? = nil,
-        bicepCm: Double? = nil,
+        bicepsCm: Double? = nil,
         thighCm: Double? = nil,
         bodyFatPercent: Double? = nil
     ) {
@@ -50,7 +53,7 @@ final class WeightLog: Identifiable {
         self.chestCm = chestCm
         self.shoulderCm = shoulderCm
         self.neckCm = neckCm
-        self.bicepCm = bicepCm
+        self.bicepsCm = bicepsCm
         self.thighCm = thighCm
         self.bodyFatPercent = bodyFatPercent
     }
@@ -58,7 +61,7 @@ final class WeightLog: Identifiable {
     /// Convenience — true when *any* body-composition field is filled.
     var hasBodyComposition: Bool {
         waistCm != nil || hipCm != nil || chestCm != nil || shoulderCm != nil ||
-        neckCm != nil || bicepCm != nil || thighCm != nil || bodyFatPercent != nil
+        neckCm != nil || bicepsCm != nil || thighCm != nil || bodyFatPercent != nil
     }
 
     /// Waist-to-hip ratio — a commonly tracked composition metric.

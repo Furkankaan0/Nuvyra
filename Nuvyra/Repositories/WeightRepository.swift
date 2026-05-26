@@ -19,7 +19,7 @@ struct BodyMeasurementSnapshot: Equatable {
     var chestCm: Double?
     var shoulderCm: Double?
     var neckCm: Double?
-    var bicepCm: Double?
+    var bicepsCm: Double?
     var thighCm: Double?
     var bodyFatPercent: Double?
     var note: String?
@@ -42,7 +42,7 @@ extension BodyMeasurementSnapshot {
             chestCm: log.chestCm,
             shoulderCm: log.shoulderCm,
             neckCm: log.neckCm,
-            bicepCm: log.bicepCm,
+            bicepsCm: log.bicepsCm,
             thighCm: log.thighCm,
             bodyFatPercent: log.bodyFatPercent,
             note: log.note
@@ -157,7 +157,7 @@ final class SwiftDataWeightRepository: WeightRepository {
             existing.chestCm = snapshot.chestCm ?? existing.chestCm
             existing.shoulderCm = snapshot.shoulderCm ?? existing.shoulderCm
             existing.neckCm = snapshot.neckCm ?? existing.neckCm
-            existing.bicepCm = snapshot.bicepCm ?? existing.bicepCm
+            existing.bicepsCm = snapshot.bicepsCm ?? existing.bicepsCm
             existing.thighCm = snapshot.thighCm ?? existing.thighCm
             existing.bodyFatPercent = snapshot.bodyFatPercent ?? existing.bodyFatPercent
             if let note = snapshot.note { existing.note = note }
@@ -175,7 +175,7 @@ final class SwiftDataWeightRepository: WeightRepository {
                 chestCm: snapshot.chestCm,
                 shoulderCm: snapshot.shoulderCm,
                 neckCm: snapshot.neckCm,
-                bicepCm: snapshot.bicepCm,
+                bicepsCm: snapshot.bicepsCm,
                 thighCm: snapshot.thighCm,
                 bodyFatPercent: snapshot.bodyFatPercent
             )

@@ -166,7 +166,7 @@ struct BodyMeasurementTrendCard: View {
         case .chest: return log.chestCm
         case .shoulder: return log.shoulderCm
         case .neck: return log.neckCm
-        case .bicep: return log.bicepCm
+        case .bicep: return log.bicepsCm
         case .thigh: return log.thighCm
         case .bodyFat: return log.bodyFatPercent
         case .waistHipRatio: return log.waistToHipRatio
