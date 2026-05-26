@@ -75,7 +75,7 @@ struct DashboardView: View {
                     }
                     .dashboardSlide(index: 7, animated: didAnimateAppearance)
 
-                    HStack(spacing: NuvyraSpacing.sm) {
+                    VStack(spacing: NuvyraSpacing.md) {
                         StreakCard(kind: .meal, insight: viewModel.mealStreak)
                         StreakCard(kind: .water, insight: viewModel.waterStreak)
                     }
