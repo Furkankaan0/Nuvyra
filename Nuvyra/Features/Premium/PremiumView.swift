@@ -23,6 +23,7 @@ struct PaywallView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     hero
+                    if let offer = highlightedTrialOffer { trialBanner(offer: offer) }
                     featureList
                     planCards
                     purchaseSection
@@ -38,6 +39,61 @@ struct PaywallView: View {
             Button("Tamam", role: .cancel) { dependencies.subscriptionManager.errorMessage = nil }
         } message: {
             Text(dependencies.subscriptionManager.errorMessage ?? "Lütfen tekrar dene.")
+        }
+    }
+
+    /// Picks the most prominent offer to surface in the banner. Prefers the
+    /// selected plan; falls back to the yearly plan; finally any recurring plan.
+    private var highlightedTrialOffer: IntroductoryOffer? {
+        if let offer = viewModel.selectedProduct?.introductoryOffer { return offer }
+        if let yearly = viewModel.products.first(where: { $0.productID == .premiumYearly })?.introductoryOffer { return yearly }
+        return viewModel.products.first(where: { $0.introductoryOffer != nil })?.introductoryOffer
+    }
+
+    private func trialBanner(offer: IntroductoryOffer) -> some View {
+        HStack(alignment: .center, spacing: NuvyraSpacing.md) {
+            ZStack {
+                Circle()
+                    .fill(LinearGradient(colors: [NuvyraColors.accent, NuvyraColors.softMint], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 52, height: 52)
+                Image(systemName: "gift.fill")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.white)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(offer.badge)
+                    .font(.headline.weight(.heavy))
+                    .foregroundStyle(NuvyraColors.primaryText(scheme))
+                Text(trialSubtitle(for: offer))
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: NuvyraRadius.lg, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: NuvyraRadius.lg, style: .continuous)
+                .stroke(LinearGradient(colors: [NuvyraColors.accent.opacity(0.55), NuvyraColors.softMint.opacity(0.45)], startPoint: .leading, endPoint: .trailing), lineWidth: 1.2)
+        )
+        .shadow(color: NuvyraColors.accent.opacity(0.18), radius: 14, y: 8)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Deneme bilgisi: \(offer.badge)")
+    }
+
+    private func trialSubtitle(for offer: IntroductoryOffer) -> String {
+        let recurringPrice = viewModel.selectedProduct?.price ?? viewModel.products.first(where: { $0.productID == .premiumYearly })?.price ?? ""
+        switch offer.mode {
+        case .freeTrial:
+            if recurringPrice.isEmpty {
+                return "Sonrasında dilediğin zaman Apple ID ayarlarından iptal edebilirsin."
+            }
+            return "Deneme bitince \(recurringPrice). İstediğin zaman iptal edebilirsin."
+        case .payAsYouGo:
+            return "İndirimli giriş süresi, sonrasında normal abonelik fiyatına geçer."
+        case .payUpFront:
+            return "Tek seferlik indirimli giriş ücreti; sonrasında normal abonelik devam eder."
         }
     }
 

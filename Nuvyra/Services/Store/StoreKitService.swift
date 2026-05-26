@@ -76,6 +76,25 @@ enum EntitlementState: Equatable {
     }
 }
 
+/// Introductory offer attached to a `PremiumProduct` — mirrors Apple's
+/// `Product.SubscriptionInfo.IntroductoryOffer` but stays a plain value type
+/// so the UI doesn't depend on StoreKit symbols directly.
+struct IntroductoryOffer: Equatable, Hashable {
+    enum Mode: String, Codable { case freeTrial, payAsYouGo, payUpFront }
+
+    var mode: Mode
+    var days: Int
+    var displayText: String
+
+    /// Short capsule copy ("İlk 7 gün ücretsiz", "İlk ay ₺19,99").
+    var badge: String {
+        switch mode {
+        case .freeTrial: "İlk \(days) gün ücretsiz"
+        case .payAsYouGo, .payUpFront: displayText
+        }
+    }
+}
+
 struct PremiumProduct: Identifiable, Equatable {
     var id: String
     var productID: ProductID
@@ -86,6 +105,7 @@ struct PremiumProduct: Identifiable, Equatable {
     var isYearly: Bool
     var isLifetime: Bool
     var features: [String]
+    var introductoryOffer: IntroductoryOffer?
 
     static let premiumFeatures = [
         "Sınırsız yemek kaydı",
@@ -111,7 +131,10 @@ struct PremiumProduct: Identifiable, Equatable {
                 renewalDescription: productID.renewalDescription,
                 isYearly: productID == .premiumYearly,
                 isLifetime: productID == .premiumLifetime,
-                features: PremiumProduct.premiumFeatures
+                features: PremiumProduct.premiumFeatures,
+                introductoryOffer: productID.isRecurring
+                    ? IntroductoryOffer(mode: .freeTrial, days: 7, displayText: "7 gün ücretsiz")
+                    : nil
             )
         }
 }
@@ -221,8 +244,47 @@ final class LiveStoreKitService: StoreKitService {
             renewalDescription: productID.renewalDescription,
             isYearly: productID == .premiumYearly,
             isLifetime: productID == .premiumLifetime,
-            features: PremiumProduct.premiumFeatures
+            features: PremiumProduct.premiumFeatures,
+            introductoryOffer: introductoryOffer(for: product)
         )
+    }
+
+    /// Convert Apple's StoreKit2 introductory offer into our value-type representation.
+    /// Falls back to a 7-day free trial copy for recurring products when App Store
+    /// Connect hasn't been configured yet.
+    private func introductoryOffer(for product: Product) -> IntroductoryOffer? {
+        guard let subscription = product.subscription else { return nil }
+        if let intro = subscription.introductoryOffer {
+            let days = approximateDays(unit: intro.period.unit, value: intro.period.value)
+            let totalDays = max(days * max(intro.periodCount, 1), 1)
+            let mode: IntroductoryOffer.Mode
+            switch intro.paymentMode {
+            case .freeTrial: mode = .freeTrial
+            case .payAsYouGo: mode = .payAsYouGo
+            case .payUpFront: mode = .payUpFront
+            default: mode = .freeTrial
+            }
+            let displayText: String
+            switch mode {
+            case .freeTrial: displayText = "\(totalDays) gün ücretsiz"
+            case .payAsYouGo: displayText = "İlk \(totalDays) gün \(intro.displayPrice)"
+            case .payUpFront: displayText = "İlk \(totalDays) gün \(intro.displayPrice)"
+            }
+            return IntroductoryOffer(mode: mode, days: totalDays, displayText: displayText)
+        }
+        // Fall back so the UI can still show "7 gün ücretsiz" — the actual offer
+        // becomes authoritative as soon as App Store Connect serves one.
+        return IntroductoryOffer(mode: .freeTrial, days: 7, displayText: "7 gün ücretsiz")
+    }
+
+    private func approximateDays(unit: Product.SubscriptionPeriod.Unit, value: Int) -> Int {
+        switch unit {
+        case .day: value
+        case .week: value * 7
+        case .month: value * 30
+        case .year: value * 365
+        @unknown default: value
+        }
     }
 
     private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {

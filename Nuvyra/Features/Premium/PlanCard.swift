@@ -29,6 +29,20 @@ struct PlanCard: View {
                         Text(product.price)
                             .font(.system(.title2, design: .rounded).weight(.heavy))
                             .foregroundStyle(NuvyraColors.primaryText(scheme))
+
+                        if let offer = product.introductoryOffer {
+                            Label(offer.badge, systemImage: offer.mode == .freeTrial ? "gift.fill" : "tag.fill")
+                                .font(.caption2.weight(.heavy))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(
+                                    LinearGradient(colors: [NuvyraColors.accent, NuvyraColors.softMint], startPoint: .leading, endPoint: .trailing),
+                                    in: Capsule()
+                                )
+                                .shadow(color: NuvyraColors.accent.opacity(0.28), radius: 6, y: 3)
+                                .accessibilityLabel(offer.badge)
+                        }
                     }
 
                     Spacer()
