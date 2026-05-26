@@ -15,6 +15,7 @@ final class DependencyContainer: ObservableObject {
     let walkingLiveActivityService: WalkingLiveActivityService
     let analytics: AnalyticsService
     let smartReminderEngine: SmartReminderEngine
+    let upsellTriggerEngine: UpsellTriggerEngine
     @Published var subscriptionManager: SubscriptionManager
 
     init(
@@ -26,7 +27,8 @@ final class DependencyContainer: ObservableObject {
         haptics: HapticsService,
         walkingLiveActivityService: WalkingLiveActivityService,
         analytics: AnalyticsService,
-        smartReminderEngine: SmartReminderEngine? = nil
+        smartReminderEngine: SmartReminderEngine? = nil,
+        upsellTriggerEngine: UpsellTriggerEngine? = nil
     ) {
         self.healthService = healthService
         self.motionService = motionService
@@ -39,6 +41,7 @@ final class DependencyContainer: ObservableObject {
         self.walkingLiveActivityService = walkingLiveActivityService
         self.analytics = analytics
         self.smartReminderEngine = smartReminderEngine ?? LiveSmartReminderEngine(notificationService: notificationService)
+        self.upsellTriggerEngine = upsellTriggerEngine ?? DefaultUpsellTriggerEngine()
         self.subscriptionManager = SubscriptionManager(storeKitService: storeKitService)
     }
 

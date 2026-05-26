@@ -120,6 +120,17 @@ struct DashboardView: View {
         .onReceive(NotificationCenter.default.publisher(for: .nuvyraAppDidBecomeActive)) { _ in
             Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         }
+        .sheet(item: $viewModel.pendingUpsell) { trigger in
+            BehavioralPaywallSheet(
+                trigger: trigger,
+                onExplorePremium: {
+                    viewModel.acknowledgeUpsell(trigger, context: modelContext)
+                    router.selectedTab = .profile
+                },
+                onDismiss: { viewModel.acknowledgeUpsell(trigger, context: modelContext) }
+            )
+            .presentationDetents([.large])
+        }
         .sheet(item: $presentedSheet) { sheet in
             switch sheet {
             case .addMeal(let type):

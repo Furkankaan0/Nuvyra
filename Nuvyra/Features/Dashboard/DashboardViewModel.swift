@@ -14,6 +14,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var waterStreak: StreakInsight = .empty
     @Published var mealStreak: StreakInsight = .empty
     @Published var didCompleteDayOneTour: Bool = false
+    @Published var pendingUpsell: UpsellTrigger?
 
     private var didPlayStepGoalHaptic = false
 
@@ -169,12 +170,29 @@ final class DashboardViewModel: ObservableObject {
     /// Persist the dismiss / completion flag onto AppSettings.
     func dismissDayOneTour(context: ModelContext) {
         didCompleteDayOneTour = true
+        mutateSettings(context: context) { $0.didCompleteDayOneTour = true }
+    }
+
+    /// Mark the upsell trigger as shown so we don't surface it again.
+    func acknowledgeUpsell(_ trigger: UpsellTrigger, context: ModelContext) {
+        mutateSettings(context: context) { settings in
+            settings.lastUpsellShownAt = Date()
+            var shown = UpsellTrigger.parse(rawList: settings.shownUpsellTriggers)
+            shown.insert(trigger)
+            settings.shownUpsellTriggers = UpsellTrigger.encode(shown)
+        }
+        pendingUpsell = nil
+    }
+
+    /// Tiny helper for AppSettings upsert with `updatedAt` housekeeping.
+    private func mutateSettings(context: ModelContext, mutate: (AppSettings) -> Void) {
         let descriptor = FetchDescriptor<AppSettings>()
         if let settings = (try? context.fetch(descriptor))?.first {
-            settings.didCompleteDayOneTour = true
+            mutate(settings)
             settings.updatedAt = Date()
         } else {
-            let settings = AppSettings(didCompleteDayOneTour: true)
+            let settings = AppSettings()
+            mutate(settings)
             context.insert(settings)
         }
         try? context.save()
@@ -213,6 +231,27 @@ final class DashboardViewModel: ObservableObject {
             if !didCompleteDayOneTour, dayOneCompletedSteps.count == DayOneTourCard.Step.allCases.count {
                 dismissDayOneTour(context: context)
             }
+
+            // Stamp firstLaunchAt the very first time we see this user post-onboarding,
+            // so behavioural triggers like "one week active" can fire later on.
+            if settings?.firstLaunchAt == nil {
+                mutateSettings(context: context) { $0.firstLaunchAt = Date() }
+            }
+
+            // Behavioural upsell evaluation (skips silently for premium users).
+            let alreadyShown = UpsellTrigger.parse(rawList: settings?.shownUpsellTriggers ?? "")
+            let upsellContext = UpsellContext(
+                isPremium: dependencies.subscriptionManager.isPremium,
+                firstLaunchAt: settings?.firstLaunchAt ?? Date(),
+                lastShownAt: settings?.lastUpsellShownAt,
+                alreadyShown: alreadyShown,
+                waterStreak: waterStreak.currentStreak,
+                mealStreak: mealStreak.currentStreak,
+                stepGoalCompletedToday: healthSnapshot.steps >= stepTarget,
+                waterGoalCompletedToday: waterMl >= waterTarget,
+                calorieGoalCompletedToday: totalCalories >= Int(Double(calorieTarget) * 0.9)
+            )
+            pendingUpsell = dependencies.upsellTriggerEngine.nextTrigger(context: upsellContext)
 
             // Re-plan today's smart reminders against the freshly loaded context.
             let hasLunch = meals.contains { $0.mealType == .lunch }

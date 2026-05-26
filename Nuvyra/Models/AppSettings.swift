@@ -10,6 +10,14 @@ final class AppSettings: Identifiable {
     var reducedInsightCopy: Bool
     /// Set to true when the user finishes (or dismisses) the day-one guided tour.
     var didCompleteDayOneTour: Bool = false
+    /// First time the user launched the app (post-onboarding). Drives the
+    /// "1 week of Nuvyra" upsell trigger.
+    var firstLaunchAt: Date?
+    /// Last time we surfaced a behavioural upsell — used as a cooldown.
+    var lastUpsellShownAt: Date?
+    /// Comma-separated raw values of `UpsellTrigger` cases already presented,
+    /// so we don't re-show the same trigger multiple times.
+    var shownUpsellTriggers: String = ""
     var createdAt: Date
     var updatedAt: Date
 
@@ -20,6 +28,9 @@ final class AppSettings: Identifiable {
         healthPermissionAsked: Bool = false,
         reducedInsightCopy: Bool = false,
         didCompleteDayOneTour: Bool = false,
+        firstLaunchAt: Date? = nil,
+        lastUpsellShownAt: Date? = nil,
+        shownUpsellTriggers: String = "",
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -29,6 +40,9 @@ final class AppSettings: Identifiable {
         self.healthPermissionAsked = healthPermissionAsked
         self.reducedInsightCopy = reducedInsightCopy
         self.didCompleteDayOneTour = didCompleteDayOneTour
+        self.firstLaunchAt = firstLaunchAt
+        self.lastUpsellShownAt = lastUpsellShownAt
+        self.shownUpsellTriggers = shownUpsellTriggers
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
