@@ -14,3 +14,10 @@ struct LiveStepCountService: StepCountService {
         return await motionService.todayStepsFallback()
     }
 }
+
+/// Deterministic step counter for previews and unit tests. Keeps SwiftUI
+/// previews out of HealthKit so they don't trigger authorization prompts.
+struct MockStepCountService: StepCountService {
+    var stepsToReturn: Int = 5_360
+    func todaySteps() async -> Int { stepsToReturn }
+}

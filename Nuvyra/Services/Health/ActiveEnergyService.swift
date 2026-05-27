@@ -11,3 +11,9 @@ struct LiveActiveEnergyService: ActiveEnergyService {
         await healthService.todaySnapshot().activeEnergy
     }
 }
+
+/// Deterministic active-energy provider for previews and unit tests.
+struct MockActiveEnergyService: ActiveEnergyService {
+    var caloriesToReturn: Double = 280
+    func todayActiveEnergy() async -> Double { caloriesToReturn }
+}

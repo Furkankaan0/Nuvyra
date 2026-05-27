@@ -2,8 +2,18 @@ import Combine
 import Foundation
 import SwiftData
 
+/// Protocol-oriented dependency container. Every property is exposed via a
+/// protocol type (see `DependencyProvider`); the concrete `Live*` / `Mock*`
+/// implementations are wired through the `live()`, `preview()` and `mock()`
+/// factories. Repositories are returned through factory methods because they
+/// need the per-context `ModelContext` SwiftData hands out at runtime.
+///
+/// Kept as `final class` + `ObservableObject` so existing call sites that use
+/// `@EnvironmentObject private var dependencies: DependencyContainer` keep
+/// compiling. New call sites are free to type against `DependencyProvider`.
 @MainActor
-final class DependencyContainer: ObservableObject {
+final class DependencyContainer: ObservableObject, DependencyProvider {
+    // MARK: - Services
     let healthService: HealthService
     let motionService: MotionService
     let stepCountService: StepCountService
@@ -18,6 +28,11 @@ final class DependencyContainer: ObservableObject {
     let upsellTriggerEngine: UpsellTriggerEngine
     @Published var subscriptionManager: SubscriptionManager
 
+    // MARK: - Init
+    /// Designated initialiser. Every dependency must arrive through a protocol
+    /// type; `stepCountService` / `activeEnergyService` are derived from the
+    /// passed-in `healthService` + `motionService` by default but can be
+    /// overridden for tests/previews so HealthKit isn't touched.
     init(
         healthService: HealthService,
         motionService: MotionService,
@@ -27,24 +42,34 @@ final class DependencyContainer: ObservableObject {
         haptics: HapticsService,
         walkingLiveActivityService: WalkingLiveActivityService,
         analytics: AnalyticsService,
+        stepCountService: StepCountService? = nil,
+        activeEnergyService: ActiveEnergyService? = nil,
         smartReminderEngine: SmartReminderEngine? = nil,
-        upsellTriggerEngine: UpsellTriggerEngine? = nil
+        upsellTriggerEngine: UpsellTriggerEngine? = nil,
+        subscriptionManager: SubscriptionManager? = nil
     ) {
         self.healthService = healthService
         self.motionService = motionService
-        self.stepCountService = LiveStepCountService(healthService: healthService, motionService: motionService)
-        self.activeEnergyService = LiveActiveEnergyService(healthService: healthService)
+        self.stepCountService = stepCountService
+            ?? LiveStepCountService(healthService: healthService, motionService: motionService)
+        self.activeEnergyService = activeEnergyService
+            ?? LiveActiveEnergyService(healthService: healthService)
         self.storeKitService = storeKitService
         self.notificationService = notificationService
         self.foodIntelligenceService = foodIntelligenceService
         self.haptics = haptics
         self.walkingLiveActivityService = walkingLiveActivityService
         self.analytics = analytics
-        self.smartReminderEngine = smartReminderEngine ?? LiveSmartReminderEngine(notificationService: notificationService)
+        self.smartReminderEngine = smartReminderEngine
+            ?? LiveSmartReminderEngine(notificationService: notificationService)
         self.upsellTriggerEngine = upsellTriggerEngine ?? DefaultUpsellTriggerEngine()
-        self.subscriptionManager = SubscriptionManager(storeKitService: storeKitService)
+        self.subscriptionManager = subscriptionManager
+            ?? SubscriptionManager(storeKitService: storeKitService)
     }
 
+    // MARK: - Factories
+
+    /// Production bootstrap — Live* implementations everywhere.
     static func live() -> DependencyContainer {
         DependencyContainer(
             healthService: LiveHealthService(),
@@ -58,7 +83,15 @@ final class DependencyContainer: ObservableObject {
         )
     }
 
+    /// SwiftUI preview bootstrap — every dependency is a Mock so previews
+    /// never touch HealthKit, StoreKit, the keychain or the network.
     static func preview() -> DependencyContainer {
+        mock()
+    }
+
+    /// Unit-test bootstrap — same wiring as `preview()`, exposed under an
+    /// explicit name so tests can be read without ambiguity.
+    static func mock() -> DependencyContainer {
         DependencyContainer(
             healthService: MockHealthService(),
             motionService: MockMotionService(),
@@ -68,10 +101,13 @@ final class DependencyContainer: ObservableObject {
             haptics: MockHapticsService(),
             walkingLiveActivityService: MockWalkingLiveActivityService(),
             analytics: MockAnalyticsService(),
+            stepCountService: MockStepCountService(),
+            activeEnergyService: MockActiveEnergyService(),
             smartReminderEngine: MockSmartReminderEngine()
         )
     }
 
+    // MARK: - Repository factories
     func userRepository(context: ModelContext) -> UserRepository {
         SwiftDataUserRepository(context: context)
     }
