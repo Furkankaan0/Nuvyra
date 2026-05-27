@@ -21,7 +21,7 @@ struct NuvyraProgressRing: View {
                 .rotationEffect(.degrees(-90))
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.32), value: clamped)
             VStack(spacing: 2) {
-                Text(center).font(.system(size: 28, weight: .heavy, design: .rounded))
+                Text(center).font(NuvyraTypography.metricFont(size: 28, relativeTo: .title))
                 Text(caption).font(NuvyraTypography.caption).foregroundStyle(.secondary)
             }
         }

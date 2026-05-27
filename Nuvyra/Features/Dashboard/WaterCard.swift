@@ -36,22 +36,7 @@ struct WaterCard: View {
     var body: some View {
         NuvyraGlassCard {
             VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-                header
-                HStack(alignment: .center, spacing: NuvyraSpacing.lg) {
-                    waterGlass
-                    VStack(alignment: .leading, spacing: NuvyraSpacing.xs) {
-                        Text("\(summary.consumedMl) ml")
-                            .font(.system(size: 30, weight: .heavy, design: .rounded))
-                            .contentTransition(.numericText())
-                        Text(summary.isGoalReached ? "Hedef tamamlandi" : "Hedef: \(summary.targetMl) ml")
-                            .font(NuvyraTypography.caption)
-                            .foregroundStyle(.secondary)
-                        Text(summary.isGoalReached ? "Bugün için tebrikler" : "Kalan: \(summary.remainingMl) ml")
-                            .font(NuvyraTypography.caption)
-                            .foregroundStyle(NuvyraColors.accent)
-                    }
-                    Spacer(minLength: 0)
-                }
+                summaryContent
                 actions
             }
         }
@@ -64,6 +49,32 @@ struct WaterCard: View {
             }
         }
         .onChange(of: summary.progress) { _, _ in animateFill() }
+    }
+
+    private var summaryContent: some View {
+        VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
+            header
+            HStack(alignment: .center, spacing: NuvyraSpacing.lg) {
+                waterGlass
+                VStack(alignment: .leading, spacing: NuvyraSpacing.xs) {
+                    Text("\(summary.consumedMl) ml")
+                        .font(NuvyraTypography.metricFont(size: 30, relativeTo: .title))
+                        .contentTransition(.numericText())
+                    Text(summary.isGoalReached ? "Hedef tamamlandı" : "Hedef: \(summary.targetMl) ml")
+                        .font(NuvyraTypography.caption)
+                        .foregroundStyle(.secondary)
+                    Text(summary.isGoalReached ? "Bugün için tebrikler" : "Kalan: \(summary.remainingMl) ml")
+                        .font(NuvyraTypography.caption)
+                        .foregroundStyle(NuvyraColors.accent)
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Su tüketimi")
+        .accessibilityValue(
+            "\(summary.consumedMl) mililitre içildi, hedef \(summary.targetMl) mililitre, kalan \(summary.remainingMl) mililitre."
+        )
     }
 
     private var header: some View {
@@ -79,8 +90,16 @@ struct WaterCard: View {
             Image(systemName: "drop.fill")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(
-                    LinearGradient(colors: [Color(red: 0.30, green: 0.66, blue: 0.95), Color(red: 0.40, green: 0.86, blue: 0.95)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(
+                        colors: [
+                            Color(red: 0.30, green: 0.66, blue: 0.95),
+                            Color(red: 0.40, green: 0.86, blue: 0.95)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 )
+                .accessibilityHidden(true)
         }
     }
 
@@ -96,15 +115,19 @@ struct WaterCard: View {
                 WaveShape(phase: wavePhase, amplitude: 4, fillProgress: animatedFill)
                     .fill(
                         LinearGradient(
-                            colors: [Color(red: 0.20, green: 0.56, blue: 0.95), Color(red: 0.45, green: 0.86, blue: 0.96)],
-                            startPoint: .top, endPoint: .bottom
+                            colors: [
+                                Color(red: 0.20, green: 0.56, blue: 0.95),
+                                Color(red: 0.45, green: 0.86, blue: 0.96)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
                         )
                     )
                     .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             }
             Text("\(Int(summary.progress * 100))%")
-                .font(.system(size: 20, weight: .heavy, design: .rounded))
+                .font(NuvyraTypography.metricFont(size: 20, relativeTo: .title3))
                 .foregroundStyle(.white)
                 .shadow(color: .black.opacity(0.25), radius: 4, y: 1)
         }
@@ -115,8 +138,11 @@ struct WaterCard: View {
     private var actions: some View {
         HStack(spacing: NuvyraSpacing.sm) {
             WaterChipButton(title: "-250", systemImage: "minus", style: .neutral, action: onRemove)
+                .accessibilityLabel("Son su kaydını geri al")
             WaterChipButton(title: "+250", systemImage: "drop", style: .primary, action: onAdd250)
+                .accessibilityLabel("250 mililitre su ekle")
             WaterChipButton(title: "+500", systemImage: "drop.fill", style: .primary, action: onAdd500)
+                .accessibilityLabel("500 mililitre su ekle")
         }
     }
 
@@ -137,6 +163,7 @@ private struct WaterChipButton: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: systemImage)
+                    .accessibilityHidden(true)
                 Text(title)
             }
             .font(.subheadline.weight(.semibold))
@@ -148,7 +175,6 @@ private struct WaterChipButton: View {
         .buttonStyle(.plain)
         .accessibilityLabel(title)
     }
-
 }
 
 private struct WaveShape: Shape {

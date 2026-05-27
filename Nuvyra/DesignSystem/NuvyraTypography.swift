@@ -1,10 +1,21 @@
-﻿import SwiftUI
+import SwiftUI
 
 enum NuvyraTypography {
-    static let hero = Font.system(.largeTitle, design: .rounded).weight(.bold)
-    static let title = Font.system(.title2, design: .rounded).weight(.bold)
-    static let section = Font.system(.headline, design: .rounded).weight(.semibold)
-    static let body = Font.system(.body, design: .rounded)
-    static let caption = Font.system(.caption, design: .rounded)
-    static let metric = Font.system(size: 38, weight: .heavy, design: .rounded)
+    private static let roundedFontName = "SF Pro Rounded"
+
+    static let hero = Font.custom(roundedFontName, size: 34, relativeTo: .largeTitle)
+        .weight(.bold)
+    static let title = Font.custom(roundedFontName, size: 22, relativeTo: .title2)
+        .weight(.bold)
+    static let section = Font.custom(roundedFontName, size: 17, relativeTo: .headline)
+        .weight(.semibold)
+    static let body = Font.custom(roundedFontName, size: 17, relativeTo: .body)
+    static let caption = Font.custom(roundedFontName, size: 12, relativeTo: .caption)
+    static let metric = metricFont(size: 38, relativeTo: .largeTitle)
+
+    static func metricFont(size: CGFloat, relativeTo style: Font.TextStyle = .largeTitle) -> Font {
+        Font.custom(roundedFontName, size: size, relativeTo: style)
+            .weight(.heavy)
+            .monospacedDigit()
+    }
 }

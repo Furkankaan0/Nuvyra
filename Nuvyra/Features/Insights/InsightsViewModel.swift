@@ -17,11 +17,11 @@ final class InsightsViewModel: ObservableObject {
             averageCalories = meals.reduce(0) { $0 + $1.calories }
             averageSteps = try activity.averageSteps(days: 7)
             waterAverage = try water.totalWater(on: Date())
-            trendText = makeTrendText(steps: averageSteps, calories: averageCalories, water: waterAverage)
+            trendText = Self.makeTrendText(steps: averageSteps, calories: averageCalories, water: waterAverage)
         } catch {}
     }
 
-    private func makeTrendText(steps: Int, calories: Int, water: Int) -> String {
+    static func makeTrendText(steps: Int, calories: Int, water: Int) -> String {
         if steps > 6_000 && water >= 1_500 {
             return "Bu hafta yürüyüş ve su ritmin iyi bir zemine oturuyor. Aynı sakin düzeni koruyabilirsin."
         }

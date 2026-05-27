@@ -30,8 +30,11 @@ struct CalorieBalanceCard: View {
         }
         .onAppear { animate(to: summary.ringProgress) }
         .onChange(of: summary.ringProgress) { _, newValue in animate(to: newValue) }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Kalori dengesi. Alınan \(summary.consumedCalories), yakılan \(summary.burnedCalories), kalan \(summary.remainingCalories) kalori.")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Kalori dengesi")
+        .accessibilityValue(
+            "\(summary.consumedCalories) kilokalori alındı, \(summary.burnedCalories) kilokalori yakıldı, hedef \(summary.targetCalories) kilokalori, kalan \(summary.remainingCalories) kilokalori."
+        )
     }
 
     private var header: some View {
@@ -47,6 +50,7 @@ struct CalorieBalanceCard: View {
             Image(systemName: "flame.fill")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(LinearGradient(colors: [NuvyraColors.mutedCoral, NuvyraColors.accent], startPoint: .top, endPoint: .bottom))
+                .accessibilityHidden(true)
         }
     }
 
@@ -54,6 +58,7 @@ struct CalorieBalanceCard: View {
         ZStack {
             Circle()
                 .stroke(NuvyraColors.accent.opacity(0.10), lineWidth: 16)
+                .accessibilityHidden(true)
             Circle()
                 .trim(from: 0, to: animatedProgress.clamped(to: 0...1))
                 .stroke(
@@ -65,9 +70,10 @@ struct CalorieBalanceCard: View {
                 )
                 .rotationEffect(.degrees(-90))
                 .shadow(color: NuvyraColors.accent.opacity(0.35), radius: 10, x: 0, y: 4)
+                .accessibilityHidden(true)
             VStack(spacing: 2) {
                 Text("\(summary.remainingCalories)")
-                    .font(.system(size: 34, weight: .heavy, design: .rounded))
+                    .font(NuvyraTypography.metricFont(size: 34, relativeTo: .largeTitle))
                     .contentTransition(.numericText())
                 Text("kcal kaldı")
                     .font(NuvyraTypography.caption)
@@ -104,6 +110,7 @@ struct CalorieBalanceCard: View {
                 .foregroundStyle(tint)
                 .frame(width: 24, height: 24)
                 .background(tint.opacity(0.14), in: Circle())
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 Text(title)
                     .font(NuvyraTypography.caption)

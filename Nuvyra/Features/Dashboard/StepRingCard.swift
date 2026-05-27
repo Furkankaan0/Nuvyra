@@ -22,11 +22,7 @@ struct StepRingCard: View {
     var body: some View {
         NuvyraCard {
             VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-                header
-                HStack(spacing: NuvyraSpacing.lg) {
-                    ring
-                    metrics
-                }
+                summaryContent
                 if !summary.isGoalReached, let onStartWalking {
                     NuvyraSecondaryButton(title: "Yürüyüş başlat", systemImage: "figure.walk", action: onStartWalking)
                 }
@@ -36,12 +32,25 @@ struct StepRingCard: View {
         .onChange(of: summary.progress) { _, _ in animate() }
     }
 
+    private var summaryContent: some View {
+        VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
+            header
+            HStack(spacing: NuvyraSpacing.lg) {
+                ring
+                metrics
+            }
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Adım hedefi")
+        .accessibilityValue(walkingAccessibilityValue)
+    }
+
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Yürüyüş")
                     .font(NuvyraTypography.section)
-                Text(summary.isGoalReached ? "Hedef tamam — harika!" : "Hedefe \(summary.remaining.formatted()) adım")
+                Text(summary.isGoalReached ? "Hedef tamam, harika!" : "Hedefe \(summary.remaining.formatted()) adım")
                     .font(NuvyraTypography.caption)
                     .foregroundStyle(.secondary)
             }
@@ -49,12 +58,15 @@ struct StepRingCard: View {
             Image(systemName: "figure.walk.motion")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(NuvyraColors.accent)
+                .accessibilityHidden(true)
         }
     }
 
     private var ring: some View {
         ZStack {
-            Circle().stroke(NuvyraColors.accent.opacity(0.12), lineWidth: 12)
+            Circle()
+                .stroke(NuvyraColors.accent.opacity(0.12), lineWidth: 12)
+                .accessibilityHidden(true)
             Circle()
                 .trim(from: 0, to: animatedProgress)
                 .stroke(
@@ -63,9 +75,10 @@ struct StepRingCard: View {
                 )
                 .rotationEffect(.degrees(-90))
                 .shadow(color: NuvyraColors.accent.opacity(0.35), radius: 8, x: 0, y: 4)
+                .accessibilityHidden(true)
             VStack(spacing: 2) {
                 Text("\(summary.steps.formatted())")
-                    .font(.system(size: 22, weight: .heavy, design: .rounded))
+                    .font(NuvyraTypography.metricFont(size: 22, relativeTo: .title3))
                     .contentTransition(.numericText())
                 Text("adım")
                     .font(NuvyraTypography.caption)
@@ -93,6 +106,7 @@ struct StepRingCard: View {
                 .foregroundStyle(NuvyraColors.accent)
                 .frame(width: 24, height: 24)
                 .background(NuvyraColors.accent.opacity(0.12), in: Circle())
+                .accessibilityHidden(true)
             Text(title)
                 .font(NuvyraTypography.caption)
                 .foregroundStyle(.secondary)
@@ -100,6 +114,19 @@ struct StepRingCard: View {
             Text(value)
                 .font(.subheadline.weight(.semibold))
         }
+    }
+
+    private var walkingAccessibilityValue: String {
+        var parts = [
+            "\(summary.steps.formatted()) adım atıldı",
+            "hedef \(summary.goal.formatted()) adım",
+            summary.isGoalReached ? "hedef tamamlandı" : "\(summary.remaining.formatted()) adım kaldı",
+            "\(Int(summary.activeEnergy)) kilokalori yakıldı"
+        ]
+        if let km = summary.distanceKm {
+            parts.append(String(format: "%.1f kilometre yüründü", km))
+        }
+        return parts.joined(separator: ", ") + "."
     }
 
     private func animate() {

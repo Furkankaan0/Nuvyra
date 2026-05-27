@@ -2,8 +2,8 @@
 //  ProductCardSheet.swift
 //  Nuvyra - Barcode Scanner
 //
-//  Tarama sonrası slide-up bottom sheet — ürün kartı, makro detayları,
-//  "Ekle" CTA, kaynak rozeti.
+//  Tarama sonrası slide-up bottom sheet: ürün kartı, makro detayları,
+//  "Ekle" CTA ve kaynak rozeti.
 //
 
 import SwiftUI
@@ -39,6 +39,7 @@ public struct ProductCardSheet: View {
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.18), radius: 20, x: 0, y: -4)
         .transition(.move(edge: .bottom).combined(with: .opacity))
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Subviews
@@ -48,27 +49,13 @@ public struct ProductCardSheet: View {
             .fill(.gray.opacity(0.3))
             .frame(width: 38, height: 4)
             .padding(.top, 10)
+            .accessibilityHidden(true)
     }
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top, spacing: 14) {
-                AsyncImage(url: product.imageURL) { phase in
-                    switch phase {
-                    case .success(let img):
-                        img.resizable().aspectRatio(contentMode: .fill)
-                    case .failure, .empty:
-                        Image(systemName: "fork.knife")
-                            .font(.title)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .background(Color(.secondarySystemBackground))
-                    @unknown default:
-                        EmptyView()
-                    }
-                }
-                .frame(width: 78, height: 78)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
+                productImage
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(product.name)
@@ -86,9 +73,39 @@ public struct ProductCardSheet: View {
 
             Divider()
 
+            Text("100 g için besin değerleri")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+
             macroGrid
+
+            if let fiber = product.fiber {
+                nutritionDetailRow(title: "Lif", value: fiber, unit: "g")
+            }
+
+            nutritionMeta
         }
         .padding(20)
+    }
+
+    private var productImage: some View {
+        AsyncImage(url: product.imageURL) { phase in
+            switch phase {
+            case .success(let image):
+                image.resizable().aspectRatio(contentMode: .fill)
+            case .failure, .empty:
+                Image(systemName: "fork.knife")
+                    .font(.title)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.secondarySystemBackground))
+            @unknown default:
+                EmptyView()
+            }
+        }
+        .frame(width: 78, height: 78)
+        .clipShape(RoundedRectangle(cornerRadius: 14))
+        .accessibilityHidden(true)
     }
 
     private var sourceBadge: some View {
@@ -101,11 +118,11 @@ public struct ProductCardSheet: View {
     }
 
     private var macroGrid: some View {
-        HStack(spacing: 10) {
-            macroCell(title: "Kalori",  value: product.caloriesPer100g, unit: "kcal", color: .orange)
-            macroCell(title: "Protein", value: product.protein,         unit: "g",    color: .red)
-            macroCell(title: "Yağ",     value: product.fat,             unit: "g",    color: .yellow)
-            macroCell(title: "Karb.",   value: product.carbs,           unit: "g",    color: .blue)
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            macroCell(title: "Kalori", value: product.caloriesPer100g, unit: "kcal", color: .orange)
+            macroCell(title: "Protein", value: product.protein, unit: "g", color: .red)
+            macroCell(title: "Karbonhidrat", value: product.carbs, unit: "g", color: .blue)
+            macroCell(title: "Yağ", value: product.fat, unit: "g", color: .yellow)
         }
     }
 
@@ -114,13 +131,39 @@ public struct ProductCardSheet: View {
             Text(title)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            Text("\(Int(value.rounded())) \(unit)")
+            Text("\(value.formatted(.number.precision(.fractionLength(0...1)))) \(unit)")
                 .font(.subheadline.weight(.semibold))
                 .monospacedDigit()
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 10)
         .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title), \(value.formatted(.number.precision(.fractionLength(0...1)))) \(unit)")
+    }
+
+    private func nutritionDetailRow(title: String, value: Double, unit: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+            Spacer()
+            Text("\(value.formatted(.number.precision(.fractionLength(0...1)))) \(unit)")
+                .font(.subheadline.weight(.bold))
+                .monospacedDigit()
+        }
+        .padding(12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 10))
+        .accessibilityElement(children: .combine)
+    }
+
+    private var nutritionMeta: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Barkod: \(product.barcode)")
+            Text("Kaynak: \(product.source.displayLabel)")
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .accessibilityElement(children: .combine)
     }
 
     private var actionBar: some View {
@@ -140,6 +183,7 @@ public struct ProductCardSheet: View {
                     .padding(.vertical, 12)
             }
             .buttonStyle(.borderedProminent)
+            .accessibilityLabel("\(product.name) ürününü öğüne ekle")
         }
         .padding(.horizontal, 20)
         .padding(.bottom, 24)
