@@ -10,6 +10,8 @@ struct DashboardView: View {
 
     @State private var presentedSheet: DashboardSheet?
     @State private var didAnimateAppearance = false
+    /// Phase 7 — barcode tarama sonrası rich `FoodItem` portion picker'ı için.
+    @State private var pendingBarcodeItem: FoodItem?
 
     var body: some View {
         ZStack {
@@ -142,10 +144,16 @@ struct DashboardView: View {
             case .barcode:
                 BarcodeScannerView(viewModel: makeBarcodeScannerViewModel()) { product in
                     Task {
-                        await addScannedProduct(product)
+                        await handleScannedProduct(product)
                         presentedSheet = nil
                     }
                 }
+            }
+        }
+        .sheet(item: $pendingBarcodeItem, onDismiss: { Task { await viewModel.load(context: modelContext, dependencies: dependencies) } }) { item in
+            FoodDetailView(item: item) { values, serving, quantity in
+                let selection = FoodSelection(item: item, values: values, serving: serving, quantity: quantity)
+                Task { await addFoodSelection(selection) }
             }
         }
         .navigationDestination(for: DashboardDestination.self) { destination in
@@ -212,34 +220,64 @@ struct DashboardView: View {
 
     private func makeBarcodeScannerViewModel() -> BarcodeScannerViewModel {
         let client = HTTPClient()
-        let providers: [any NutritionProvider] = [OpenFoodFactsProvider(client: client)]
         return BarcodeScannerViewModel(
             scanner: BarcodeScannerService(),
             api: NutritionAPIService(
-                providers: providers,
+                providers: FoodDataProviderFactory.barcodeProviders(client: client),
                 diskCache: try? ProductCacheService()
             )
         )
     }
 
-    private func addScannedProduct(_ product: ScannedProduct) async {
+    /// Phase 7 — barcode tarama sonucunu rich `FoodItem`'a yükselt, cache
+    /// et ve `FoodDetailView` portion picker'ını tetikle. Eski path
+    /// "100 g - barkod" sabit logging yapıyordu; artık kullanıcı seçimine
+    /// göre porsiyonlanır.
+    private func handleScannedProduct(_ product: ScannedProduct) async {
+        let item = FoodItem.from(scannedProduct: product)
+        await dependencies.foodRepository.cacheItem(item)
+        pendingBarcodeItem = item
+    }
+
+    /// FoodDetailView confirm callback — scaled values ile MealEntry yaratır,
+    /// repo usage tracking + analytics + health save. NutritionViewModel'in
+    /// addFoodSelection'unun Dashboard varyantı (currentMealSlot kullanır).
+    private func addFoodSelection(_ selection: FoodSelection) async {
+        let item = selection.item
+        let values = selection.values
         do {
             let meal = MealEntry(
                 mealType: currentMealSlot(),
-                name: product.name,
-                calories: Int(product.caloriesPer100g.rounded()),
-                protein: product.protein,
-                carbs: product.carbs,
-                fat: product.fat,
-                portionDescription: "100 g - barkod",
+                name: item.preferredDisplayName,
+                calories: values.calories,
+                protein: values.protein > 0 ? values.protein : nil,
+                carbs: values.carbs > 0 ? values.carbs : nil,
+                fat: values.fat > 0 ? values.fat : nil,
+                portionDescription: selection.portionDescription,
                 isFavorite: false,
-                isVerifiedTurkishFood: product.source == .openFoodFacts,
-                isEstimated: true
+                isVerifiedTurkishFood: item.verifiedLevel == .verified,
+                isEstimated: item.verifiedLevel != .verified,
+                fiberGrams: values.fiber > 0 ? values.fiber : nil,
+                sodiumMg: values.sodium > 0 ? values.sodium : nil,
+                sugarGrams: values.sugar > 0 ? values.sugar : nil,
+                saturatedFatGrams: values.saturatedFat > 0 ? values.saturatedFat : nil
             )
             try dependencies.nutritionRepository(context: modelContext).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
             dependencies.haptics.mealLogged()
-            await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "dashboard_barcode"]))
+
+            if let rowID = selection.deterministicRowID {
+                await dependencies.foodRepository.recordUse(id: rowID)
+            }
+
+            await dependencies.analytics.track(
+                .mealAdded,
+                payload: AnalyticsPayload(values: [
+                    "source": "dashboard_food_detail",
+                    "provider": item.source.rawValue,
+                    "verified": item.verifiedLevel.rawValue
+                ])
+            )
             await viewModel.load(context: modelContext, dependencies: dependencies)
         } catch {
             await viewModel.load(context: modelContext, dependencies: dependencies)

@@ -23,6 +23,7 @@ protocol DependencyProvider: AnyObject {
     var analytics: AnalyticsService { get }
     var smartReminderEngine: SmartReminderEngine { get }
     var upsellTriggerEngine: UpsellTriggerEngine { get }
+    var foodRepository: FoodRepository { get }
     var subscriptionManager: SubscriptionManager { get }
 
     // MARK: Repository factories (each returns a protocol type)

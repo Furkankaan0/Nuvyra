@@ -3,7 +3,8 @@ import SwiftUI
 struct FoodSearchView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = FoodSearchViewModel()
-    var onSelect: (FoodSearchResult) -> Void
+    @State private var selectedItem: FoodItem?
+    var onSelect: (FoodSelection) -> Void
 
     var body: some View {
         NavigationStack {
@@ -23,7 +24,7 @@ struct FoodSearchView: View {
                                     viewModel.scheduleSearch()
                                 }
 
-                            Text("Türkçe karakter ve aksan farkı yoksayılır. Örneğin “seftali” yazınca “Şeftali” bulunur.")
+                            Text("Yerel kataloga ek olarak Open Food Facts, USDA ve ayarlandıysa FatSecret kaynakları aranır.")
                                 .font(NuvyraTypography.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -34,14 +35,14 @@ struct FoodSearchView: View {
                         Section {
                             HStack {
                                 ProgressView()
-                                Text("FTS5 indeksi aranıyor...")
+                                Text("Geniş gıda veritabanı aranıyor...")
                                     .foregroundStyle(.secondary)
                             }
                             .listRowBackground(Color.clear)
                         }
                     }
 
-                    if let errorMessage = viewModel.errorMessage {
+                    if let errorMessage = viewModel.errorMessage, !viewModel.isSearching {
                         Section {
                             NuvyraErrorStateView(
                                 title: String(localized: "food.search.error.title"),
@@ -55,30 +56,49 @@ struct FoodSearchView: View {
                         }
                     }
 
-                    Section("Sonuçlar") {
-                        if viewModel.results.isEmpty, !viewModel.query.isEmpty, !viewModel.isSearching {
-                            Text("Sonuç bulunamadı. Daha kısa bir kelime deneyebilirsin.")
-                                .foregroundStyle(.secondary)
-                                .listRowBackground(Color.clear)
+                    if viewModel.query.isEmpty {
+                        if !viewModel.favorites.isEmpty {
+                            quickAccessSection(
+                                title: "Favoriler",
+                                systemImage: "star.fill",
+                                items: viewModel.favorites
+                            )
                         }
+                        if !viewModel.recents.isEmpty {
+                            quickAccessSection(
+                                title: "Son kullanılanlar",
+                                systemImage: "clock.arrow.circlepath",
+                                items: viewModel.recents
+                            )
+                        }
+                    }
 
-                        ForEach(viewModel.results) { result in
-                            Button {
-                                onSelect(result)
-                                dismiss()
-                            } label: {
-                                FoodSearchResultRow(result: result)
+                    if !viewModel.query.isEmpty {
+                        Section("Sonuçlar") {
+                            if viewModel.results.isEmpty, !viewModel.isSearching {
+                                Text("Sonuç bulunamadı. Daha kısa bir kelime veya marka adı deneyebilirsin.")
+                                    .foregroundStyle(.secondary)
+                                    .listRowBackground(Color.clear)
                             }
-                            .buttonStyle(.plain)
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .accessibilityLabel("\(result.name), \(result.servingDescription), \(result.calories) kalori ekle")
+
+                            ForEach(viewModel.results) { item in
+                                Button {
+                                    selectedItem = item
+                                } label: {
+                                    FoodItemRow(item: item)
+                                }
+                                .buttonStyle(.plain)
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .accessibilityLabel("\(item.preferredDisplayName), \(item.caloriesPer100g) kalori 100 gramda, ayrıntıyı aç ve porsiyon seç")
+                            }
                         }
                     }
                 }
                 .scrollContentBackground(.hidden)
                 .listStyle(.insetGrouped)
             }
+            .task { await viewModel.loadInitial() }
             .navigationTitle("Besin ara")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -86,40 +106,110 @@ struct FoodSearchView: View {
                     Button("Kapat") { dismiss() }
                 }
             }
+            .sheet(item: $selectedItem, onDismiss: { Task { await viewModel.loadInitial() } }) { item in
+                FoodDetailView(item: item) { values, serving, quantity in
+                    let selection = FoodSelection(
+                        item: item,
+                        values: values,
+                        serving: serving,
+                        quantity: quantity
+                    )
+                    onSelect(selection)
+                    dismiss()
+                }
+            }
+        }
+    }
+
+    /// Recents / favorites bloğu — query boşken görünür hızlı erişim.
+    @ViewBuilder
+    private func quickAccessSection(title: String, systemImage: String, items: [FoodItem]) -> some View {
+        Section {
+            ForEach(items) { item in
+                Button {
+                    selectedItem = item
+                } label: {
+                    FoodItemRow(item: item)
+                }
+                .buttonStyle(.plain)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .accessibilityLabel("\(item.preferredDisplayName), \(item.caloriesPer100g) kalori 100 gramda")
+            }
+        } header: {
+            Label(title, systemImage: systemImage)
+                .font(NuvyraTypography.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
         }
     }
 }
 
-private struct FoodSearchResultRow: View {
+/// Rich `FoodItem` listede gösterilirken her satırın taşıdığı görsel:
+/// isim + marka + kaynak chip + 100 g kalori + makro özet + verified rozeti.
+private struct FoodItemRow: View {
     @Environment(\.colorScheme) private var scheme
-    let result: FoodSearchResult
+    let item: FoodItem
 
     var body: some View {
         HStack(spacing: NuvyraSpacing.md) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(result.name)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.preferredDisplayName)
                     .font(.headline.weight(.bold))
                     .foregroundStyle(NuvyraColors.primaryText(scheme))
+                    .lineLimit(2)
 
-                HStack(spacing: NuvyraSpacing.xs) {
-                    if let brand = result.brand, !brand.isEmpty {
-                        Text(brand)
+                HStack(spacing: 6) {
+                    SourceChip(source: item.source)
+                    if item.showsApproximateBadge {
+                        Text("yaklaşık")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Color(red: 0.85, green: 0.62, blue: 0.20))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.85, green: 0.62, blue: 0.20).opacity(0.15), in: Capsule())
                     }
-                    Text(result.servingDescription)
-                    Text("Tahmini değer")
                 }
-                .font(NuvyraTypography.caption)
-                .foregroundStyle(NuvyraColors.secondaryText(scheme))
+
+                if let brand = item.brand, !brand.isEmpty {
+                    Text(brand)
+                        .font(NuvyraTypography.caption)
+                        .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                }
+
+                if hasMacros {
+                    Text("P \(item.proteinPer100g.cleanMacro)g  C \(item.carbsPer100g.cleanMacro)g  Y \(item.fatPer100g.cleanMacro)g")
+                        .font(NuvyraTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
-            Spacer()
+            Spacer(minLength: 8)
 
-            Text("\(result.calories) kcal")
-                .font(.subheadline.weight(.heavy))
-                .foregroundStyle(NuvyraColors.accent)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(item.caloriesPer100g)")
+                    .font(.subheadline.weight(.heavy))
+                    .foregroundStyle(NuvyraColors.accent)
+                Text("kcal / 100 g")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding(NuvyraSpacing.md)
         .background(NuvyraColors.card(scheme), in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous))
+    }
+
+    private var hasMacros: Bool {
+        item.proteinPer100g > 0 || item.carbsPer100g > 0 || item.fatPer100g > 0
+    }
+}
+
+private extension Double {
+    var cleanMacro: String {
+        let rounded = (self * 10).rounded() / 10
+        if rounded.truncatingRemainder(dividingBy: 1) == 0 {
+            return "\(Int(rounded))"
+        }
+        return String(format: "%.1f", rounded)
     }
 }
 

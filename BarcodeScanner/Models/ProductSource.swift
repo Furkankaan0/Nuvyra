@@ -8,12 +8,13 @@
 import Foundation
 
 /// Ürün verisinin geldiği kaynak.
-public enum ProductSource: String, Codable, Sendable, CaseIterable {
+public enum ProductSource: String, Codable, Sendable, CaseIterable, Hashable {
     case openFoodFacts
     case fatSecret
     case usda
     case cache
     case manual
+    case estimated
 
     /// UI'da gösterilecek başlık.
     public var displayLabel: String {
@@ -23,6 +24,7 @@ public enum ProductSource: String, Codable, Sendable, CaseIterable {
         case .usda:          return "USDA FoodData"
         case .cache:         return "Önbellek"
         case .manual:        return "Manuel"
+        case .estimated:     return "Nuvyra tahmini"
         }
     }
 }

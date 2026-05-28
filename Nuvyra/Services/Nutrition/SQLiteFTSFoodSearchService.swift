@@ -17,6 +17,55 @@ struct FoodSearchResult: Identifiable, Hashable {
     let calories: Int
     let servingDescription: String
     let score: Double
+    let protein: Double
+    let carbs: Double
+    let fat: Double
+    let fiber: Double?
+    let imageURL: URL?
+    let source: ProductSource
+    let externalID: String?
+    let isVerified: Bool
+
+    init(
+        id: Int64,
+        name: String,
+        brand: String?,
+        calories: Int,
+        servingDescription: String,
+        score: Double,
+        protein: Double = 0,
+        carbs: Double = 0,
+        fat: Double = 0,
+        fiber: Double? = nil,
+        imageURL: URL? = nil,
+        source: ProductSource = .cache,
+        externalID: String? = nil,
+        isVerified: Bool = false
+    ) {
+        self.id = id
+        self.name = name
+        self.brand = brand
+        self.calories = calories
+        self.servingDescription = servingDescription
+        self.score = score
+        self.protein = protein
+        self.carbs = carbs
+        self.fat = fat
+        self.fiber = fiber
+        self.imageURL = imageURL
+        self.source = source
+        self.externalID = externalID
+        self.isVerified = isVerified
+    }
+
+    static func remoteID(source: ProductSource, externalID: String) -> Int64 {
+        var hash: UInt64 = 1_469_598_103_934_665_603
+        for byte in "\(source.rawValue):\(externalID)".utf8 {
+            hash ^= UInt64(byte)
+            hash &*= 1_099_511_628_211
+        }
+        return -Int64(hash % 9_000_000_000_000_000) - 1
+    }
 }
 
 enum FoodSearchError: LocalizedError {
@@ -70,6 +119,145 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         }
     }
 
+    // MARK: - Rich item store (Phase 3)
+
+    /// Persist a rich `FoodItem` into the local catalog. Returns the SQLite
+    /// rowid. Remote-sourced items get a deterministic id derived from
+    /// `(source, externalID)` so the same product never duplicates across
+    /// repeat lookups; manual items get a fresh AUTOINCREMENT id.
+    @discardableResult
+    func upsertItem(_ item: FoodItem) async throws -> Int64 {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume(returning: 0) }
+                do {
+                    try self.prepareIfNeeded()
+                    let id = try self.upsertItemSync(item)
+                    continuation.resume(returning: id)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func findItem(externalID: String, source: ProductSource) async throws -> FoodItem? {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume(returning: nil) }
+                do {
+                    try self.prepareIfNeeded()
+                    continuation.resume(returning: try self.findItemSync(externalID: externalID, source: source))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func findItem(barcode: String) async throws -> FoodItem? {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume(returning: nil) }
+                do {
+                    try self.prepareIfNeeded()
+                    continuation.resume(returning: try self.findItemSync(barcode: barcode))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    /// FTS5 keyword search that returns rich items when a payload is stored,
+    /// falling back to a lean `FoodItem` materialised from the indexed row
+    /// for legacy seed data.
+    func searchItems(_ rawQuery: String, limit: Int = 20) async throws -> [FoodItem] {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume(returning: []) }
+                do {
+                    try self.prepareIfNeeded()
+                    continuation.resume(returning: try self.searchItemsSync(rawQuery, limit: limit))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func recordUse(rowID: Int64) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume() }
+                do {
+                    try self.prepareIfNeeded()
+                    try self.recordUseSync(rowID: rowID)
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func isFavorite(rowID: Int64) async throws -> Bool {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume(returning: false) }
+                do {
+                    try self.prepareIfNeeded()
+                    continuation.resume(returning: try self.isFavoriteSync(rowID: rowID))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func setFavorite(rowID: Int64, _ isFavorite: Bool) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume() }
+                do {
+                    try self.prepareIfNeeded()
+                    try self.setFavoriteSync(rowID: rowID, isFavorite: isFavorite)
+                    continuation.resume()
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func recentItems(limit: Int = 20) async throws -> [FoodItem] {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume(returning: []) }
+                do {
+                    try self.prepareIfNeeded()
+                    continuation.resume(returning: try self.recentItemsSync(limit: limit))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    func favoriteItems(limit: Int = 50) async throws -> [FoodItem] {
+        try await withCheckedThrowingContinuation { continuation in
+            queue.async { [weak self] in
+                guard let self else { return continuation.resume(returning: []) }
+                do {
+                    try self.prepareIfNeeded()
+                    continuation.resume(returning: try self.favoriteItemsSync(limit: limit))
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     func upsert(records: [FoodSearchRecord]) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             queue.async { [weak self] in
@@ -96,8 +284,17 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
 
         try openDatabaseIfNeeded()
         try execute(Self.schemaSQL)
+        runMigrations()
         try seedDemoFoodsIfNeeded()
         isPrepared = true
+    }
+
+    /// Each migration is idempotent: re-running on an already-migrated DB
+    /// raises "duplicate column" which we ignore.
+    private func runMigrations() {
+        for statement in Self.migrationStatements {
+            try? execute(statement)
+        }
     }
 
     private func openDatabaseIfNeeded() throws {
@@ -137,22 +334,312 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         return results
     }
 
+    /// Phase 4 — bundle'da gelen `LocalFoodDatabase.json` ile seed eder.
+    /// PRAGMA user_version mevcut seed sürümünden geri kaldığında çalışır;
+    /// `externalID = "local:<slug>"` deterministik olduğu için re-run idempotent.
+    /// JSON eksikse veya parse edilemezse sessizce no-op — boş kataloga
+    /// düşmek crash'ten daha iyi (remote arama ve barkod yine çalışır).
     private func seedDemoFoodsIfNeeded() throws {
-        guard try itemCount() < 60 else { return }
+        let currentVersion = readUserVersion()
+        if currentVersion >= LocalFoodDatabaseSeeder.version { return }
 
-        let quickFoods = QuickFood.turkishDefaults.enumerated().map { index, food in
-            FoodSearchRecord(
-                id: Int64(1_000 + index),
-                name: food.name,
-                brand: nil,
-                calories: food.calories,
-                servingDescription: food.portion,
-                keywords: "\(food.name) turk yemegi hizli ogun"
-            )
+        let items: [FoodItem]
+        do {
+            items = try LocalFoodDatabaseSeeder.loadSeedFoods()
+        } catch {
+            #if DEBUG
+            print("[Nuvyra] LocalFoodDatabase seed atlandı: \(error.localizedDescription)")
+            #endif
+            return
         }
 
-        try upsertSync(records: quickFoods + Self.turkishSeedFoods)
+        try execute("BEGIN IMMEDIATE TRANSACTION;")
+        do {
+            for item in items {
+                _ = try upsertItemSync(item)
+            }
+            try execute("COMMIT;")
+        } catch {
+            try? execute("ROLLBACK;")
+            throw error
+        }
+
+        try execute("PRAGMA user_version = \(LocalFoodDatabaseSeeder.version);")
     }
+
+    private func readUserVersion() -> Int32 {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, "PRAGMA user_version;", -1, &statement, nil) == SQLITE_OK else {
+            return 0
+        }
+        defer { sqlite3_finalize(statement) }
+        guard sqlite3_step(statement) == SQLITE_ROW else { return 0 }
+        return sqlite3_column_int(statement, 0)
+    }
+    // MARK: - Rich item store (Phase 3, sync)
+
+    private func upsertItemSync(_ item: FoodItem) throws -> Int64 {
+        let payload = try Self.jsonEncoder.encode(item)
+        guard let payloadString = String(data: payload, encoding: .utf8) else {
+            throw FoodSearchError.sqliteError("FoodItem payload utf-8 dönüştürme hatası.")
+        }
+
+        let resolvedID: Int64? = {
+            guard let externalID = item.externalID,
+                  item.source != .manual,
+                  !externalID.isEmpty else { return nil }
+            return FoodSearchResult.remoteID(source: item.source, externalID: externalID)
+        }()
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, Self.upsertItemSQL, -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        if let resolvedID {
+            sqlite3_bind_int64(statement, 1, resolvedID)
+        } else {
+            sqlite3_bind_null(statement, 1)
+        }
+
+        let displayName = item.preferredDisplayName
+        let normalizedName = FoodSearchNormalizer.normalized(displayName)
+        let keywords = Self.searchKeywords(for: item)
+        let normalizedKeywords = FoodSearchNormalizer.normalized(keywords)
+        let portion = item.servingSizes.first(where: { !$0.isDefault })?.preferredLabel
+            ?? item.defaultServing.preferredLabel
+
+        sqlite3_bind_text(statement, 2, displayName, -1, sqliteTransient)
+        if let brand = item.brand {
+            sqlite3_bind_text(statement, 3, brand, -1, sqliteTransient)
+        } else {
+            sqlite3_bind_null(statement, 3)
+        }
+        sqlite3_bind_int(statement, 4, Int32(item.caloriesPer100g))
+        sqlite3_bind_text(statement, 5, portion, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 6, normalizedName, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 7, normalizedKeywords, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 8, payloadString, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 9, item.source.rawValue, -1, sqliteTransient)
+        if let ext = item.externalID {
+            sqlite3_bind_text(statement, 10, ext, -1, sqliteTransient)
+        } else {
+            sqlite3_bind_null(statement, 10)
+        }
+        if let bc = item.barcode {
+            sqlite3_bind_text(statement, 11, bc, -1, sqliteTransient)
+        } else {
+            sqlite3_bind_null(statement, 11)
+        }
+        if let url = item.imageURL?.absoluteString {
+            sqlite3_bind_text(statement, 12, url, -1, sqliteTransient)
+        } else {
+            sqlite3_bind_null(statement, 12)
+        }
+
+        guard sqlite3_step(statement) == SQLITE_DONE else {
+            throw FoodSearchError.sqliteError(lastSQLiteMessage)
+        }
+
+        if let resolvedID { return resolvedID }
+        return sqlite3_last_insert_rowid(database)
+    }
+
+    private func findItemSync(externalID: String, source: ProductSource) throws -> FoodItem? {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, Self.findByExternalSQL, -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_text(statement, 1, source.rawValue, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 2, externalID, -1, sqliteTransient)
+
+        guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
+        return materializeItem(from: statement)
+    }
+
+    private func findItemSync(barcode: String) throws -> FoodItem? {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, Self.findByBarcodeSQL, -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_text(statement, 1, barcode, -1, sqliteTransient)
+
+        guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
+        return materializeItem(from: statement)
+    }
+
+    private func searchItemsSync(_ rawQuery: String, limit: Int) throws -> [FoodItem] {
+        let ftsQuery = FoodSearchNormalizer.makeFTSQuery(from: rawQuery)
+        guard !ftsQuery.isEmpty else { return [] }
+
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, Self.searchItemsSQL, -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_text(statement, 1, ftsQuery, -1, sqliteTransient)
+        sqlite3_bind_int(statement, 2, Int32(max(1, min(limit, 100))))
+
+        var items: [FoodItem] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            if let item = materializeItem(from: statement) { items.append(item) }
+        }
+        return items
+    }
+
+    private func recordUseSync(rowID: Int64) throws {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, Self.recordUseSQL, -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_double(statement, 1, Date().timeIntervalSince1970)
+        sqlite3_bind_int64(statement, 2, rowID)
+
+        guard sqlite3_step(statement) == SQLITE_DONE else {
+            throw FoodSearchError.sqliteError(lastSQLiteMessage)
+        }
+    }
+
+    private func isFavoriteSync(rowID: Int64) throws -> Bool {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, "SELECT is_favorite FROM food_items WHERE id = ? LIMIT 1;", -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_int64(statement, 1, rowID)
+        guard sqlite3_step(statement) == SQLITE_ROW else { return false }
+        return sqlite3_column_int(statement, 0) == 1
+    }
+
+    private func setFavoriteSync(rowID: Int64, isFavorite: Bool) throws {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, Self.setFavoriteSQL, -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_int(statement, 1, isFavorite ? 1 : 0)
+        sqlite3_bind_int64(statement, 2, rowID)
+
+        guard sqlite3_step(statement) == SQLITE_DONE else {
+            throw FoodSearchError.sqliteError(lastSQLiteMessage)
+        }
+    }
+
+    private func recentItemsSync(limit: Int) throws -> [FoodItem] {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, Self.recentItemsSQL, -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_int(statement, 1, Int32(max(1, min(limit, 100))))
+
+        var items: [FoodItem] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            if let item = materializeItem(from: statement) { items.append(item) }
+        }
+        return items
+    }
+
+    private func favoriteItemsSync(limit: Int) throws -> [FoodItem] {
+        var statement: OpaquePointer?
+        guard sqlite3_prepare_v2(database, Self.favoriteItemsSQL, -1, &statement, nil) == SQLITE_OK else {
+            throw FoodSearchError.queryPreparationFailed
+        }
+        defer { sqlite3_finalize(statement) }
+
+        sqlite3_bind_int(statement, 1, Int32(max(1, min(limit, 200))))
+
+        var items: [FoodItem] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            if let item = materializeItem(from: statement) { items.append(item) }
+        }
+        return items
+    }
+
+    /// Build a `FoodItem` from a `SELECT id, name, brand, calories,
+    /// serving_description, payload, source, external_id, barcode, image_url`
+    /// row. Decodes the JSON payload when present; otherwise rehydrates a lean
+    /// item from the indexed columns (used for legacy seed rows pre-Phase-3).
+    private func materializeItem(from statement: OpaquePointer?) -> FoodItem? {
+        if let payload = sqliteOptionalColumnString(statement, 5),
+           let data = payload.data(using: .utf8),
+           let item = try? Self.jsonDecoder.decode(FoodItem.self, from: data) {
+            return item
+        }
+
+        let name = sqliteColumnString(statement, 1)
+        guard !name.isEmpty else { return nil }
+        let brand = sqliteOptionalColumnString(statement, 2)
+        let calories = Int(sqlite3_column_int(statement, 3))
+        let portion = sqliteColumnString(statement, 4)
+        let sourceRaw = sqliteOptionalColumnString(statement, 6) ?? ProductSource.cache.rawValue
+        let externalID = sqliteOptionalColumnString(statement, 7)
+        let barcode = sqliteOptionalColumnString(statement, 8)
+        let imageURL = sqliteOptionalColumnString(statement, 9).flatMap(URL.init(string:))
+        let source = ProductSource(rawValue: sourceRaw) ?? .cache
+
+        let detailServing: ServingSize = ServingSize(
+            label: portion.isEmpty ? "1 porsiyon" : portion,
+            labelTR: portion.isEmpty ? "1 porsiyon" : portion,
+            grams: 100,
+            isDefault: true
+        )
+
+        return FoodItem(
+            source: source,
+            externalID: externalID,
+            name: name,
+            localizedNameTR: name,
+            brand: brand,
+            barcode: barcode,
+            imageURL: imageURL,
+            servingSizes: [.hundredGrams, detailServing],
+            nutritionPer100g: NutritionValues(calories: calories, protein: 0, carbs: 0, fat: 0),
+            verifiedLevel: .approximate,
+            confidenceScore: 0.45
+        )
+    }
+
+    /// Concatenated, space-joined keyword corpus indexed by FTS. Order favours
+    /// the most discriminating tokens first — display name, then localized
+    /// name, brand, category, then secondary tags.
+    private static func searchKeywords(for item: FoodItem) -> String {
+        var parts: [String] = [item.name]
+        if let tr = item.localizedNameTR, tr != item.name { parts.append(tr) }
+        if let brand = item.brand { parts.append(brand) }
+        if let category = item.category {
+            parts.append(category.displayLabelTR)
+            parts.append(category.displayLabelEN)
+        }
+        if let sub = item.subCategory { parts.append(sub) }
+        if !item.allergens.isEmpty { parts.append(item.allergens.map(\.rawValue).joined(separator: " ")) }
+        if let barcode = item.barcode { parts.append(barcode) }
+        return parts.joined(separator: " ")
+    }
+
+    private static let jsonEncoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }()
+
+    private static let jsonDecoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }()
+
     private func upsertSync(records: [FoodSearchRecord]) throws {
         guard !records.isEmpty else { return }
 
@@ -233,59 +720,6 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         return baseURL.appendingPathComponent("NuvyraFoodSearch.sqlite")
     }
 
-    private static let turkishSeedFoods: [FoodSearchRecord] = [
-        FoodSearchRecord(id: 2_001, name: "Seftali", brand: nil, calories: 58, servingDescription: "1 orta boy", keywords: "seftali peach meyve yaz"),
-        FoodSearchRecord(id: 2_002, name: "Seftali suyu", brand: nil, calories: 130, servingDescription: "1 bardak", keywords: "seftali suyu icecek meyve"),
-        FoodSearchRecord(id: 2_003, name: "Yesil elma", brand: nil, calories: 95, servingDescription: "1 adet", keywords: "elma meyve yesil"),
-        FoodSearchRecord(id: 2_004, name: "Cilek", brand: nil, calories: 45, servingDescription: "1 kase", keywords: "cilek meyve"),
-        FoodSearchRecord(id: 2_005, name: "Muz", brand: nil, calories: 105, servingDescription: "1 orta boy", keywords: "muz banana meyve"),
-        FoodSearchRecord(id: 2_006, name: "Portakal", brand: nil, calories: 62, servingDescription: "1 adet", keywords: "portakal meyve c vitamini"),
-        FoodSearchRecord(id: 2_007, name: "Domates", brand: nil, calories: 22, servingDescription: "1 orta boy", keywords: "domates sebze salata"),
-        FoodSearchRecord(id: 2_008, name: "Salatalik", brand: nil, calories: 12, servingDescription: "1 adet", keywords: "salatalik salata sebze"),
-        FoodSearchRecord(id: 2_009, name: "Beyaz peynir", brand: nil, calories: 95, servingDescription: "1 dilim", keywords: "peynir kahvalti protein"),
-        FoodSearchRecord(id: 2_010, name: "Kasar peyniri", brand: nil, calories: 120, servingDescription: "1 dilim", keywords: "kasar peynir kahvalti tost"),
-        FoodSearchRecord(id: 2_011, name: "Zeytin", brand: nil, calories: 45, servingDescription: "5 adet", keywords: "zeytin kahvalti"),
-        FoodSearchRecord(id: 2_012, name: "Tam bugday ekmegi", brand: nil, calories: 70, servingDescription: "1 dilim", keywords: "ekmek tam bugday kahvalti"),
-        FoodSearchRecord(id: 2_013, name: "Beyaz ekmek", brand: nil, calories: 80, servingDescription: "1 dilim", keywords: "ekmek beyaz"),
-        FoodSearchRecord(id: 2_014, name: "Yulaf ezmesi", brand: nil, calories: 150, servingDescription: "40 g", keywords: "yulaf kahvalti oats"),
-        FoodSearchRecord(id: 2_015, name: "Bal", brand: nil, calories: 64, servingDescription: "1 tatli kasigi", keywords: "bal kahvalti tatli"),
-        FoodSearchRecord(id: 2_016, name: "Fistik ezmesi", brand: nil, calories: 95, servingDescription: "1 yemek kasigi", keywords: "fistik ezmesi peanut protein"),
-        FoodSearchRecord(id: 2_017, name: "Tahin pekmez", brand: nil, calories: 180, servingDescription: "1 yemek kasigi", keywords: "tahin pekmez kahvalti"),
-        FoodSearchRecord(id: 2_018, name: "Tavuk gogsu", brand: nil, calories: 165, servingDescription: "100 g", keywords: "tavuk gogsu protein izgara"),
-        FoodSearchRecord(id: 2_019, name: "Izgara kofte", brand: nil, calories: 320, servingDescription: "4 adet", keywords: "kofte izgara et protein"),
-        FoodSearchRecord(id: 2_020, name: "Et doner", brand: nil, calories: 620, servingDescription: "1 porsiyon", keywords: "doner et durum"),
-        FoodSearchRecord(id: 2_021, name: "Tavuk sis", brand: nil, calories: 340, servingDescription: "1 porsiyon", keywords: "tavuk sis izgara"),
-        FoodSearchRecord(id: 2_022, name: "Somon izgara", brand: nil, calories: 360, servingDescription: "1 fileto", keywords: "somon balik omega protein"),
-        FoodSearchRecord(id: 2_023, name: "Ton baligi", brand: nil, calories: 140, servingDescription: "100 g", keywords: "ton baligi protein konserve"),
-        FoodSearchRecord(id: 2_024, name: "Bulgur pilavi", brand: nil, calories: 260, servingDescription: "1 tabak", keywords: "bulgur pilav ev yemegi"),
-        FoodSearchRecord(id: 2_025, name: "Makarna", brand: nil, calories: 310, servingDescription: "1 tabak", keywords: "makarna pasta"),
-        FoodSearchRecord(id: 2_026, name: "Kuru fasulye", brand: nil, calories: 300, servingDescription: "1 tabak", keywords: "kuru fasulye bakliyat ev yemegi"),
-        FoodSearchRecord(id: 2_027, name: "Nohut yemegi", brand: nil, calories: 320, servingDescription: "1 tabak", keywords: "nohut bakliyat ev yemegi"),
-        FoodSearchRecord(id: 2_028, name: "Zeytinyagli fasulye", brand: nil, calories: 210, servingDescription: "1 tabak", keywords: "zeytinyagli fasulye sebze"),
-        FoodSearchRecord(id: 2_029, name: "Dolma", brand: nil, calories: 240, servingDescription: "4 adet", keywords: "dolma sarma ev yemegi"),
-        FoodSearchRecord(id: 2_030, name: "Lahmacun", brand: nil, calories: 330, servingDescription: "1 adet", keywords: "lahmacun firin"),
-        FoodSearchRecord(id: 2_031, name: "Pide", brand: nil, calories: 720, servingDescription: "1 adet", keywords: "pide kiymali kasarli"),
-        FoodSearchRecord(id: 2_032, name: "Cig kofte durum", brand: nil, calories: 430, servingDescription: "1 durum", keywords: "cig kofte durum"),
-        FoodSearchRecord(id: 2_033, name: "Ezogelin corbasi", brand: nil, calories: 180, servingDescription: "1 kase", keywords: "ezogelin corba"),
-        FoodSearchRecord(id: 2_034, name: "Tarhana corbasi", brand: nil, calories: 160, servingDescription: "1 kase", keywords: "tarhana corba"),
-        FoodSearchRecord(id: 2_035, name: "Coban salata", brand: nil, calories: 90, servingDescription: "1 kase", keywords: "coban salata sebze"),
-        FoodSearchRecord(id: 2_036, name: "Mevsim salata", brand: nil, calories: 80, servingDescription: "1 kase", keywords: "mevsim salata"),
-        FoodSearchRecord(id: 2_037, name: "Cacik", brand: nil, calories: 110, servingDescription: "1 kase", keywords: "cacik yogurt salatalik"),
-        FoodSearchRecord(id: 2_038, name: "Kefir", brand: nil, calories: 120, servingDescription: "1 bardak", keywords: "kefir icecek probiyotik"),
-        FoodSearchRecord(id: 2_039, name: "Sut", brand: nil, calories: 122, servingDescription: "1 bardak", keywords: "sut icecek"),
-        FoodSearchRecord(id: 2_040, name: "Filtre kahve", brand: nil, calories: 5, servingDescription: "1 kupa", keywords: "kahve filtre sekersiz"),
-        FoodSearchRecord(id: 2_041, name: "Turk kahvesi", brand: nil, calories: 7, servingDescription: "1 fincan", keywords: "turk kahvesi sekersiz"),
-        FoodSearchRecord(id: 2_042, name: "Latte", brand: nil, calories: 150, servingDescription: "1 bardak", keywords: "latte kahve sutlu"),
-        FoodSearchRecord(id: 2_043, name: "Kola", brand: nil, calories: 139, servingDescription: "330 ml", keywords: "kola gazli icecek"),
-        FoodSearchRecord(id: 2_044, name: "Soda", brand: nil, calories: 0, servingDescription: "1 sise", keywords: "soda maden suyu"),
-        FoodSearchRecord(id: 2_045, name: "Baklava", brand: nil, calories: 280, servingDescription: "2 dilim", keywords: "baklava tatli"),
-        FoodSearchRecord(id: 2_046, name: "Sutlac", brand: nil, calories: 260, servingDescription: "1 kase", keywords: "sutlac tatli"),
-        FoodSearchRecord(id: 2_047, name: "Dondurma", brand: nil, calories: 180, servingDescription: "2 top", keywords: "dondurma tatli"),
-        FoodSearchRecord(id: 2_048, name: "Ceviz", brand: nil, calories: 185, servingDescription: "30 g", keywords: "ceviz kuruyemis omega"),
-        FoodSearchRecord(id: 2_049, name: "Badem", brand: nil, calories: 170, servingDescription: "30 g", keywords: "badem kuruyemis"),
-        FoodSearchRecord(id: 2_050, name: "Findik", brand: nil, calories: 175, servingDescription: "30 g", keywords: "findik kuruyemis")
-    ]
-
     static let schemaSQL = """
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = NORMAL;
@@ -298,7 +732,15 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         calories INTEGER NOT NULL,
         serving_description TEXT NOT NULL,
         name_normalized TEXT NOT NULL,
-        keywords_normalized TEXT NOT NULL
+        keywords_normalized TEXT NOT NULL,
+        payload TEXT,
+        source TEXT NOT NULL DEFAULT 'cache',
+        external_id TEXT,
+        barcode TEXT,
+        image_url TEXT,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        use_count INTEGER NOT NULL DEFAULT 0,
+        last_used_at REAL
     );
 
     CREATE VIRTUAL TABLE IF NOT EXISTS food_items_fts USING fts5(
@@ -325,7 +767,32 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         INSERT INTO food_items_fts(rowid, name_normalized, keywords_normalized)
         VALUES (new.id, new.name_normalized, new.keywords_normalized);
     END;
+
+    CREATE INDEX IF NOT EXISTS idx_food_items_external
+        ON food_items(source, external_id);
+
+    CREATE INDEX IF NOT EXISTS idx_food_items_barcode
+        ON food_items(barcode);
+
+    CREATE INDEX IF NOT EXISTS idx_food_items_last_used
+        ON food_items(last_used_at DESC);
     """
+
+    /// Statements run after `schemaSQL` to bring older SQLite stores (which
+    /// had the original 7-column schema) up to the Phase-3 layout. Each
+    /// `ALTER TABLE` is wrapped in `try?` at call site because SQLite has no
+    /// `ADD COLUMN IF NOT EXISTS` clause — we let "duplicate column" errors
+    /// no-op instead.
+    static let migrationStatements: [String] = [
+        "ALTER TABLE food_items ADD COLUMN payload TEXT;",
+        "ALTER TABLE food_items ADD COLUMN source TEXT NOT NULL DEFAULT 'cache';",
+        "ALTER TABLE food_items ADD COLUMN external_id TEXT;",
+        "ALTER TABLE food_items ADD COLUMN barcode TEXT;",
+        "ALTER TABLE food_items ADD COLUMN image_url TEXT;",
+        "ALTER TABLE food_items ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE food_items ADD COLUMN use_count INTEGER NOT NULL DEFAULT 0;",
+        "ALTER TABLE food_items ADD COLUMN last_used_at REAL;"
+    ]
 
     static let insertSQL = """
     INSERT INTO food_items (
@@ -358,6 +825,100 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
     JOIN food_items ON food_items.id = food_items_fts.rowid
     WHERE food_items_fts MATCH ?
     ORDER BY score
+    LIMIT ?;
+    """
+
+    // MARK: - Phase 3 SQL
+
+    static let upsertItemSQL = """
+    INSERT INTO food_items (
+        id,
+        name,
+        brand,
+        calories,
+        serving_description,
+        name_normalized,
+        keywords_normalized,
+        payload,
+        source,
+        external_id,
+        barcode,
+        image_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        brand = excluded.brand,
+        calories = excluded.calories,
+        serving_description = excluded.serving_description,
+        name_normalized = excluded.name_normalized,
+        keywords_normalized = excluded.keywords_normalized,
+        payload = excluded.payload,
+        source = excluded.source,
+        external_id = excluded.external_id,
+        barcode = excluded.barcode,
+        image_url = excluded.image_url;
+    """
+
+    static let findByExternalSQL = """
+    SELECT id, name, brand, calories, serving_description, payload, source, external_id, barcode, image_url
+    FROM food_items
+    WHERE source = ? AND external_id = ?
+    LIMIT 1;
+    """
+
+    static let findByBarcodeSQL = """
+    SELECT id, name, brand, calories, serving_description, payload, source, external_id, barcode, image_url
+    FROM food_items
+    WHERE barcode = ?
+    ORDER BY use_count DESC
+    LIMIT 1;
+    """
+
+    static let searchItemsSQL = """
+    SELECT
+        food_items.id,
+        food_items.name,
+        food_items.brand,
+        food_items.calories,
+        food_items.serving_description,
+        food_items.payload,
+        food_items.source,
+        food_items.external_id,
+        food_items.barcode,
+        food_items.image_url
+    FROM food_items_fts
+    JOIN food_items ON food_items.id = food_items_fts.rowid
+    WHERE food_items_fts MATCH ?
+    ORDER BY food_items.is_favorite DESC, food_items.use_count DESC, bm25(food_items_fts)
+    LIMIT ?;
+    """
+
+    static let recordUseSQL = """
+    UPDATE food_items
+    SET use_count = use_count + 1,
+        last_used_at = ?
+    WHERE id = ?;
+    """
+
+    static let setFavoriteSQL = """
+    UPDATE food_items
+    SET is_favorite = ?
+    WHERE id = ?;
+    """
+
+    static let recentItemsSQL = """
+    SELECT id, name, brand, calories, serving_description, payload, source, external_id, barcode, image_url
+    FROM food_items
+    WHERE last_used_at IS NOT NULL
+    ORDER BY last_used_at DESC
+    LIMIT ?;
+    """
+
+    static let favoriteItemsSQL = """
+    SELECT id, name, brand, calories, serving_description, payload, source, external_id, barcode, image_url
+    FROM food_items
+    WHERE is_favorite = 1
+    ORDER BY use_count DESC, last_used_at DESC
     LIMIT ?;
     """
 }

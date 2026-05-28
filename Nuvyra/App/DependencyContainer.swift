@@ -26,6 +26,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
     let analytics: AnalyticsService
     let smartReminderEngine: SmartReminderEngine
     let upsellTriggerEngine: UpsellTriggerEngine
+    let foodRepository: FoodRepository
     @Published var subscriptionManager: SubscriptionManager
 
     // MARK: - Init
@@ -46,6 +47,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
         activeEnergyService: ActiveEnergyService? = nil,
         smartReminderEngine: SmartReminderEngine? = nil,
         upsellTriggerEngine: UpsellTriggerEngine? = nil,
+        foodRepository: FoodRepository? = nil,
         subscriptionManager: SubscriptionManager? = nil
     ) {
         self.healthService = healthService
@@ -63,6 +65,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
         self.smartReminderEngine = smartReminderEngine
             ?? LiveSmartReminderEngine(notificationService: notificationService)
         self.upsellTriggerEngine = upsellTriggerEngine ?? DefaultUpsellTriggerEngine()
+        self.foodRepository = foodRepository ?? DefaultFoodRepository()
         self.subscriptionManager = subscriptionManager
             ?? SubscriptionManager(storeKitService: storeKitService)
     }

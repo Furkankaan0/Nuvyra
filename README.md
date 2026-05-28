@@ -101,6 +101,7 @@ Nuvyra wellness/fitness uygulamasıdır; tıbbi teşhis veya tedavi sunmaz. Sağ
 ## Production Service Defaults
 
 - Akıllı öğün kaydı bu fazda `LocalFoodIntelligenceService` ile cihaz içi, deterministik Türkçe örnek gıda eşleştirmesi yapar. Cloud LLM, Passio, FatSecret veya Open Food Facts adapter'ları için protokol hazırdır; API key veya ücretli SDK Git'e eklenmez.
+- Barkod ve besin arama akışı `OpenFoodFactsProvider`, opsiyonel `FatSecretProvider` ve opsiyonel `USDAProvider` zinciriyle çalışır. Open Food Facts anahtarsız devrededir; FatSecret için `FATSECRET_CLIENT_ID`, `FATSECRET_CLIENT_SECRET`, opsiyonel `FATSECRET_SCOPE`, `FATSECRET_REGION`, `FATSECRET_LANGUAGE`; USDA için `USDA_API_KEY` runtime env veya Info.plist üzerinden sağlanır. Production'da FatSecret secret'ları uygulama bundle'ına gömmek yerine token proxy/backend kullanılması önerilir.
 - Analytics bu fazda `PrivacyPreservingAnalyticsService` ile no-op çalışır. Sağlık verisi veya kişisel beslenme detayı üçüncü taraf reklam/marketing SDK'sına gönderilmez. Gerçek analytics sağlayıcısı eklenecekse event payload'ları anonim ve aggregate kalmalıdır.
 - StoreKit restore/sync kullanıcı aksiyonuna bağlıdır. App foreground olduğunda entitlement refresh yapılır; `AppStore.sync()` otomatik çağrılmaz.
 

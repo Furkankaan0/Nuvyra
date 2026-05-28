@@ -68,17 +68,23 @@ struct NutritionView: View {
                 Task { await viewModel.estimateSmartMeal(dependencies: dependencies) }
             }
         }
-        .fullScreenCover(isPresented: $viewModel.showingBarcodeScanner, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
+        .fullScreenCover(isPresented: $viewModel.showingBarcodeScanner) {
             BarcodeScannerView(viewModel: makeBarcodeScannerViewModel()) { product in
                 Task {
-                    await viewModel.addScannedProduct(product, context: modelContext, dependencies: dependencies)
+                    await viewModel.handleScannedProduct(product, dependencies: dependencies)
                     viewModel.showingBarcodeScanner = false
                 }
             }
         }
+        .sheet(item: $viewModel.pendingBarcodeItem, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) { item in
+            FoodDetailView(item: item) { values, serving, quantity in
+                let selection = FoodSelection(item: item, values: values, serving: serving, quantity: quantity)
+                Task { await viewModel.addFoodSelection(selection, context: modelContext, dependencies: dependencies) }
+            }
+        }
         .sheet(isPresented: $viewModel.showingFoodSearch, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
-            FoodSearchView { result in
-                Task { await viewModel.addFoodSearchResult(result, context: modelContext, dependencies: dependencies) }
+            FoodSearchView { selection in
+                Task { await viewModel.addFoodSelection(selection, context: modelContext, dependencies: dependencies) }
             }
         }
         .task { viewModel.load(context: modelContext, dependencies: dependencies) }
@@ -165,13 +171,10 @@ struct NutritionView: View {
 
     private func makeBarcodeScannerViewModel() -> BarcodeScannerViewModel {
         let client = HTTPClient()
-        let providers: [any NutritionProvider] = [
-            OpenFoodFactsProvider(client: client)
-        ]
         return BarcodeScannerViewModel(
             scanner: BarcodeScannerService(),
             api: NutritionAPIService(
-                providers: providers,
+                providers: FoodDataProviderFactory.barcodeProviders(client: client),
                 diskCache: try? ProductCacheService()
             )
         )

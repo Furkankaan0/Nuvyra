@@ -3,7 +3,7 @@ import Foundation
 /// Macro + calorie container — used as plain value type in view models and previews.
 /// Optional micronutrient fields (fiber/sodium/sugar/saturated fat) are tracked on
 /// the same struct so daily summaries can roll them up trivially.
-struct NutritionValues: Equatable, Hashable {
+struct NutritionValues: Equatable, Hashable, Codable, Sendable {
     var calories: Int
     var protein: Double
     var carbs: Double

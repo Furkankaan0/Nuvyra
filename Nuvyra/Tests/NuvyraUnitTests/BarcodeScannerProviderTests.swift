@@ -89,4 +89,42 @@ final class BarcodeScannerProviderTests: XCTestCase {
 
         XCTAssertNil(provider.makeProduct(from: response, requestedBarcode: "0000000000000"))
     }
+
+    func testOpenFoodFactsSearchResultIncludesMacrosAndSource() throws {
+        let json = """
+        {
+          "products": [
+            {
+              "code": "8690000000000",
+              "product_name": "Protein Bar",
+              "brands": "Nuvyra",
+              "nutriments": {
+                "energy-kcal_100g": 390,
+                "proteins_100g": 31.5,
+                "carbohydrates_100g": 34.2,
+                "fat_100g": 12.1
+              }
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let response = try decoder.decode(OpenFoodFactsProvider.SearchResponse.self, from: json)
+
+        let provider = OpenFoodFactsProvider(client: HTTPClient())
+        let product = try XCTUnwrap(response.products?.first)
+        let result = try XCTUnwrap(provider.makeFoodSearchResult(from: product))
+
+        XCTAssertEqual(result.name, "Protein Bar")
+        XCTAssertEqual(result.brand, "Nuvyra")
+        XCTAssertEqual(result.calories, 390)
+        XCTAssertEqual(result.protein, 31.5, accuracy: 0.01)
+        XCTAssertEqual(result.carbs, 34.2, accuracy: 0.01)
+        XCTAssertEqual(result.fat, 12.1, accuracy: 0.01)
+        XCTAssertEqual(result.source, .openFoodFacts)
+        XCTAssertTrue(result.isVerified)
+        XCTAssertEqual(result.externalID, "8690000000000")
+    }
 }

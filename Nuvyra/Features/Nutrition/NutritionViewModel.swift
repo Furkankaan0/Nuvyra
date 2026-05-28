@@ -16,6 +16,10 @@ final class NutritionViewModel: ObservableObject {
     @Published var showingBarcodeScanner = false
     @Published var showingFoodSearch = false
     @Published var editingMeal: MealEntry?
+    /// Barcode tarama başarılı olunca burası set olur ve view bunu
+    /// `.sheet(item:)` ile `FoodDetailView` olarak açar. Portion picker
+    /// sonrası `addFoodSelection` üzerinden öğüne dönüşür.
+    @Published var pendingBarcodeItem: FoodItem?
     @Published var errorMessage: String?
     @Published var smartMealText = ""
     @Published var estimatedResults: [EstimatedMealResult] = []
@@ -129,56 +133,66 @@ final class NutritionViewModel: ObservableObject {
         }
     }
 
-    func addFoodSearchResult(_ result: FoodSearchResult, context: ModelContext, dependencies: DependencyContainer) async {
+    /// Phase 6 entry point — `FoodDetailView` kullanıcının seçtiği porsiyon
+    /// + miktarı scaled `NutritionValues` ile birlikte yollar; burası onu
+    /// `MealEntry`'ye çevirir. Repository tarafında usage frequency artırılır.
+    func addFoodSelection(_ selection: FoodSelection, context: ModelContext, dependencies: DependencyContainer) async {
+        let item = selection.item
+        let values = selection.values
         do {
             let meal = MealEntry(
                 date: selectedDate,
                 mealType: selectedMealType,
-                name: result.name,
-                calories: result.calories,
-                protein: 0,
-                carbs: 0,
-                fat: 0,
-                portionDescription: result.servingDescription,
+                name: item.preferredDisplayName,
+                calories: values.calories,
+                protein: values.protein > 0 ? values.protein : nil,
+                carbs: values.carbs > 0 ? values.carbs : nil,
+                fat: values.fat > 0 ? values.fat : nil,
+                portionDescription: selection.portionDescription,
                 isFavorite: false,
-                isVerifiedTurkishFood: false,
-                isEstimated: true
+                isVerifiedTurkishFood: item.verifiedLevel == .verified,
+                isEstimated: item.verifiedLevel != .verified,
+                fiberGrams: values.fiber > 0 ? values.fiber : nil,
+                sodiumMg: values.sodium > 0 ? values.sodium : nil,
+                sugarGrams: values.sugar > 0 ? values.sugar : nil,
+                saturatedFatGrams: values.saturatedFat > 0 ? values.saturatedFat : nil
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
             dependencies.haptics.mealLogged()
-            await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "fts_food_search"]))
+
+            if let rowID = selection.deterministicRowID {
+                await dependencies.foodRepository.recordUse(id: rowID)
+            }
+
+            await dependencies.analytics.track(
+                .mealAdded,
+                payload: AnalyticsPayload(values: [
+                    "source": "food_detail",
+                    "provider": item.source.rawValue,
+                    "verified": item.verifiedLevel.rawValue
+                ])
+            )
             load(context: context, dependencies: dependencies)
             refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
         } catch {
-            errorMessage = "Arama sonucundan öğün eklenemedi."
+            errorMessage = "Seçilen besinden öğün eklenemedi."
         }
     }
 
-    func addScannedProduct(_ product: ScannedProduct, context: ModelContext, dependencies: DependencyContainer) async {
-        do {
-            let meal = MealEntry(
-                date: selectedDate,
-                mealType: selectedMealType,
-                name: product.name,
-                calories: Int(product.caloriesPer100g.rounded()),
-                protein: product.protein,
-                carbs: product.carbs,
-                fat: product.fat,
-                portionDescription: "100 g - barkod",
-                isFavorite: false,
-                isVerifiedTurkishFood: product.source == .openFoodFacts,
-                isEstimated: true
-            )
-            try dependencies.nutritionRepository(context: context).addMeal(meal)
-            await dependencies.healthService.saveNutrition(for: meal)
-            dependencies.haptics.mealLogged()
-            await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "barcode", "provider": product.source.rawValue]))
-            load(context: context, dependencies: dependencies)
-            refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
-        } catch {
-            errorMessage = "Barkoddan gelen ürün öğüne eklenemedi."
-        }
+    /// Phase 6.5 — barkod taramasından gelen `ScannedProduct`'ı rich `FoodItem`'a
+    /// yükseltir, repository'ye write-through ile cache eder ve
+    /// `pendingBarcodeItem` set ederek `FoodDetailView`'in modal olarak
+    /// açılmasını tetikler. Portion picker sonrası `addFoodSelection` öğünü
+    /// yaratır — eskiden "100 g - barkod" olarak sabit eklenen meal artık
+    /// kullanıcı seçimine göre porsiyonlanır.
+    func handleScannedProduct(_ product: ScannedProduct, dependencies: DependencyContainer) async {
+        let item = FoodItem.from(scannedProduct: product)
+        await dependencies.foodRepository.cacheItem(item)
+        pendingBarcodeItem = item
+        // NOT: meal_added analytics burada DEĞİL — kullanıcı daha henüz
+        // porsiyon seçmedi. `addFoodSelection` (FoodDetailView confirm)
+        // tarafından track edilir.
     }
 
     func delete(_ meal: MealEntry, context: ModelContext, dependencies: DependencyContainer) {
