@@ -213,7 +213,7 @@ extension USDAProvider: RemoteFoodSearchProvider {
 
 extension USDAProvider {
 
-    public func fetchItem(barcode: String) async throws -> FoodItem {
+    func fetchItem(barcode: String) async throws -> FoodItem {
         guard var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
             throw HTTPClientError.invalidURL
         }

@@ -362,7 +362,7 @@ public struct OpenFoodFactsProvider: NutritionProvider {
     /// Barkoddan tam zengin `FoodItem` döner — allergens, micros, nutri-score
     /// dahil. `fetch(barcode:)` çağrısı `ScannedProduct` formatını koruduğu
     /// için bu varyant Phase 3 repository'sinden ayrı bir yol olarak gider.
-    public func fetchItem(barcode: String) async throws -> FoodItem {
+    func fetchItem(barcode: String) async throws -> FoodItem {
         var lastError: Error?
 
         for candidate in barcodeCandidates(from: barcode) {
@@ -678,4 +678,3 @@ extension OpenFoodFactsProvider {
         "protein-bars": .protein, "high-protein-foods": .protein
     ]
 }
-
