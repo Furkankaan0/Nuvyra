@@ -140,6 +140,8 @@ public struct USDAProvider: NutritionProvider {
     }
 }
 
+extension USDAProvider: FoodItemNutritionProvider {}
+
 extension USDAProvider: RemoteFoodSearchProvider {
     func searchFoods(query: String, limit: Int) async throws -> [FoodSearchResult] {
         let foods = try await rawSearch(query: query, limit: limit)

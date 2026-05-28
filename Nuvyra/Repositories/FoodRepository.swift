@@ -56,12 +56,12 @@ final class DefaultFoodRepository: FoodRepository, @unchecked Sendable {
 
     private let localStore: SQLiteFTSFoodSearchService
     private let remoteSearch: RemoteFoodSearchService
-    private let barcodeProviders: [any NutritionProvider]
+    private let barcodeProviders: [any FoodItemNutritionProvider]
 
     init(
         localStore: SQLiteFTSFoodSearchService = .shared,
         remoteSearch: RemoteFoodSearchService = RemoteFoodSearchService(),
-        barcodeProviders: [any NutritionProvider] = FoodDataProviderFactory.barcodeProviders()
+        barcodeProviders: [any FoodItemNutritionProvider] = FoodDataProviderFactory.foodItemBarcodeProviders()
     ) {
         self.localStore = localStore
         self.remoteSearch = remoteSearch

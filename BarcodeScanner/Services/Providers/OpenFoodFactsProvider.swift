@@ -385,6 +385,8 @@ public struct OpenFoodFactsProvider: NutritionProvider {
     }
 }
 
+extension OpenFoodFactsProvider: FoodItemNutritionProvider {}
+
 extension OpenFoodFactsProvider: RemoteFoodSearchProvider {
     func searchFoods(query: String, limit: Int) async throws -> [FoodSearchResult] {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)

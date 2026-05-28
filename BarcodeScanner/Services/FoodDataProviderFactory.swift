@@ -2,7 +2,11 @@ import Foundation
 
 enum FoodDataProviderFactory {
     static func barcodeProviders(client: HTTPClient = HTTPClient()) -> [any NutritionProvider] {
-        var providers: [any NutritionProvider] = [
+        foodItemBarcodeProviders(client: client).map { $0 as any NutritionProvider }
+    }
+
+    static func foodItemBarcodeProviders(client: HTTPClient = HTTPClient()) -> [any FoodItemNutritionProvider] {
+        var providers: [any FoodItemNutritionProvider] = [
             OpenFoodFactsProvider(client: client)
         ]
 

@@ -383,6 +383,8 @@ public actor FatSecretProvider: NutritionProvider {
     }
 }
 
+extension FatSecretProvider: FoodItemNutritionProvider {}
+
 extension FatSecretProvider: RemoteFoodSearchProvider {
     func searchFoods(query: String, limit: Int) async throws -> [FoodSearchResult] {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)

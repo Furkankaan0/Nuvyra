@@ -2,28 +2,29 @@
 //  NutritionProvider.swift
 //  Nuvyra - Barcode Scanner
 //
-//  Tüm besin verisi sağlayıcılarının ortak protokolü.
+//  Common protocol for nutrition data providers.
 //
 
 import Foundation
 
-/// Bir barkod verildiğinde ScannedProduct döndüren tek-yönlü interface.
+/// Public barcode-to-product interface used by the scanner flow.
 public protocol NutritionProvider: Sendable {
-    /// İnsan-okur kaynak adı (loglama için).
+    /// Human-readable source name for logging.
     var sourceName: String { get }
 
-    /// Barkoddan ürün getirir. Ürün bulunamazsa
-    /// `HTTPClientError.notFound` fırlatmalıdır.
+    /// Fetches a normalized product for a barcode. Providers should throw
+    /// `HTTPClientError.notFound` when no product exists.
     func fetch(barcode: String) async throws -> ScannedProduct
+}
 
-    /// Aynı barkodu zengin domain modeli olarak getirir. Default uygulama
-    /// `fetch(barcode:)` çıktısını minimal `FoodItem`'a çevirir; sağlayıcı
-    /// bunu override ederek allergens / micros / nutri-score gibi alanları
-    /// kayba uğramadan döner.
+protocol FoodItemNutritionProvider: NutritionProvider {
+    /// Fetches the same barcode as a richer app-domain model. Providers can
+    /// override this to preserve allergens, micronutrients, Nutri-Score, and
+    /// NOVA data instead of falling back to a minimal mapped item.
     func fetchItem(barcode: String) async throws -> FoodItem
 }
 
-public extension NutritionProvider {
+extension FoodItemNutritionProvider {
     func fetchItem(barcode: String) async throws -> FoodItem {
         let product = try await fetch(barcode: barcode)
         return FoodItem.from(scannedProduct: product)
