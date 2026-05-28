@@ -6,6 +6,13 @@ struct FoodSearchRecord: Hashable {
     var name: String
     var brand: String?
     var calories: Int
+    var protein: Double = 0
+    var carbs: Double = 0
+    var fat: Double = 0
+    var fiber: Double = 0
+    var sodium: Double = 0
+    var sugar: Double = 0
+    var saturatedFat: Double = 0
     var servingDescription: String
     var keywords: String
 }
@@ -285,8 +292,18 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         try openDatabaseIfNeeded()
         try execute(Self.schemaSQL)
         runMigrations()
+        cleanupLegacyLeanRows()
         try seedDemoFoodsIfNeeded()
         isPrepared = true
+    }
+
+    /// Pre-Phase-4 satırlar — eski `QuickFood.turkishDefaults` ve
+    /// `turkishSeedFoods` arrays'ından gelen lean rows (payload=NULL, makrolar
+    /// 0). ID aralığı 1000-9999 (yeni rich seed negatif ID'lerde duruyor).
+    /// Aynı yemeği iki kez göstermemek için her prepare'de çalıştırılır;
+    /// idempotent — temiz DB'de no-op.
+    private func cleanupLegacyLeanRows() {
+        try? execute("DELETE FROM food_items WHERE id BETWEEN 1000 AND 9999 AND payload IS NULL;")
     }
 
     /// Each migration is idempotent: re-running on an already-migrated DB
@@ -326,8 +343,12 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
                 name: sqliteColumnString(statement, 1),
                 brand: sqliteOptionalColumnString(statement, 2),
                 calories: Int(sqlite3_column_int(statement, 3)),
-                servingDescription: sqliteColumnString(statement, 4),
-                score: sqlite3_column_double(statement, 5)
+                servingDescription: sqliteColumnString(statement, 8),
+                score: sqlite3_column_double(statement, 9),
+                protein: sqliteColumnDouble(statement, 4),
+                carbs: sqliteColumnDouble(statement, 5),
+                fat: sqliteColumnDouble(statement, 6),
+                fiber: sqliteColumnDouble(statement, 7)
             ))
         }
 
@@ -417,25 +438,32 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
             sqlite3_bind_null(statement, 3)
         }
         sqlite3_bind_int(statement, 4, Int32(item.caloriesPer100g))
-        sqlite3_bind_text(statement, 5, portion, -1, sqliteTransient)
-        sqlite3_bind_text(statement, 6, normalizedName, -1, sqliteTransient)
-        sqlite3_bind_text(statement, 7, normalizedKeywords, -1, sqliteTransient)
-        sqlite3_bind_text(statement, 8, payloadString, -1, sqliteTransient)
-        sqlite3_bind_text(statement, 9, item.source.rawValue, -1, sqliteTransient)
+        sqlite3_bind_double(statement, 5, item.proteinPer100g)
+        sqlite3_bind_double(statement, 6, item.carbsPer100g)
+        sqlite3_bind_double(statement, 7, item.fatPer100g)
+        sqlite3_bind_double(statement, 8, item.fiberPer100g)
+        sqlite3_bind_double(statement, 9, item.sodiumPer100g)
+        sqlite3_bind_double(statement, 10, item.sugarPer100g)
+        sqlite3_bind_double(statement, 11, item.saturatedFatPer100g)
+        sqlite3_bind_text(statement, 12, portion, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 13, normalizedName, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 14, normalizedKeywords, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 15, payloadString, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 16, item.source.rawValue, -1, sqliteTransient)
         if let ext = item.externalID {
-            sqlite3_bind_text(statement, 10, ext, -1, sqliteTransient)
+            sqlite3_bind_text(statement, 17, ext, -1, sqliteTransient)
         } else {
-            sqlite3_bind_null(statement, 10)
+            sqlite3_bind_null(statement, 17)
         }
         if let bc = item.barcode {
-            sqlite3_bind_text(statement, 11, bc, -1, sqliteTransient)
+            sqlite3_bind_text(statement, 18, bc, -1, sqliteTransient)
         } else {
-            sqlite3_bind_null(statement, 11)
+            sqlite3_bind_null(statement, 18)
         }
         if let url = item.imageURL?.absoluteString {
-            sqlite3_bind_text(statement, 12, url, -1, sqliteTransient)
+            sqlite3_bind_text(statement, 19, url, -1, sqliteTransient)
         } else {
-            sqlite3_bind_null(statement, 12)
+            sqlite3_bind_null(statement, 19)
         }
 
         guard sqlite3_step(statement) == SQLITE_DONE else {
@@ -567,12 +595,11 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         return items
     }
 
-    /// Build a `FoodItem` from a `SELECT id, name, brand, calories,
-    /// serving_description, payload, source, external_id, barcode, image_url`
-    /// row. Decodes the JSON payload when present; otherwise rehydrates a lean
-    /// item from the indexed columns (used for legacy seed rows pre-Phase-3).
+    /// Build a `FoodItem` from the canonical item SELECT. Decodes the JSON
+    /// payload when present; otherwise rehydrates a lean item from indexed
+    /// nutrition columns (used for legacy rows without a rich payload).
     private func materializeItem(from statement: OpaquePointer?) -> FoodItem? {
-        if let payload = sqliteOptionalColumnString(statement, 5),
+        if let payload = sqliteOptionalColumnString(statement, 12),
            let data = payload.data(using: .utf8),
            let item = try? Self.jsonDecoder.decode(FoodItem.self, from: data) {
             return item
@@ -582,11 +609,18 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         guard !name.isEmpty else { return nil }
         let brand = sqliteOptionalColumnString(statement, 2)
         let calories = Int(sqlite3_column_int(statement, 3))
-        let portion = sqliteColumnString(statement, 4)
-        let sourceRaw = sqliteOptionalColumnString(statement, 6) ?? ProductSource.cache.rawValue
-        let externalID = sqliteOptionalColumnString(statement, 7)
-        let barcode = sqliteOptionalColumnString(statement, 8)
-        let imageURL = sqliteOptionalColumnString(statement, 9).flatMap(URL.init(string:))
+        let protein = sqliteColumnDouble(statement, 4)
+        let carbs = sqliteColumnDouble(statement, 5)
+        let fat = sqliteColumnDouble(statement, 6)
+        let fiber = sqliteColumnDouble(statement, 7)
+        let sodium = sqliteColumnDouble(statement, 8)
+        let sugar = sqliteColumnDouble(statement, 9)
+        let saturatedFat = sqliteColumnDouble(statement, 10)
+        let portion = sqliteColumnString(statement, 11)
+        let sourceRaw = sqliteOptionalColumnString(statement, 13) ?? ProductSource.cache.rawValue
+        let externalID = sqliteOptionalColumnString(statement, 14)
+        let barcode = sqliteOptionalColumnString(statement, 15)
+        let imageURL = sqliteOptionalColumnString(statement, 16).flatMap(URL.init(string:))
         let source = ProductSource(rawValue: sourceRaw) ?? .cache
 
         let detailServing: ServingSize = ServingSize(
@@ -605,7 +639,16 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
             barcode: barcode,
             imageURL: imageURL,
             servingSizes: [.hundredGrams, detailServing],
-            nutritionPer100g: NutritionValues(calories: calories, protein: 0, carbs: 0, fat: 0),
+            nutritionPer100g: NutritionValues(
+                calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
+                fiber: fiber,
+                sodium: sodium,
+                sugar: sugar,
+                saturatedFat: saturatedFat
+            ),
             verifiedLevel: .approximate,
             confidenceScore: 0.45
         )
@@ -678,9 +721,16 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
             sqlite3_bind_null(statement, 3)
         }
         sqlite3_bind_int(statement, 4, Int32(record.calories))
-        sqlite3_bind_text(statement, 5, record.servingDescription, -1, sqliteTransient)
-        sqlite3_bind_text(statement, 6, normalizedName, -1, sqliteTransient)
-        sqlite3_bind_text(statement, 7, normalizedKeywords, -1, sqliteTransient)
+        sqlite3_bind_double(statement, 5, record.protein)
+        sqlite3_bind_double(statement, 6, record.carbs)
+        sqlite3_bind_double(statement, 7, record.fat)
+        sqlite3_bind_double(statement, 8, record.fiber)
+        sqlite3_bind_double(statement, 9, record.sodium)
+        sqlite3_bind_double(statement, 10, record.sugar)
+        sqlite3_bind_double(statement, 11, record.saturatedFat)
+        sqlite3_bind_text(statement, 12, record.servingDescription, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 13, normalizedName, -1, sqliteTransient)
+        sqlite3_bind_text(statement, 14, normalizedKeywords, -1, sqliteTransient)
 
         guard sqlite3_step(statement) == SQLITE_DONE else {
             throw FoodSearchError.sqliteError(lastSQLiteMessage)
@@ -730,6 +780,13 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         name TEXT NOT NULL,
         brand TEXT,
         calories INTEGER NOT NULL,
+        protein REAL NOT NULL DEFAULT 0,
+        carbs REAL NOT NULL DEFAULT 0,
+        fat REAL NOT NULL DEFAULT 0,
+        fiber REAL NOT NULL DEFAULT 0,
+        sodium REAL NOT NULL DEFAULT 0,
+        sugar REAL NOT NULL DEFAULT 0,
+        saturated_fat REAL NOT NULL DEFAULT 0,
         serving_description TEXT NOT NULL,
         name_normalized TEXT NOT NULL,
         keywords_normalized TEXT NOT NULL,
@@ -791,8 +848,35 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         "ALTER TABLE food_items ADD COLUMN image_url TEXT;",
         "ALTER TABLE food_items ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;",
         "ALTER TABLE food_items ADD COLUMN use_count INTEGER NOT NULL DEFAULT 0;",
-        "ALTER TABLE food_items ADD COLUMN last_used_at REAL;"
+        "ALTER TABLE food_items ADD COLUMN last_used_at REAL;",
+        "ALTER TABLE food_items ADD COLUMN protein REAL NOT NULL DEFAULT 0;",
+        "ALTER TABLE food_items ADD COLUMN carbs REAL NOT NULL DEFAULT 0;",
+        "ALTER TABLE food_items ADD COLUMN fat REAL NOT NULL DEFAULT 0;",
+        "ALTER TABLE food_items ADD COLUMN fiber REAL NOT NULL DEFAULT 0;",
+        "ALTER TABLE food_items ADD COLUMN sodium REAL NOT NULL DEFAULT 0;",
+        "ALTER TABLE food_items ADD COLUMN sugar REAL NOT NULL DEFAULT 0;",
+        "ALTER TABLE food_items ADD COLUMN saturated_fat REAL NOT NULL DEFAULT 0;"
     ]
+
+    static let itemSelectColumns = """
+    id,
+    name,
+    brand,
+    calories,
+    protein,
+    carbs,
+    fat,
+    fiber,
+    sodium,
+    sugar,
+    saturated_fat,
+    serving_description,
+    payload,
+    source,
+    external_id,
+    barcode,
+    image_url
+    """
 
     static let insertSQL = """
     INSERT INTO food_items (
@@ -800,14 +884,28 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         name,
         brand,
         calories,
+        protein,
+        carbs,
+        fat,
+        fiber,
+        sodium,
+        sugar,
+        saturated_fat,
         serving_description,
         name_normalized,
         keywords_normalized
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         brand = excluded.brand,
         calories = excluded.calories,
+        protein = excluded.protein,
+        carbs = excluded.carbs,
+        fat = excluded.fat,
+        fiber = excluded.fiber,
+        sodium = excluded.sodium,
+        sugar = excluded.sugar,
+        saturated_fat = excluded.saturated_fat,
         serving_description = excluded.serving_description,
         name_normalized = excluded.name_normalized,
         keywords_normalized = excluded.keywords_normalized;
@@ -819,6 +917,10 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         food_items.name,
         food_items.brand,
         food_items.calories,
+        food_items.protein,
+        food_items.carbs,
+        food_items.fat,
+        food_items.fiber,
         food_items.serving_description,
         bm25(food_items_fts) AS score
     FROM food_items_fts
@@ -836,6 +938,13 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         name,
         brand,
         calories,
+        protein,
+        carbs,
+        fat,
+        fiber,
+        sodium,
+        sugar,
+        saturated_fat,
         serving_description,
         name_normalized,
         keywords_normalized,
@@ -844,11 +953,18 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         external_id,
         barcode,
         image_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
         name = excluded.name,
         brand = excluded.brand,
         calories = excluded.calories,
+        protein = excluded.protein,
+        carbs = excluded.carbs,
+        fat = excluded.fat,
+        fiber = excluded.fiber,
+        sodium = excluded.sodium,
+        sugar = excluded.sugar,
+        saturated_fat = excluded.saturated_fat,
         serving_description = excluded.serving_description,
         name_normalized = excluded.name_normalized,
         keywords_normalized = excluded.keywords_normalized,
@@ -860,14 +976,14 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
     """
 
     static let findByExternalSQL = """
-    SELECT id, name, brand, calories, serving_description, payload, source, external_id, barcode, image_url
+    SELECT \(itemSelectColumns)
     FROM food_items
     WHERE source = ? AND external_id = ?
     LIMIT 1;
     """
 
     static let findByBarcodeSQL = """
-    SELECT id, name, brand, calories, serving_description, payload, source, external_id, barcode, image_url
+    SELECT \(itemSelectColumns)
     FROM food_items
     WHERE barcode = ?
     ORDER BY use_count DESC
@@ -880,6 +996,13 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
         food_items.name,
         food_items.brand,
         food_items.calories,
+        food_items.protein,
+        food_items.carbs,
+        food_items.fat,
+        food_items.fiber,
+        food_items.sodium,
+        food_items.sugar,
+        food_items.saturated_fat,
         food_items.serving_description,
         food_items.payload,
         food_items.source,
@@ -907,7 +1030,7 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
     """
 
     static let recentItemsSQL = """
-    SELECT id, name, brand, calories, serving_description, payload, source, external_id, barcode, image_url
+    SELECT \(itemSelectColumns)
     FROM food_items
     WHERE last_used_at IS NOT NULL
     ORDER BY last_used_at DESC
@@ -915,7 +1038,7 @@ final class SQLiteFTSFoodSearchService: @unchecked Sendable {
     """
 
     static let favoriteItemsSQL = """
-    SELECT id, name, brand, calories, serving_description, payload, source, external_id, barcode, image_url
+    SELECT \(itemSelectColumns)
     FROM food_items
     WHERE is_favorite = 1
     ORDER BY use_count DESC, last_used_at DESC
@@ -969,4 +1092,9 @@ private func sqliteColumnString(_ statement: OpaquePointer?, _ index: Int32) -> 
 private func sqliteOptionalColumnString(_ statement: OpaquePointer?, _ index: Int32) -> String? {
     guard sqlite3_column_type(statement, index) != SQLITE_NULL else { return nil }
     return sqliteColumnString(statement, index)
+}
+
+private func sqliteColumnDouble(_ statement: OpaquePointer?, _ index: Int32) -> Double {
+    guard sqlite3_column_type(statement, index) != SQLITE_NULL else { return 0 }
+    return sqlite3_column_double(statement, index)
 }

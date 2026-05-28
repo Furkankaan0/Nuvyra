@@ -15,6 +15,22 @@ struct NuvyraApp: App {
         let isUITesting = CommandLine.arguments.contains("-ui-testing")
         modelContainer = isUITesting ? NuvyraModelContainer.uiTesting() : NuvyraModelContainer.live()
         _dependencies = StateObject(wrappedValue: isUITesting ? .preview() : .live())
+        Self.configureImageCache()
+    }
+
+    /// Phase 9 — OFF/USDA ürün görselleri için URLSession.shared.URLCache'i
+    /// büyütür. Varsayılan ~4MB mem / ~20MB disk, food images (50-300KB) için
+    /// yetersiz. 30MB mem + 150MB disk ile yaklaşık 500 ürün görselini
+    /// disk'te tutar; AsyncImage HTTP cache header'larına uyar.
+    private static func configureImageCache() {
+        let memoryCapacity = 30 * 1024 * 1024
+        let diskCapacity = 150 * 1024 * 1024
+        let cache = URLCache(
+            memoryCapacity: memoryCapacity,
+            diskCapacity: diskCapacity,
+            directory: nil
+        )
+        URLCache.shared = cache
     }
 
     var body: some Scene {

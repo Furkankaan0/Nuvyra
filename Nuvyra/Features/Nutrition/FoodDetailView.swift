@@ -138,23 +138,27 @@ struct FoodDetailView: View {
     // MARK: - Sections
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(item.preferredDisplayName)
-                .font(NuvyraTypography.title)
-                .foregroundStyle(.primary)
-            if let brand = item.brand {
-                Text(brand)
-                    .font(NuvyraTypography.section)
-                    .foregroundStyle(.secondary)
-            }
-            if let category = item.category {
-                HStack(spacing: 4) {
-                    Image(systemName: category.symbolName)
-                    Text(category.displayLabelTR)
+        HStack(alignment: .top, spacing: NuvyraSpacing.md) {
+            FoodImageView(url: item.imageURL, style: .medium)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.preferredDisplayName)
+                    .font(NuvyraTypography.title)
+                    .foregroundStyle(.primary)
+                if let brand = item.brand {
+                    Text(brand)
+                        .font(NuvyraTypography.section)
+                        .foregroundStyle(.secondary)
                 }
-                .font(NuvyraTypography.caption)
-                .foregroundStyle(.secondary)
+                if let category = item.category {
+                    HStack(spacing: 4) {
+                        Image(systemName: category.symbolName)
+                        Text(category.displayLabelTR)
+                    }
+                    .font(NuvyraTypography.caption)
+                    .foregroundStyle(.secondary)
+                }
             }
+            Spacer(minLength: 0)
         }
     }
 
@@ -221,6 +225,10 @@ struct FoodDetailView: View {
                         .multilineTextAlignment(.trailing)
                 }
 
+                Text("Referans: 100 g · \(item.caloriesPer100g) kcal · P \(item.proteinPer100g.cleanMacro)g · K \(item.carbsPer100g.cleanMacro)g · Y \(item.fatPer100g.cleanMacro)g")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary.opacity(0.85))
+
                 Divider()
 
                 LazyVGrid(columns: [
@@ -233,20 +241,40 @@ struct FoodDetailView: View {
                     macroCell("Yağ", scaledValues.fat, "g", color: NuvyraColors.mutedCoral)
                 }
 
-                if scaledValues.fiber > 0 || scaledValues.sugar > 0 || scaledValues.sodium > 0 || scaledValues.saturatedFat > 0 {
+                if hasAnySecondaryMacro {
                     Divider()
                     LazyVGrid(columns: [
                         GridItem(.flexible(), spacing: 12),
                         GridItem(.flexible(), spacing: 12)
                     ], spacing: 6) {
-                        if scaledValues.fiber > 0 { secondaryCell("Lif", scaledValues.fiber, "g") }
-                        if scaledValues.sugar > 0 { secondaryCell("Şeker", scaledValues.sugar, "g") }
-                        if scaledValues.saturatedFat > 0 { secondaryCell("Doymuş yağ", scaledValues.saturatedFat, "g") }
-                        if scaledValues.sodium > 0 { secondaryCell("Sodyum", scaledValues.sodium, "mg") }
+                        secondaryCell("Lif", scaledValues.fiber, "g")
+                        secondaryCell("Şeker", scaledValues.sugar, "g")
+                        secondaryCell("Doymuş yağ", scaledValues.saturatedFat, "g")
+                        secondaryCell("Sodyum", scaledValues.sodium, "mg")
                     }
+                }
+
+                if !hasAnyMacro {
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .foregroundStyle(Color(red: 0.85, green: 0.62, blue: 0.20))
+                        Text("Bu kaynak yalnızca kalori bilgisi sağladı — makro değerleri eksik.")
+                            .font(NuvyraTypography.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(10)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
             }
         }
+    }
+
+    private var hasAnyMacro: Bool {
+        scaledValues.protein > 0 || scaledValues.carbs > 0 || scaledValues.fat > 0
+    }
+
+    private var hasAnySecondaryMacro: Bool {
+        scaledValues.fiber > 0 || scaledValues.sugar > 0 || scaledValues.sodium > 0 || scaledValues.saturatedFat > 0
     }
 
     private var servingSummary: String {
@@ -279,14 +307,20 @@ struct FoodDetailView: View {
 
     private func macroCell(_ label: String, _ value: Double, _ unit: String, color: Color) -> some View {
         VStack(spacing: 4) {
-            Text(formatted(value))
+            Text(value > 0 ? formatted(value) : "—")
                 .font(NuvyraTypography.metricFont(size: 22))
-                .foregroundStyle(color)
+                .foregroundStyle(value > 0 ? color : Color.secondary.opacity(0.5))
+                .monospacedDigit()
             Text("\(label) (\(unit))")
                 .font(NuvyraTypography.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(value > 0 ? color.opacity(0.08) : Color.secondary.opacity(0.05))
+        )
     }
 
     private func secondaryCell(_ label: String, _ value: Double, _ unit: String) -> some View {
@@ -295,8 +329,9 @@ struct FoodDetailView: View {
                 .font(NuvyraTypography.caption)
                 .foregroundStyle(.secondary)
             Spacer()
-            Text("\(formatted(value)) \(unit)")
+            Text(value > 0 ? "\(formatted(value)) \(unit)" : "—")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(value > 0 ? .primary : Color.secondary.opacity(0.6))
                 .monospacedDigit()
         }
     }
@@ -306,6 +341,16 @@ struct FoodDetailView: View {
             return String(Int(value.rounded()))
         }
         return String(format: "%.1f", value)
+    }
+}
+
+private extension Double {
+    var cleanMacro: String {
+        let rounded = (self * 10).rounded() / 10
+        if rounded.truncatingRemainder(dividingBy: 1) == 0 {
+            return "\(Int(rounded))"
+        }
+        return String(format: "%.1f", rounded)
     }
 }
 

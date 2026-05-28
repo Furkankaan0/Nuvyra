@@ -117,6 +117,13 @@ extension FoodItem {
             name: preferredDisplayName,
             brand: brand,
             calories: caloriesPer100g,
+            protein: proteinPer100g,
+            carbs: carbsPer100g,
+            fat: fatPer100g,
+            fiber: fiberPer100g,
+            sodium: sodiumPer100g,
+            sugar: sugarPer100g,
+            saturatedFat: saturatedFatPer100g,
             servingDescription: portionLabel,
             keywords: keywords
         )

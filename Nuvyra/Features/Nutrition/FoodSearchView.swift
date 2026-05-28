@@ -144,14 +144,31 @@ struct FoodSearchView: View {
     }
 }
 
-/// Rich `FoodItem` listede gösterilirken her satırın taşıdığı görsel:
-/// isim + marka + kaynak chip + 100 g kalori + makro özet + verified rozeti.
+/// Rich `FoodItem` listede gösterilirken her satırın taşıdığı premium görsel:
+/// üst başlık + chip'ler + 3 makro pill (P/K/Y her zaman görünür, eksik veride
+/// "—") + sağda varsayılan porsiyonun kalori değeri. 100 g referansı
+/// porsiyondan farklıysa altında küçük yazı.
 private struct FoodItemRow: View {
     @Environment(\.colorScheme) private var scheme
     let item: FoodItem
 
     var body: some View {
-        HStack(spacing: NuvyraSpacing.md) {
+        VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
+            headerRow
+            macroRow
+            if showsCalorieMissingHint {
+                Label("Yalnızca kalori bilgisi mevcut", systemImage: "info.circle")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(Color(red: 0.85, green: 0.62, blue: 0.20))
+            }
+        }
+        .padding(NuvyraSpacing.md)
+        .background(NuvyraColors.card(scheme), in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous))
+    }
+
+    private var headerRow: some View {
+        HStack(alignment: .top, spacing: NuvyraSpacing.md) {
+            FoodImageView(url: item.imageURL, style: .small)
             VStack(alignment: .leading, spacing: 6) {
                 Text(item.preferredDisplayName)
                     .font(.headline.weight(.bold))
@@ -175,31 +192,74 @@ private struct FoodItemRow: View {
                         .font(NuvyraTypography.caption)
                         .foregroundStyle(NuvyraColors.secondaryText(scheme))
                 }
-
-                if hasMacros {
-                    Text("P \(item.proteinPer100g.cleanMacro)g  C \(item.carbsPer100g.cleanMacro)g  Y \(item.fatPer100g.cleanMacro)g")
-                        .font(NuvyraTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
             }
 
             Spacer(minLength: 8)
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text("\(item.caloriesPer100g)")
-                    .font(.subheadline.weight(.heavy))
+                Text("\(displayCalories)")
+                    .font(.title3.weight(.heavy))
+                    .monospacedDigit()
                     .foregroundStyle(NuvyraColors.accent)
-                Text("kcal / 100 g")
-                    .font(.system(size: 10))
+                Text(calorieUnit)
+                    .font(.system(size: 10, weight: .medium))
                     .foregroundStyle(.secondary)
+                if showsPer100gReference {
+                    Text("\(item.caloriesPer100g) kcal / 100 g")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary.opacity(0.7))
+                }
             }
         }
-        .padding(NuvyraSpacing.md)
-        .background(NuvyraColors.card(scheme), in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous))
     }
 
-    private var hasMacros: Bool {
-        item.proteinPer100g > 0 || item.carbsPer100g > 0 || item.fatPer100g > 0
+    private var macroRow: some View {
+        HStack(spacing: 8) {
+            macroPill(label: "Protein", value: item.proteinPer100g, unit: "g", tint: NuvyraColors.accent)
+            macroPill(label: "Karb", value: item.carbsPer100g, unit: "g", tint: NuvyraColors.softSand)
+            macroPill(label: "Yağ", value: item.fatPer100g, unit: "g", tint: NuvyraColors.mutedCoral)
+        }
+    }
+
+    private func macroPill(label: String, value: Double, unit: String, tint: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(value > 0 ? "\(value.cleanMacro)\(unit)" : "—")
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(value > 0 ? tint : Color.secondary.opacity(0.6))
+            Text(label)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(value > 0 ? tint.opacity(0.10) : Color.secondary.opacity(0.06))
+        )
+    }
+
+    /// 100 g varsayılan porsiyondan farklıysa altında küçük yazıyla referans.
+    private var showsPer100gReference: Bool {
+        let serving = item.defaultServing
+        return serving.grams > 0 && serving.grams != 100
+    }
+
+    /// Varsayılan porsiyona göre kalori — satırın sağ üstündeki büyük rakam.
+    private var displayCalories: Int {
+        let serving = item.defaultServing
+        let scaled = Double(item.caloriesPer100g) * (serving.grams / 100)
+        return Int(scaled.rounded())
+    }
+
+    private var calorieUnit: String {
+        let serving = item.defaultServing
+        if serving.grams == 100 { return "kcal / 100 g" }
+        return "kcal · \(serving.preferredLabel)"
+    }
+
+    private var showsCalorieMissingHint: Bool {
+        item.proteinPer100g == 0 && item.carbsPer100g == 0 && item.fatPer100g == 0 && item.caloriesPer100g > 0
     }
 }
 

@@ -34,8 +34,9 @@ struct AddFoodView: View {
     @State private var showingCameraCapture = false
     @State private var isSaving = false
     @State private var errorMessage: String?
-    @State private var lookupResults: [FoodSearchResult] = []
-    @State private var selectedLookupResult: FoodSearchResult?
+    @State private var lookupResults: [FoodItem] = []
+    @State private var selectedLookupItem: FoodItem?
+    @State private var selectedLookupServing: ServingSize?
     @State private var isLookingUpNutrition = false
     @State private var lookupMessage: String?
     @State private var lookupTask: Task<Void, Never>?
@@ -47,9 +48,6 @@ struct AddFoodView: View {
     @State private var sugar: Double?
     @State private var saturatedFat: Double?
     @State private var showMicros: Bool = false
-
-    private let remoteFoodSearchService = RemoteFoodSearchService()
-    private let localFoodSearchService = SQLiteFTSFoodSearchService.shared
 
     init(mode: Mode) {
         self.mode = mode
@@ -67,7 +65,8 @@ struct AddFoodView: View {
             _isFavorite = State(initialValue: false)
             _photoData = State(initialValue: nil)
             _lookupResults = State(initialValue: [])
-            _selectedLookupResult = State(initialValue: nil)
+            _selectedLookupItem = State(initialValue: nil)
+            _selectedLookupServing = State(initialValue: nil)
             _isLookingUpNutrition = State(initialValue: false)
             _lookupMessage = State(initialValue: nil)
             _lookupTask = State(initialValue: nil)
@@ -90,7 +89,8 @@ struct AddFoodView: View {
             _isFavorite = State(initialValue: meal.isFavorite)
             _photoData = State(initialValue: meal.photoData)
             _lookupResults = State(initialValue: [])
-            _selectedLookupResult = State(initialValue: nil)
+            _selectedLookupItem = State(initialValue: nil)
+            _selectedLookupServing = State(initialValue: nil)
             _isLookingUpNutrition = State(initialValue: false)
             _lookupMessage = State(initialValue: nil)
             _lookupTask = State(initialValue: nil)
@@ -237,22 +237,22 @@ struct AddFoodView: View {
                         .foregroundStyle(NuvyraColors.mutedCoral)
                 }
 
-                if let selectedLookupResult {
-                    AutoNutritionResultRow(result: selectedLookupResult, isSelected: true)
+                if let selectedLookupItem {
+                    AutoNutritionResultRow(item: selectedLookupItem, isSelected: true)
                 }
 
-                let suggestions = lookupResults.filter { $0.id != selectedLookupResult?.id }.prefix(4)
+                let suggestions = lookupResults.filter { $0.id != selectedLookupItem?.id }.prefix(4)
                 if !suggestions.isEmpty {
                     VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
                         Text("Benzer sonuçlar")
                             .font(NuvyraTypography.caption.weight(.semibold))
                             .foregroundStyle(.secondary)
 
-                        ForEach(Array(suggestions), id: \.id) { result in
+                        ForEach(Array(suggestions), id: \.id) { item in
                             Button {
-                                applyNutritionResult(result)
+                                applyNutritionItem(item)
                             } label: {
-                                AutoNutritionResultRow(result: result, isSelected: false)
+                                AutoNutritionResultRow(item: item, isSelected: false)
                             }
                             .buttonStyle(.plain)
                         }
@@ -417,7 +417,7 @@ struct AddFoodView: View {
 
     private var trimmedName: String { name.trimmingCharacters(in: .whitespacesAndNewlines) }
     private var resolvedFoodName: String {
-        selectedLookupResult?.name.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? trimmedName
+        selectedLookupItem?.preferredDisplayName.trimmingCharacters(in: .whitespacesAndNewlines).nonEmpty ?? trimmedName
     }
     private var hasNutritionValues: Bool { calories > 0 || protein > 0 || carbs > 0 || fat > 0 }
     private var canSave: Bool { !trimmedName.isEmpty && quantity > 0 && hasNutritionValues && !isLookingUpNutrition }
@@ -451,6 +451,14 @@ struct AddFoodView: View {
     }
 
     private var portionDescription: String {
+        if
+            unit == .grams,
+            let serving = selectedLookupServing,
+            abs(quantity - serving.grams) < 0.01
+        {
+            return serving.preferredLabel
+        }
+
         switch unit {
         case .grams: return "\(quantity.cleanFormatted) g"
         case .portion: return "\(quantity.cleanFormatted) porsiyon"
@@ -462,7 +470,8 @@ struct AddFoodView: View {
     private func scheduleNutritionLookup() {
         lookupTask?.cancel()
         lookupMessage = nil
-        selectedLookupResult = nil
+        selectedLookupItem = nil
+        selectedLookupServing = nil
         lookupResults = []
         resetNutritionValues()
 
@@ -475,28 +484,23 @@ struct AddFoodView: View {
         isLookingUpNutrition = true
         let selectedMealType = mealType
         let foodIntelligenceService = dependencies.foodIntelligenceService
-        lookupTask = Task { [remoteFoodSearchService, localFoodSearchService, foodIntelligenceService] in
+        let foodRepository = dependencies.foodRepository
+        lookupTask = Task { [foodRepository, foodIntelligenceService] in
             try? await Task.sleep(nanoseconds: 650_000_000)
             guard !Task.isCancelled else { return }
 
-            let remoteResults = await remoteFoodSearchService.search(query, limit: 8)
+            let catalogItems = await foodRepository.searchItems(query: query, limit: 8)
             let estimatedMeals = (try? await foodIntelligenceService.estimateFromText(query, mealType: selectedMealType)) ?? []
-            let estimatedResults = Self.makeEstimatedLookupResults(estimatedMeals)
-            let localResults: [FoodSearchResult]
-            if remoteResults.isEmpty && estimatedResults.isEmpty {
-                localResults = (try? await localFoodSearchService.search(query, limit: 4)) ?? []
-            } else {
-                localResults = []
-            }
+            let estimatedItems = Self.makeEstimatedLookupItems(estimatedMeals)
 
             guard !Task.isCancelled else { return }
-            let results = Self.mergeLookupResults(remoteResults + estimatedResults + localResults)
+            let results = Self.mergeLookupItems(catalogItems + estimatedItems)
 
             await MainActor.run {
                 lookupResults = results
                 isLookingUpNutrition = false
-                if let first = results.first {
-                    applyNutritionResult(first)
+                if let first = results.first(where: { $0.hasLookupNutrition }) ?? results.first {
+                    applyNutritionItem(first)
                 } else {
                     lookupMessage = "Besin değeri bulunamadı. Marka veya daha net ürün adı dene."
                 }
@@ -504,25 +508,22 @@ struct AddFoodView: View {
         }
     }
 
-    private func applyNutritionResult(_ result: FoodSearchResult) {
-        selectedLookupResult = result
-        calories = Double(result.calories)
-        protein = result.protein
-        carbs = result.carbs
-        fat = result.fat
-        fiber = result.fiber
-        sodium = nil
-        sugar = nil
-        saturatedFat = nil
+    private func applyNutritionItem(_ item: FoodItem) {
+        let serving = item.defaultServing
+        selectedLookupItem = item
+        selectedLookupServing = serving
+        calories = Double(item.caloriesPer100g)
+        protein = item.proteinPer100g
+        carbs = item.carbsPer100g
+        fat = item.fatPer100g
+        fiber = item.fiberPer100g > 0 ? item.fiberPer100g : nil
+        sodium = item.sodiumPer100g > 0 ? item.sodiumPer100g : nil
+        sugar = item.sugarPer100g > 0 ? item.sugarPer100g : nil
+        saturatedFat = item.saturatedFatPer100g > 0 ? item.saturatedFatPer100g : nil
         lookupMessage = nil
 
-        if result.source == .cache || result.source == .estimated {
-            unit = .portion
-            quantity = 1
-        } else {
-            unit = .grams
-            quantity = 100
-        }
+        unit = .grams
+        quantity = max(1, serving.grams)
     }
 
     private func resetNutritionValues() {
@@ -535,38 +536,46 @@ struct AddFoodView: View {
         sodium = nil
         sugar = nil
         saturatedFat = nil
+        selectedLookupServing = nil
     }
 
-    private static func mergeLookupResults(_ results: [FoodSearchResult]) -> [FoodSearchResult] {
+    private static func mergeLookupItems(_ items: [FoodItem]) -> [FoodItem] {
         var seen = Set<String>()
-        var merged: [FoodSearchResult] = []
+        var merged: [FoodItem] = []
 
-        for result in results {
-            let key = result.externalID?.lowercased()
-                ?? "\(result.source.rawValue):\(FoodSearchNormalizer.normalized(result.name)):\(result.brand ?? "")"
+        for item in items {
+            let key = item.externalID?.lowercased()
+                ?? "\(item.source.rawValue):\(FoodSearchNormalizer.normalized(item.preferredDisplayName)):\(item.brand ?? "")"
             guard seen.insert(key).inserted else { continue }
-            merged.append(result)
+            merged.append(item)
         }
 
         return merged
     }
 
-    private static func makeEstimatedLookupResults(_ meals: [EstimatedMealResult]) -> [FoodSearchResult] {
+    private static func makeEstimatedLookupItems(_ meals: [EstimatedMealResult]) -> [FoodItem] {
         meals.map { meal in
             let externalID = "estimated:\(FoodSearchNormalizer.normalized(meal.name)):\(meal.portion)"
-            return FoodSearchResult(
-                id: FoodSearchResult.remoteID(source: .estimated, externalID: externalID),
-                name: meal.name,
-                brand: nil,
-                calories: meal.calories,
-                servingDescription: meal.portion,
-                score: 0,
-                protein: meal.protein,
-                carbs: meal.carbs,
-                fat: meal.fat,
+            let serving = ServingSize(
+                label: meal.portion,
+                labelTR: meal.portion,
+                grams: 100,
+                isDefault: true
+            )
+            return FoodItem(
                 source: .estimated,
                 externalID: externalID,
-                isVerified: false
+                name: meal.name,
+                localizedNameTR: meal.name,
+                servingSizes: [serving],
+                nutritionPer100g: NutritionValues(
+                    calories: meal.calories,
+                    protein: meal.protein,
+                    carbs: meal.carbs,
+                    fat: meal.fat
+                ),
+                verifiedLevel: .approximate,
+                confidenceScore: 0.4
             )
         }
     }
@@ -593,8 +602,8 @@ struct AddFoodView: View {
                         fat: values.fat,
                         portionDescription: portion,
                         isFavorite: isFavorite,
-                        isVerifiedTurkishFood: selectedLookupResult?.source == .openFoodFacts || selectedLookupResult?.source == .fatSecret,
-                        isEstimated: !(selectedLookupResult?.isVerified ?? false),
+                        isVerifiedTurkishFood: selectedLookupItem?.source == .openFoodFacts || selectedLookupItem?.source == .fatSecret,
+                        isEstimated: selectedLookupItem?.verifiedLevel.shouldShowApproximateBadge ?? false,
                         fiberGrams: values.fiber > 0 ? values.fiber : nil,
                         sodiumMg: values.sodium > 0 ? values.sodium : nil,
                         sugarGrams: values.sugar > 0 ? values.sugar : nil,
@@ -604,7 +613,8 @@ struct AddFoodView: View {
                     try repository.addMeal(meal)
                     await dependencies.healthService.saveNutrition(for: meal)
                     dependencies.haptics.mealLogged()
-                    await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "add_food_view", "provider": selectedLookupResult?.source.rawValue ?? "manual_adjusted"]))
+                    await syncWithFoodRepository(values: values)
+                    await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "add_food_view", "provider": selectedLookupItem?.source.rawValue ?? "manual_adjusted"]))
                 case .edit(let meal):
                     try repository.updateMeal(
                         meal,
@@ -655,6 +665,38 @@ struct AddFoodView: View {
         return rendered.jpegData(compressionQuality: 0.72) ?? data
     }
 
+    /// Phase 8 — Save sonrası FoodRepository ile senkronizasyon. Lookup'tan
+    /// gelen item için `recordUse` (frequency tracking → recents/favorites
+    /// sıralaması), manuel `.grams` girişi için `addUserItem` (user-created
+    /// catalog'a yazılır, gelecek aramalarda local olarak görünür). Portion
+    /// ve piece girişleri için per-100g normalize edemediğimizden cache'lemiyoruz.
+    @MainActor
+    private func syncWithFoodRepository(values: NutritionValues) async {
+        if let lookupItem = selectedLookupItem, let rowID = lookupItem.deterministicRowID {
+            await dependencies.foodRepository.recordUse(id: rowID)
+            return
+        }
+
+        guard hasNutritionValues, !trimmedName.isEmpty, unit == .grams, quantity > 0 else { return }
+        let factor = 100 / quantity
+        let per100g = NutritionValues(
+            calories: Int((Double(values.calories) * factor).rounded()),
+            protein: values.protein * factor,
+            carbs: values.carbs * factor,
+            fat: values.fat * factor,
+            fiber: values.fiber * factor,
+            sodium: values.sodium * factor,
+            sugar: values.sugar * factor,
+            saturatedFat: values.saturatedFat * factor
+        )
+        let userItem = FoodItem.userCreated(
+            name: trimmedName,
+            servingSizes: [.hundredGrams, ServingSize(label: portionDescription, labelTR: portionDescription, grams: quantity, isDefault: true)],
+            nutritionPer100g: per100g
+        )
+        try? await dependencies.foodRepository.addUserItem(userItem)
+    }
+
     private func delete(_ meal: MealEntry) {
         Task { @MainActor in
             do {
@@ -670,52 +712,133 @@ struct AddFoodView: View {
     }
 }
 
+/// Phase 8 — Premium lookup result row. SourceChip + VerifiedLevelBadge ile
+/// kullanıcı veri kaynağını ve doğruluk seviyesini anında görür. 3 makro
+/// pill her zaman görünür ("—" eksik değer için); kalori varsayılan
+/// porsiyona göre ölçeklenir.
 private struct AutoNutritionResultRow: View {
-    let result: FoodSearchResult
+    let item: FoodItem
     let isSelected: Bool
 
+    private var serving: ServingSize { item.defaultServing }
+    private var scaledValues: NutritionValues { item.values(for: serving, quantity: 1) }
+
     var body: some View {
-        HStack(alignment: .top, spacing: NuvyraSpacing.md) {
-            Image(systemName: isSelected ? "checkmark.seal.fill" : "fork.knife.circle")
-                .font(.title3)
-                .foregroundStyle(isSelected ? NuvyraColors.accent : .secondary)
-                .frame(width: 28)
-                .accessibilityHidden(true)
+        VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
+            header
+            macroRow
+            if !hasAnyMacro && item.caloriesPer100g > 0 {
+                Label("Yalnızca kalori bilgisi", systemImage: "info.circle")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(Color(red: 0.85, green: 0.62, blue: 0.20))
+            }
+        }
+        .padding(NuvyraSpacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous)
+                .fill(isSelected ? NuvyraColors.accent.opacity(0.12) : Color.secondary.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous)
+                .stroke(isSelected ? NuvyraColors.accent.opacity(0.55) : Color.clear, lineWidth: 1.5)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(item.preferredDisplayName), \(scaledValues.calories) kalori, \(serving.preferredLabel)")
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: NuvyraSpacing.sm) {
+            ZStack(alignment: .bottomTrailing) {
+                FoodImageView(url: item.imageURL, style: .thumbnail)
+                if isSelected {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.white, NuvyraColors.accent)
+                        .background(Circle().fill(.background))
+                        .offset(x: 2, y: 2)
+                }
+            }
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(result.name)
+                Text(item.preferredDisplayName)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
 
-                HStack(spacing: NuvyraSpacing.xs) {
-                    if let brand = result.brand, !brand.isEmpty {
-                        Text(brand)
+                HStack(spacing: 6) {
+                    SourceChip(source: item.source)
+                    if item.showsApproximateBadge {
+                        Text("yaklaşık")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Color(red: 0.85, green: 0.62, blue: 0.20))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color(red: 0.85, green: 0.62, blue: 0.20).opacity(0.15), in: Capsule())
                     }
-                    Text(result.source.displayLabel)
-                    Text(result.servingDescription)
                 }
-                .font(NuvyraTypography.caption)
-                .foregroundStyle(.secondary)
 
-                Text("P \(result.protein.cleanMacro)g  C \(result.carbs.cleanMacro)g  Y \(result.fat.cleanMacro)g")
-                    .font(NuvyraTypography.caption)
-                    .foregroundStyle(.secondary)
+                if let brand = item.brand, !brand.isEmpty {
+                    Text(brand)
+                        .font(NuvyraTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer(minLength: NuvyraSpacing.sm)
 
-            Text("\(result.calories) kcal")
-                .font(.subheadline.weight(.heavy))
-                .foregroundStyle(NuvyraColors.accent)
+            VStack(alignment: .trailing, spacing: 1) {
+                Text("\(scaledValues.calories)")
+                    .font(.subheadline.weight(.heavy))
+                    .monospacedDigit()
+                    .foregroundStyle(NuvyraColors.accent)
+                Text("kcal · \(serving.preferredLabel)")
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(NuvyraSpacing.sm)
+    }
+
+    private var macroRow: some View {
+        HStack(spacing: 6) {
+            macroPill(label: "P", value: scaledValues.protein, tint: NuvyraColors.accent)
+            macroPill(label: "K", value: scaledValues.carbs, tint: NuvyraColors.softSand)
+            macroPill(label: "Y", value: scaledValues.fat, tint: NuvyraColors.mutedCoral)
+        }
+    }
+
+    private func macroPill(label: String, value: Double, tint: Color) -> some View {
+        HStack(spacing: 3) {
+            Text(label)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.secondary)
+            Text(value > 0 ? "\(value.cleanMacro)g" : "—")
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(value > 0 ? tint : Color.secondary.opacity(0.6))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
         .background(
-            RoundedRectangle(cornerRadius: NuvyraRadius.sm, style: .continuous)
-                .fill(isSelected ? NuvyraColors.accent.opacity(0.12) : Color.secondary.opacity(0.08))
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(value > 0 ? tint.opacity(0.10) : Color.secondary.opacity(0.05))
         )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(result.name), \(result.calories) kalori, protein \(result.protein.cleanMacro) gram, karbonhidrat \(result.carbs.cleanMacro) gram, yağ \(result.fat.cleanMacro) gram")
+    }
+
+    private var hasAnyMacro: Bool {
+        scaledValues.protein > 0 || scaledValues.carbs > 0 || scaledValues.fat > 0
+    }
+}
+
+private extension FoodItem {
+    var hasLookupNutrition: Bool {
+        caloriesPer100g > 0
+            || proteinPer100g > 0
+            || carbsPer100g > 0
+            || fatPer100g > 0
+            || fiberPer100g > 0
+            || sugarPer100g > 0
+            || sodiumPer100g > 0
+            || saturatedFatPer100g > 0
     }
 }
 

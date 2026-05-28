@@ -14,7 +14,7 @@ enum LocalFoodDatabaseSeeder {
     /// Bumped whenever the JSON contents materially change. The SQLite layer
     /// stores the last-applied version in `PRAGMA user_version` and re-runs
     /// the seed only when this constant moves ahead.
-    static let version: Int32 = 1
+    static let version: Int32 = 2
 
     static let resourceName = "LocalFoodDatabase"
     static let resourceExtension = "json"
