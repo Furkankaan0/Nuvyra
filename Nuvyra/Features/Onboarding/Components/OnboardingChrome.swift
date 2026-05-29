@@ -1,46 +1,124 @@
 import SwiftUI
 
-/// Top header — Nuvyra wordmark, step label and the multi-tone progress bar.
+/// Top header — Nuvyra wordmark, step label and the segmented progress
+/// indicator. Premium tasarım: wordmark soluk gradient, sağda step chip,
+/// altında dot/segment indicator + ince animated gradient bar.
 struct OnboardingProgressHeader: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var progress: Double
     var stepLabel: String
+    /// 1-based. 0 verilirse stepLabel'dan parse'a düşer — geriye uyumluluk.
+    var currentStep: Int = 0
+    /// Toplam adım sayısı. 0 verilirse dot indicator render edilmez.
+    var totalSteps: Int = 0
 
     private var clampedProgress: Double { min(max(progress, 0), 1) }
 
     var body: some View {
-        VStack(spacing: NuvyraSpacing.sm) {
-            HStack {
-                Text("Nuvyra")
-                    .font(.system(.title3, design: .rounded).weight(.heavy))
-                    .foregroundStyle(NuvyraColors.primaryText(scheme))
+        VStack(spacing: NuvyraSpacing.md) {
+            HStack(spacing: NuvyraSpacing.sm) {
+                wordmark
                 Spacer()
-                Text(stepLabel)
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(NuvyraColors.secondaryText(scheme))
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 7)
-                    .background(NuvyraColors.card(scheme).opacity(0.72), in: Capsule())
+                stepChip
             }
 
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(NuvyraColors.accent.opacity(scheme == .dark ? 0.18 : 0.12))
-                    Capsule()
-                        .fill(
-                            LinearGradient(
-                                colors: [NuvyraColors.accent, NuvyraColors.softMint, NuvyraColors.paleLime],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: proxy.size.width * clampedProgress)
-                }
+            if totalSteps > 0 {
+                segmentedIndicator
             }
-            .frame(height: 7)
-            .accessibilityLabel("Onboarding ilerlemesi yüzde \(Int(clampedProgress * 100))")
+
+            progressBar
         }
+    }
+
+    // MARK: - Subviews
+
+    private var wordmark: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "leaf.fill")
+                .font(.system(size: 14, weight: .heavy))
+                .foregroundStyle(LinearGradient(
+                    colors: [NuvyraColors.accent, NuvyraColors.softMint],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ))
+            Text("Nuvyra")
+                .font(.system(.title3, design: .rounded).weight(.heavy))
+                .foregroundStyle(NuvyraColors.primaryText(scheme))
+        }
+    }
+
+    private var stepChip: some View {
+        HStack(spacing: 5) {
+            Text(stepLabel)
+                .font(.footnote.weight(.bold))
+                .foregroundStyle(NuvyraColors.accent)
+                .contentTransition(.numericText())
+            Text("Adım")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(NuvyraColors.secondaryText(scheme))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(
+            Capsule()
+                .fill(NuvyraColors.accent.opacity(scheme == .dark ? 0.16 : 0.10))
+        )
+        .overlay(
+            Capsule()
+                .stroke(NuvyraColors.accent.opacity(0.22), lineWidth: 1)
+        )
+    }
+
+    /// Toplam step kadar küçük çubuk; tamamlanan dolu, mevcut accent, kalan soluk.
+    private var segmentedIndicator: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<totalSteps, id: \.self) { index in
+                let isCompleted = index < currentStep - 1
+                let isCurrent = index == currentStep - 1
+                Capsule()
+                    .fill(segmentColor(isCompleted: isCompleted, isCurrent: isCurrent))
+                    .frame(height: 4)
+                    .scaleEffect(y: isCurrent ? 1.55 : 1.0, anchor: .center)
+                    .animation(reduceMotion ? nil : .spring(response: 0.45, dampingFraction: 0.75), value: currentStep)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func segmentColor(isCompleted: Bool, isCurrent: Bool) -> AnyShapeStyle {
+        if isCurrent {
+            return AnyShapeStyle(LinearGradient(
+                colors: [NuvyraColors.accent, NuvyraColors.softMint],
+                startPoint: .leading,
+                endPoint: .trailing
+            ))
+        }
+        if isCompleted {
+            return AnyShapeStyle(NuvyraColors.accent.opacity(0.72))
+        }
+        return AnyShapeStyle(NuvyraColors.accent.opacity(scheme == .dark ? 0.18 : 0.14))
+    }
+
+    /// İnce arka-plan progress çubuğu — segmented indicator yokken tek başına
+    /// kullanıma uygun; yanında olduğunda subtle reinforcement sağlar.
+    private var progressBar: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(NuvyraColors.accent.opacity(scheme == .dark ? 0.10 : 0.07))
+                Capsule()
+                    .fill(LinearGradient(
+                        colors: [NuvyraColors.accent, NuvyraColors.softMint, NuvyraColors.paleLime],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ))
+                    .frame(width: max(0, proxy.size.width * clampedProgress))
+                    .animation(reduceMotion ? nil : .spring(response: 0.55, dampingFraction: 0.85), value: clampedProgress)
+            }
+        }
+        .frame(height: totalSteps > 0 ? 3 : 7)
+        .accessibilityLabel("Onboarding ilerlemesi yüzde \(Int(clampedProgress * 100))")
     }
 }
 

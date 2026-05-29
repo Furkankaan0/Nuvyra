@@ -13,23 +13,28 @@ struct OnboardingView: View {
         ZStack {
             NuvyraBackground()
             VStack(spacing: 0) {
-                OnboardingProgressHeader(progress: viewModel.progress, stepLabel: viewModel.stepLabel)
-                    .padding(.horizontal, NuvyraSpacing.lg)
-                    .padding(.top, NuvyraSpacing.md)
+                OnboardingProgressHeader(
+                    progress: viewModel.progress,
+                    stepLabel: viewModel.stepLabel,
+                    currentStep: viewModel.currentStepNumber,
+                    totalSteps: viewModel.totalStepCount
+                )
+                .padding(.horizontal, NuvyraSpacing.lg)
+                .padding(.top, NuvyraSpacing.md)
 
                 ScrollView(showsIndicators: false) {
                     OnboardingStepContent(viewModel: viewModel)
                         .id(viewModel.currentStep.id)
                         .transition(.asymmetric(
-                            insertion: .move(edge: .trailing).combined(with: .opacity),
-                            removal: .move(edge: .leading).combined(with: .opacity)
+                            insertion: .move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.96)),
+                            removal: .move(edge: .leading).combined(with: .opacity).combined(with: .scale(scale: 0.96))
                         ))
                         .padding(.horizontal, NuvyraSpacing.lg)
                         .padding(.top, NuvyraSpacing.lg)
                         .padding(.bottom, 156)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .animation(reduceMotion ? nil : .smooth(duration: 0.34), value: viewModel.pageIndex)
+                .animation(reduceMotion ? nil : .spring(response: 0.52, dampingFraction: 0.86), value: viewModel.pageIndex)
             }
         }
         .safeAreaInset(edge: .bottom) {

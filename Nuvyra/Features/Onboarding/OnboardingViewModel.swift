@@ -64,6 +64,10 @@ final class OnboardingViewModel: ObservableObject {
     var isLastPage: Bool { pageIndex == orderedSteps.count - 1 }
     var progress: Double { Double(pageIndex + 1) / Double(orderedSteps.count) }
     var stepLabel: String { "\(pageIndex + 1) / \(orderedSteps.count)" }
+
+    /// Premium onboarding header — segmented dot indicator için.
+    var currentStepNumber: Int { pageIndex + 1 }
+    var totalStepCount: Int { orderedSteps.count }
     var targets: CalculatedNutritionTargets { NutritionGoalCalculator.calculate(for: calculationInput) }
     var targetPreview: OnboardingTargetPreview {
         OnboardingTargetPreview(

@@ -53,6 +53,9 @@ struct PremiumOnboardingHero: View {
     let value: String
     let caption: String
 
+    @State private var ringRotation: Double = 0
+    @State private var iconBreath: CGFloat = 1.0
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 44, style: .continuous)
@@ -72,10 +75,18 @@ struct PremiumOnboardingHero: View {
                         .offset(x: -88, y: 84)
                 }
 
+            // Yavaşça dönen dış halka — ambient motion, dikkat çekmeyen
+            // canlılık. ReduceMotion'da statik.
             Circle()
                 .strokeBorder(Color.white.opacity(scheme == .dark ? 0.12 : 0.44), style: StrokeStyle(lineWidth: 1, dash: [8, 11]))
                 .frame(width: 222, height: 222)
-                .rotationEffect(.degrees(reduceMotion ? 0 : 18))
+                .rotationEffect(.degrees(reduceMotion ? 18 : ringRotation))
+
+            // İkinci, daha açık halka — derinlik için ters yönde döner.
+            Circle()
+                .strokeBorder(NuvyraColors.softMint.opacity(scheme == .dark ? 0.18 : 0.32), style: StrokeStyle(lineWidth: 1, dash: [4, 14]))
+                .frame(width: 178, height: 178)
+                .rotationEffect(.degrees(reduceMotion ? -8 : -ringRotation * 0.6))
 
             VStack(spacing: NuvyraSpacing.sm) {
                 Image(systemName: symbol)
@@ -88,12 +99,14 @@ struct PremiumOnboardingHero: View {
                         in: Circle()
                     )
                     .shadow(color: NuvyraColors.accent.opacity(0.32), radius: 20, x: 0, y: 14)
+                    .scaleEffect(iconBreath)
 
                 Text(value)
                     .font(.system(size: value.count > 6 ? 32 : 46, weight: .heavy, design: .rounded))
                     .foregroundStyle(NuvyraColors.primaryText(scheme))
                     .minimumScaleFactor(0.68)
                     .lineLimit(1)
+                    .contentTransition(.numericText())
 
                 Text(caption)
                     .font(.subheadline.weight(.bold))
@@ -105,6 +118,15 @@ struct PremiumOnboardingHero: View {
         .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
         .shadow(color: NuvyraShadow.card(scheme), radius: 28, x: 0, y: 20)
         .accessibilityElement(children: .combine)
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.linear(duration: 48).repeatForever(autoreverses: false)) {
+                ringRotation = 360
+            }
+            withAnimation(.easeInOut(duration: 3.2).repeatForever(autoreverses: true)) {
+                iconBreath = 1.045
+            }
+        }
     }
 
     private var heroGradient: LinearGradient {
@@ -122,6 +144,7 @@ struct PremiumOnboardingHero: View {
 
 struct SelectableOptionCard: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let title: String
     let subtitle: String
     let symbol: String
@@ -136,7 +159,14 @@ struct SelectableOptionCard: View {
                     .font(.headline.weight(.bold))
                     .foregroundStyle(isSelected ? .white : NuvyraColors.accent)
                     .frame(width: 44, height: 44)
-                    .background(isSelected ? NuvyraColors.accent : NuvyraColors.accent.opacity(0.12), in: Circle())
+                    .background(
+                        isSelected
+                            ? AnyShapeStyle(LinearGradient(colors: [NuvyraColors.accent, NuvyraColors.softMint], startPoint: .topLeading, endPoint: .bottomTrailing))
+                            : AnyShapeStyle(NuvyraColors.accent.opacity(0.12)),
+                        in: Circle()
+                    )
+                    .shadow(color: isSelected ? NuvyraColors.accent.opacity(0.32) : .clear, radius: 12, x: 0, y: 6)
+                    .scaleEffect(isSelected ? 1.05 : 1.0)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
@@ -162,6 +192,7 @@ struct SelectableOptionCard: View {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(isSelected ? NuvyraColors.accent : NuvyraColors.secondaryText(scheme).opacity(0.45))
+                    .symbolEffect(.bounce, value: isSelected)
             }
             .padding(16)
             .background(
@@ -170,14 +201,29 @@ struct SelectableOptionCard: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: NuvyraRadius.lg, style: .continuous)
-                    .stroke(isSelected ? NuvyraColors.accent.opacity(0.45) : Color.white.opacity(scheme == .dark ? 0.08 : 0.36))
+                    .stroke(isSelected ? NuvyraColors.accent.opacity(0.55) : Color.white.opacity(scheme == .dark ? 0.08 : 0.36), lineWidth: isSelected ? 1.5 : 1)
             )
+            .shadow(color: isSelected ? NuvyraColors.accent.opacity(0.16) : .clear, radius: 18, x: 0, y: 10)
+            .scaleEffect(isSelected ? 1.015 : 1.0)
+            .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.72), value: isSelected)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(SelectableCardButtonStyle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(title)
         .accessibilityHint(subtitle)
         .accessibilityValue(isSelected ? "Seçili" : "Seçili değil")
+    }
+}
+
+/// Tap sırasında küçük bir scale-down feedback (97%) — iOS-native haptic
+/// hissi. ReduceMotion otomatik devreden çıkar (animation nil olur).
+private struct SelectableCardButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.6), value: configuration.isPressed)
     }
 }
 
