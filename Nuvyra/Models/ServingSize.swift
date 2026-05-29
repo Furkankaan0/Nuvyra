@@ -25,7 +25,11 @@ struct ServingSize: Codable, Hashable, Sendable, Identifiable {
 }
 
 extension ServingSize {
-    static let hundredGrams = ServingSize(label: "100 g", labelTR: "100 g", grams: 100, isDefault: true)
+    /// Per-100g referans porsiyonu. `isDefault: false` — bir array'de yer
+    /// alıyorsa default seçim olarak kazanmaz; "kültürel porsiyon" varsa
+    /// (1 kase, 1 dilim, 1 adet) o tercih edilir. Sadece tek başına ServingSize
+    /// olarak duruyorsa fallback olarak gözükür.
+    static let hundredGrams = ServingSize(label: "100 g", labelTR: "100 g", grams: 100, isDefault: false)
     static let oneGram = ServingSize(label: "1 g", labelTR: "1 g", grams: 1)
 
     static let onePiece = ServingSize(label: "1 piece", labelTR: "1 adet", grams: 50)

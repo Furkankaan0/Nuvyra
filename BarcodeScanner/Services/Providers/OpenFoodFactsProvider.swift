@@ -42,6 +42,12 @@ public struct OpenFoodFactsProvider: NutritionProvider {
             public let novaGroup: Int?
             public let categoriesTags: [String]?
             public let labelsTags: [String]?
+
+            // Phase 13.5 — gerçek porsiyon büyüklüğü. OFF API'sinde
+            // `serving_size` text "30 g" gibi, `serving_quantity` Double
+            // gram cinsinden (bazen string olarak gelir).
+            public let servingSize: String?
+            public let servingQuantity: Double?
         }
 
         public struct Nutriments: Codable, Sendable {
@@ -214,7 +220,9 @@ public struct OpenFoodFactsProvider: NutritionProvider {
         "nutriscore_grade",
         "nova_group",
         "categories_tags",
-        "labels_tags"
+        "labels_tags",
+        "serving_size",
+        "serving_quantity"
     ].joined(separator: ",")
 
     // MARK: - Init
@@ -284,6 +292,16 @@ public struct OpenFoodFactsProvider: NutritionProvider {
                 ?? nutriments?.energyKJ100G.map { $0 / 4.184 }
                 ?? Double(result.calories)
 
+            // Sodium fallback: OFF salt_100g (g) varsa × 400 → mg
+            let sodiumMg: Double? = {
+                if let s = nutriments?.sodium100G { return s * 1000 }
+                if let salt = nutriments?.salt100G { return salt * 400 }
+                return nil
+            }()
+            // Servingsize fallback: OFF bazen serving_quantity'yi string yollar
+            // ve Double? decode'u nil bırakır → serving_size text'inden gram
+            // çıkar (örn. "30 g" → 30, "1 piece (30g)" → 30).
+            let servingGrams = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
             return ScannedProduct(
                 barcode: barcode,
                 name: result.name,
@@ -293,6 +311,11 @@ public struct OpenFoodFactsProvider: NutritionProvider {
                 fat: result.fat,
                 carbs: result.carbs,
                 fiber: result.fiber,
+                sodium: sodiumMg,
+                sugar: nutriments?.sugars100G,
+                saturatedFat: nutriments?.saturatedFat100G,
+                servingGrams: servingGrams,
+                servingLabel: product.servingSize?.nonEmpty,
                 imageURL: result.imageURL,
                 source: .openFoodFacts
             )
@@ -310,6 +333,12 @@ public struct OpenFoodFactsProvider: NutritionProvider {
             ?? nutriments?.energyKJ100G.map { $0 / 4.184 }
             ?? 0
 
+        let sodiumMgFallback: Double? = {
+            if let s = nutriments?.sodium100G { return s * 1000 }
+            if let salt = nutriments?.salt100G { return salt * 400 }
+            return nil
+        }()
+        let servingGramsFallback = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
         return ScannedProduct(
             barcode: barcode,
             name: name,
@@ -319,12 +348,36 @@ public struct OpenFoodFactsProvider: NutritionProvider {
             fat: nutriments?.fat100G ?? 0,
             carbs: nutriments?.carbohydrates100G ?? 0,
             fiber: nutriments?.fiber100G,
+            sodium: sodiumMgFallback,
+            sugar: nutriments?.sugars100G,
+            saturatedFat: nutriments?.saturatedFat100G,
+            servingGrams: servingGramsFallback,
+            servingLabel: product.servingSize?.nonEmpty,
             imageURL: [product.imageFrontUrl, product.imageUrl]
                 .compactMap { $0?.nonEmpty }
                 .compactMap(URL.init(string:))
                 .first,
             source: .openFoodFacts
         )
+    }
+
+    /// "30 g", "30g", "1 piece (30g)", "30 ml" gibi serbest metinden ilk
+    /// numerik değeri çekip Double olarak döner. OFF `serving_quantity`'i
+    /// bazen string yolladığı (Double? decode'u nil bırakır) için fallback.
+    static func parseGrams(from text: String?) -> Double? {
+        guard let raw = text?.trimmingCharacters(in: .whitespacesAndNewlines), !raw.isEmpty else {
+            return nil
+        }
+        // Virgülü noktaya çevir (Avrupa locale'i için).
+        let normalized = raw.replacingOccurrences(of: ",", with: ".")
+        // Scanner ile ilk floatı yakala.
+        let scanner = Scanner(string: normalized)
+        scanner.charactersToBeSkipped = .whitespacesAndNewlines
+        var value: Double = 0
+        if scanner.scanDouble(&value), value > 0 {
+            return value
+        }
+        return nil
     }
 
     func makeFoodSearchResult(from product: Response.Product, fallbackBarcode: String? = nil) -> FoodSearchResult? {
@@ -608,6 +661,21 @@ extension OpenFoodFactsProvider {
             return min(0.95, score)
         }()
 
+        // Phase 13.5 — OFF'un kendi `serving_size`/`serving_quantity` field'ları
+        // varsa onu kullan; serving_quantity yoksa serving_size text'inden
+        // gram parse et; o da yoksa generic 1 porsiyon (200 g) fallback.
+        let servings: [ServingSize] = {
+            let resolvedGrams = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
+            if let grams = resolvedGrams, grams > 0 {
+                let label = product.servingSize?.nonEmpty ?? "1 porsiyon"
+                return [
+                    .hundredGrams,
+                    ServingSize(label: label, labelTR: label, grams: grams, isDefault: true)
+                ]
+            }
+            return [.hundredGrams, .onePortion]
+        }()
+
         return FoodItem(
             source: .openFoodFacts,
             externalID: externalID,
@@ -617,7 +685,7 @@ extension OpenFoodFactsProvider {
             barcode: barcode,
             imageURL: imageURL,
             category: category,
-            servingSizes: [.hundredGrams, .onePortion],
+            servingSizes: servings,
             nutritionPer100g: nutrition,
             micronutrients: micros?.hasAnyValue == true ? micros : nil,
             ingredients: ingredients,

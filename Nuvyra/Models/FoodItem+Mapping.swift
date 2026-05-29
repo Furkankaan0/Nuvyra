@@ -65,7 +65,20 @@ extension FoodItem {
 
 extension FoodItem {
     static func from(scannedProduct product: ScannedProduct, category: FoodCategory? = nil) -> FoodItem {
-        FoodItem(
+        // Phase 13.5 — ScannedProduct OFF'tan gelen gerçek porsiyon bilgisini
+        // taşıyorsa onu kullan; yoksa generic 1 porsiyon (200 g) fallback.
+        let servings: [ServingSize] = {
+            if let grams = product.servingGrams, grams > 0 {
+                let label = product.servingLabel?.nonEmptyTrimmed ?? "1 porsiyon"
+                return [
+                    .hundredGrams,
+                    ServingSize(label: label, labelTR: label, grams: grams, isDefault: true)
+                ]
+            }
+            return [.hundredGrams, .onePortion]
+        }()
+
+        return FoodItem(
             source: product.source,
             externalID: product.barcode,
             name: product.name,
@@ -74,18 +87,28 @@ extension FoodItem {
             barcode: product.barcode,
             imageURL: product.imageURL,
             category: category,
-            servingSizes: [.hundredGrams, .onePortion],
+            servingSizes: servings,
             nutritionPer100g: NutritionValues(
                 calories: Int(product.caloriesPer100g.rounded()),
                 protein: product.protein,
                 carbs: product.carbs,
                 fat: product.fat,
-                fiber: product.fiber ?? 0
+                fiber: product.fiber ?? 0,
+                sodium: product.sodium ?? 0,
+                sugar: product.sugar ?? 0,
+                saturatedFat: product.saturatedFat ?? 0
             ),
             verifiedLevel: product.source == .manual ? .userCreated : .verified,
             confidenceScore: product.source == .manual ? 0.9 : 0.85,
             lastUpdated: product.fetchedAt
         )
+    }
+}
+
+private extension String {
+    var nonEmptyTrimmed: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 

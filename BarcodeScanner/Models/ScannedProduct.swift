@@ -29,6 +29,18 @@ public struct ScannedProduct: Codable, Equatable, Hashable, Sendable, Identifiab
     public let fat: Double
     public let carbs: Double
     public let fiber: Double?
+    /// Phase 13.5 — OFF zaten döndürüyor; FoodDetailView secondary grid
+    /// (lif/şeker/doymuş yağ/sodyum) dolu görünsün diye plumbed.
+    public let sodium: Double?
+    public let sugar: Double?
+    public let saturatedFat: Double?
+
+    // MARK: - Serving (Phase 13.5)
+
+    /// OFF'tan gelen `serving_quantity` (gram cinsinden), örn. 30 g. Yoksa nil.
+    public let servingGrams: Double?
+    /// OFF'tan gelen `serving_size` text (örn. "30 g", "1 piece"). Yoksa nil.
+    public let servingLabel: String?
 
     // MARK: - Meta
 
@@ -48,6 +60,11 @@ public struct ScannedProduct: Codable, Equatable, Hashable, Sendable, Identifiab
         fat: Double,
         carbs: Double,
         fiber: Double? = nil,
+        sodium: Double? = nil,
+        sugar: Double? = nil,
+        saturatedFat: Double? = nil,
+        servingGrams: Double? = nil,
+        servingLabel: String? = nil,
         imageURL: URL? = nil,
         source: ProductSource,
         fetchedAt: Date = .now
@@ -60,6 +77,11 @@ public struct ScannedProduct: Codable, Equatable, Hashable, Sendable, Identifiab
         self.fat = fat
         self.carbs = carbs
         self.fiber = fiber
+        self.sodium = sodium
+        self.sugar = sugar
+        self.saturatedFat = saturatedFat
+        self.servingGrams = servingGrams
+        self.servingLabel = servingLabel
         self.imageURL = imageURL
         self.source = source
         self.fetchedAt = fetchedAt
