@@ -93,7 +93,10 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
     }
 
     /// Unit-test bootstrap — same wiring as `preview()`, exposed under an
-    /// explicit name so tests can be read without ambiguity.
+    /// explicit name so tests can be read without ambiguity. Phase 10 —
+    /// `foodRepository` artık `MockFoodRepository` (in-memory actor) ile
+    /// gelir: testler ve previews paylaşılan SQLite singleton'a sızdırmaz,
+    /// her bootstrap fresh state'le başlar.
     static func mock() -> DependencyContainer {
         DependencyContainer(
             healthService: MockHealthService(),
@@ -106,7 +109,8 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
             analytics: MockAnalyticsService(),
             stepCountService: MockStepCountService(),
             activeEnergyService: MockActiveEnergyService(),
-            smartReminderEngine: MockSmartReminderEngine()
+            smartReminderEngine: MockSmartReminderEngine(),
+            foodRepository: MockFoodRepository(seed: MockFoodRepository.previewSeed)
         )
     }
 

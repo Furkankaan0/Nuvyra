@@ -5,6 +5,44 @@ struct FoodLog: Codable, Equatable, Identifiable {
     let name: String
     let quantity: String
     let calories: Int
+
+    // Phase 12.5 — per-100g makro + ikincil makrolar + gerçek porsiyon gram'ı.
+    // Geriye uyumluluk için tümü default nil; eski response'lar da decode olur,
+    // mevcut testler `FoodLog(name:quantity:calories:)` ile çalışmaya devam eder.
+    let portionGrams: Double?
+    let protein100g: Double?
+    let carbs100g: Double?
+    let fat100g: Double?
+    let fiber100g: Double?
+    let sodium100gMg: Double?
+    let sugar100g: Double?
+    let saturatedFat100g: Double?
+
+    init(
+        name: String,
+        quantity: String,
+        calories: Int,
+        portionGrams: Double? = nil,
+        protein100g: Double? = nil,
+        carbs100g: Double? = nil,
+        fat100g: Double? = nil,
+        fiber100g: Double? = nil,
+        sodium100gMg: Double? = nil,
+        sugar100g: Double? = nil,
+        saturatedFat100g: Double? = nil
+    ) {
+        self.name = name
+        self.quantity = quantity
+        self.calories = calories
+        self.portionGrams = portionGrams
+        self.protein100g = protein100g
+        self.carbs100g = carbs100g
+        self.fat100g = fat100g
+        self.fiber100g = fiber100g
+        self.sodium100gMg = sodium100gMg
+        self.sugar100g = sugar100g
+        self.saturatedFat100g = saturatedFat100g
+    }
 }
 
 struct GeminiFoodLogResponse: Codable, Equatable {
@@ -97,16 +135,28 @@ final class GeminiFoodLogService: FoodIntelligenceService {
     func estimateFromText(_ input: String, mealType: MealType) async throws -> [EstimatedMealResult] {
         let logs = try await logFood(from: input)
         return logs.map { food in
-            EstimatedMealResult(
+            // Gemini'nin verdiği `calories` PORSİYON BAŞINA değer; ama
+            // EstimatedMealResult per-100g taşır. `portionGrams` yoksa 200g
+            // varsayılan kullan ve `protein100g` vs zaten per-100g geliyor.
+            let portionGrams = max(1, food.portionGrams ?? 200)
+            let portionFactor = portionGrams / 100
+            let calories100g = portionFactor > 0
+                ? Int((Double(food.calories) / portionFactor).rounded())
+                : food.calories
+            return EstimatedMealResult(
                 name: food.name,
-                calories: food.calories,
-                protein: 0,
-                carbs: 0,
-                fat: 0,
                 portion: food.quantity,
-                confidence: 0.76,
-                source: .cloudProvider,
-                isEstimated: true
+                portionGrams: portionGrams,
+                calories: calories100g,
+                protein: food.protein100g ?? 0,
+                carbs: food.carbs100g ?? 0,
+                fat: food.fat100g ?? 0,
+                fiber: food.fiber100g,
+                sodium: food.sodium100gMg,
+                sugar: food.sugar100g,
+                saturatedFat: food.saturatedFat100g,
+                confidence: 0.78,
+                source: .cloudProvider
             )
         }
     }
@@ -143,10 +193,29 @@ final class GeminiFoodLogService: FoodIntelligenceService {
 
     private static func prompt(for input: String) -> String {
         """
-        Türkçe doğal dilde anlatılan öğünü besin kayıtlarına çevir.
-        Yalnızca JSON Schema'ya uyan JSON döndür.
-        Kalori değerleri tahmini kcal integer olmalı.
-        Tıbbi tavsiye verme, açıklama metni yazma.
+        Türk mutfağı ve beslenme uzmanı gibi davran. Kullanıcı bir yemek,
+        içecek veya ürün ismini Türkçe yazacak; sen onu standart bir veya
+        birkaç (en fazla 4) farklı yorumla besin kayıtlarına çevir.
+
+        Kurallar:
+        • Yanıtın sadece JSON Schema'ya uyan JSON olsun; açıklama, başlık,
+          markdown veya tıbbi tavsiye yazma.
+        • Yemek adını (`name`) Türkçe ve sade tut (örn. "Mercimek çorbası",
+          "Tavuk şiş", "Yulaf ezmesi (sütlü)"). Marka adı verme.
+        • Birden fazla yaygın yorum varsa hepsini ayrı kayıt olarak ekle
+          (örn. "yulaf" → sade yulaf ezmesi, sütlü yulaf, granola). Sıralama:
+          en yaygın yorum ilk.
+        • `quantity` kültürel porsiyon ifadesi olsun: "1 kase", "1 dilim",
+          "1 tabak", "1 porsiyon", "1 bardak", "1 adet" vb.
+        • `portionGrams` bu porsiyonun **ortalama gerçek gram karşılığı**.
+          Örn: 1 kase çorba ≈ 240g, 1 lahmacun ≈ 140g, 1 dilim ekmek ≈ 30g,
+          1 yumurta ≈ 50g, 1 bardak ayran ≈ 240g, 1 tabak pilav ≈ 180g.
+        • `calories` o porsiyondaki toplam kcal (integer).
+        • Diğer tüm besin değerleri (`*_100g`) **100 gram başına** ve gram
+          (sodium hariç → mg) cinsinden. Sodium içermiyorsa 0, hesaplanamıyorsa
+          null bırak.
+        • Türkiye'de yaygın olmayan / uydurma yemekleri tahmin etme;
+          en yakın tanıdığın yemek üzerinden açıkla.
 
         Kullanıcı girdisi:
         \(input)
@@ -208,16 +277,36 @@ private final class GeminiJSONSchema: Encodable {
         properties: [
             "FoodLog": GeminiJSONSchema(
                 type: "array",
-                description: "Doğal dilden çıkarılan besin kayıtları.",
+                description: "Doğal dilden çıkarılan besin kayıtları. Her giriş, kullanıcının yazdığı yemeğin yaygın bir yorumudur (max 4).",
                 items: GeminiJSONSchema(
                     type: "object",
                     properties: [
-                        "name": GeminiJSONSchema(type: "string", description: "Besinin kısa adı."),
-                        "quantity": GeminiJSONSchema(type: "string", description: "Porsiyon veya miktar bilgisi."),
-                        "calories": GeminiJSONSchema(type: "integer", description: "Tahmini kcal değeri.")
+                        "name": GeminiJSONSchema(type: "string", description: "Besinin Türkçe kısa adı (örn. 'Mercimek çorbası')."),
+                        "quantity": GeminiJSONSchema(type: "string", description: "Kültürel porsiyon ifadesi (örn. '1 kase', '1 dilim', '1 tabak')."),
+                        "calories": GeminiJSONSchema(type: "integer", description: "Bu porsiyondaki toplam kcal (integer)."),
+                        "portionGrams": GeminiJSONSchema(type: "number", description: "Porsiyonun ortalama gerçek gram karşılığı (örn. 1 kase çorba ≈ 240, 1 dilim ekmek ≈ 30)."),
+                        "protein100g": GeminiJSONSchema(type: "number", description: "100 g başına protein (gram). Bilinmiyorsa 0."),
+                        "carbs100g": GeminiJSONSchema(type: "number", description: "100 g başına karbonhidrat (gram)."),
+                        "fat100g": GeminiJSONSchema(type: "number", description: "100 g başına yağ (gram)."),
+                        "fiber100g": GeminiJSONSchema(type: "number", description: "100 g başına lif (gram). Yoksa 0."),
+                        "sodium100gMg": GeminiJSONSchema(type: "number", description: "100 g başına sodyum (miligram). Tuz içermiyorsa 0."),
+                        "sugar100g": GeminiJSONSchema(type: "number", description: "100 g başına şeker (gram). Tatlandırılmamışsa 0."),
+                        "saturatedFat100g": GeminiJSONSchema(type: "number", description: "100 g başına doymuş yağ (gram).")
                     ],
-                    required: ["name", "quantity", "calories"],
-                    propertyOrdering: ["name", "quantity", "calories"]
+                    required: ["name", "quantity", "calories", "portionGrams", "protein100g", "carbs100g", "fat100g"],
+                    propertyOrdering: [
+                        "name",
+                        "quantity",
+                        "portionGrams",
+                        "calories",
+                        "protein100g",
+                        "carbs100g",
+                        "fat100g",
+                        "fiber100g",
+                        "sodium100gMg",
+                        "sugar100g",
+                        "saturatedFat100g"
+                    ]
                 )
             )
         ],

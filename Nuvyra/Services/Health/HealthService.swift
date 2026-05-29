@@ -30,6 +30,12 @@ protocol HealthService {
     func todaySnapshot() async -> HealthSnapshot
     func saveNutrition(for meal: MealEntry) async
     func todayWorkouts() async -> [WorkoutEntry]
+
+    /// Phase 12 — Apple Health'ten beslenme örneklerini gruplandırılmış olarak
+    /// import eder. Aynı timestamp + kaynaktan gelen dietary energy/protein/
+    /// carbs/fat örnekleri tek bir `ImportedDietarySample`'a birleşir.
+    /// Nuvyra'nın kendi yazdığı örnekler `sourceBundleID` üzerinden filtrelenir.
+    func importDietarySamples(start: Date, end: Date) async -> [ImportedDietarySample]
 }
 
 final class LiveHealthService: HealthService {
@@ -44,7 +50,10 @@ final class LiveHealthService: HealthService {
 
     func requestAuthorization() async -> HealthAuthorizationState {
         guard isHealthDataAvailable else { return .unavailable }
-        let readTypes = quantityTypes()
+        // Phase 12 — read için aktivite + dietary types birlikte istenir.
+        // Tek auth prompt'unda tüm gereken izinler alınır; sonradan
+        // saveNutrition + importDietarySamples ekstra prompt göstermez.
+        let readTypes = quantityTypes().union(nutritionShareTypes())
         let shareTypes = nutritionShareTypes()
         guard !readTypes.isEmpty || !shareTypes.isEmpty else { return .unavailable }
         return await withCheckedContinuation { continuation in
@@ -169,6 +178,92 @@ final class LiveHealthService: HealthService {
         }
     }
 
+    // MARK: - Dietary import (Phase 12)
+
+    func importDietarySamples(start: Date, end: Date) async -> [ImportedDietarySample] {
+        guard isHealthDataAvailable else { return [] }
+        let auth = await requestAuthorization()
+        guard auth == .sharingAuthorized else { return [] }
+
+        // Tüm dietary quantity tiplerini paralel sorgula.
+        async let energy = quantitySamples(.dietaryEnergyConsumed, start: start, end: end)
+        async let protein = quantitySamples(.dietaryProtein, start: start, end: end)
+        async let carbs = quantitySamples(.dietaryCarbohydrates, start: start, end: end)
+        async let fat = quantitySamples(.dietaryFatTotal, start: start, end: end)
+        async let fiber = quantitySamples(.dietaryFiber, start: start, end: end)
+        async let sodium = quantitySamples(.dietarySodium, start: start, end: end)
+        async let sugar = quantitySamples(.dietarySugar, start: start, end: end)
+        async let satFat = quantitySamples(.dietaryFatSaturated, start: start, end: end)
+
+        let allSamples = await [energy, protein, carbs, fat, fiber, sodium, sugar, satFat].flatMap { $0 }
+        let ownBundleID = Bundle.main.bundleIdentifier
+        let externalSamples = allSamples.filter { $0.sourceRevision.source.bundleIdentifier != ownBundleID }
+
+        // (timestamp, source bundle, food name) → tüm makro örnekler bu grup'ta
+        // Apple Health metadata anahtarı `HKMetadataKeyFoodType` yiyecek adını taşır.
+        var groups: [String: [HKQuantitySample]] = [:]
+        for sample in externalSamples {
+            let key = groupKey(for: sample)
+            groups[key, default: []].append(sample)
+        }
+
+        var imported: [ImportedDietarySample] = []
+        for (_, samples) in groups {
+            guard let representative = samples.first else { continue }
+            let name = (representative.metadata?[HKMetadataKeyFoodType] as? String)
+                ?? (representative.sourceRevision.source.name)
+            let calories = value(samples, identifier: .dietaryEnergyConsumed, unit: .kilocalorie())
+            guard calories > 0 else { continue }  // En azından kalori olmalı
+
+            imported.append(ImportedDietarySample(
+                name: name,
+                date: representative.startDate,
+                calories: Int(calories.rounded()),
+                protein: value(samples, identifier: .dietaryProtein, unit: .gram()),
+                carbs: value(samples, identifier: .dietaryCarbohydrates, unit: .gram()),
+                fat: value(samples, identifier: .dietaryFatTotal, unit: .gram()),
+                fiber: nonZero(value(samples, identifier: .dietaryFiber, unit: .gram())),
+                sodium: nonZero(value(samples, identifier: .dietarySodium, unit: .gramUnit(with: .milli))),
+                sugar: nonZero(value(samples, identifier: .dietarySugar, unit: .gram())),
+                saturatedFat: nonZero(value(samples, identifier: .dietaryFatSaturated, unit: .gram())),
+                sourceName: representative.sourceRevision.source.name,
+                sourceBundleID: representative.sourceRevision.source.bundleIdentifier
+            ))
+        }
+
+        return imported.sorted { $0.date > $1.date }
+    }
+
+    private func groupKey(for sample: HKQuantitySample) -> String {
+        let timestamp = Int(sample.startDate.timeIntervalSince1970)
+        let bundle = sample.sourceRevision.source.bundleIdentifier
+        let name = (sample.metadata?[HKMetadataKeyFoodType] as? String) ?? ""
+        return "\(timestamp)|\(bundle)|\(name)"
+    }
+
+    private func value(_ samples: [HKQuantitySample], identifier: HKQuantityTypeIdentifier, unit: HKUnit) -> Double {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return 0 }
+        return samples
+            .filter { $0.quantityType == type }
+            .reduce(0) { $0 + $1.quantity.doubleValue(for: unit) }
+    }
+
+    private func nonZero(_ value: Double) -> Double? {
+        value > 0 ? value : nil
+    }
+
+    private func quantitySamples(_ identifier: HKQuantityTypeIdentifier, start: Date, end: Date) async -> [HKQuantitySample] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return [] }
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+        return await withCheckedContinuation { continuation in
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sort]) { _, samples, _ in
+                continuation.resume(returning: (samples as? [HKQuantitySample]) ?? [])
+            }
+            store.execute(query)
+        }
+    }
+
     // MARK: - Workouts
     func todayWorkouts() async -> [WorkoutEntry] {
         guard isHealthDataAvailable else { return [] }
@@ -209,11 +304,15 @@ final class LiveHealthService: HealthService {
 struct MockHealthService: HealthService {
     var snapshot: HealthSnapshot = HealthSnapshot(steps: 5_360, activeEnergy: 280, distanceKm: 3.8, authorizationStatus: .sharingAuthorized, source: .healthKit)
     var workouts: [WorkoutEntry] = []
+    var importedSamples: [ImportedDietarySample] = []
     var isHealthDataAvailable: Bool { true }
     func requestAuthorization() async -> HealthAuthorizationState { snapshot.authorizationStatus }
     func todaySnapshot() async -> HealthSnapshot { snapshot }
     func saveNutrition(for meal: MealEntry) async {}
     func todayWorkouts() async -> [WorkoutEntry] { workouts }
+    func importDietarySamples(start: Date, end: Date) async -> [ImportedDietarySample] {
+        importedSamples.filter { $0.date >= start && $0.date < end }
+    }
 }
 
 private extension WorkoutType {

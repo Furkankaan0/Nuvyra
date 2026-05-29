@@ -87,6 +87,10 @@ struct NutritionView: View {
                 Task { await viewModel.addFoodSelection(selection, context: modelContext, dependencies: dependencies) }
             }
         }
+        .sheet(isPresented: $viewModel.showingHealthImport) {
+            HealthDietaryImportView(viewModel: viewModel)
+                .environmentObject(dependencies)
+        }
         .task { viewModel.load(context: modelContext, dependencies: dependencies) }
     }
 
@@ -108,6 +112,9 @@ struct NutritionView: View {
             )
             NuvyraSecondaryButton(title: "Önceki günü bu tarihe kopyala", systemImage: "doc.on.doc") {
                 Task { await viewModel.copyPreviousDayMeals(context: modelContext, dependencies: dependencies) }
+            }
+            NuvyraSecondaryButton(title: "Apple Health'ten içe aktar", systemImage: "heart.text.square") {
+                viewModel.showingHealthImport = true
             }
         }
     }

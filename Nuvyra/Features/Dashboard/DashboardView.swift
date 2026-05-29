@@ -230,11 +230,65 @@ struct DashboardView: View {
     }
 
     /// Phase 7 — barcode tarama sonucunu rich `FoodItem`'a yükselt, cache
-    /// et ve `FoodDetailView` portion picker'ını tetikle. Eski path
-    /// "100 g - barkod" sabit logging yapıyordu; artık kullanıcı seçimine
-    /// göre porsiyonlanır.
+    /// et ve `FoodDetailView` portion picker'ını tetikle. Phase 13 —
+    /// veri sparse ise AI ile zenginleştir (aynı patern NutritionView'de).
     private func handleScannedProduct(_ product: ScannedProduct) async {
-        let item = FoodItem.from(scannedProduct: product)
+        var item = FoodItem.from(scannedProduct: product)
+
+        let needsEnrichment = item.caloriesPer100g == 0
+            || (item.proteinPer100g + item.carbsPer100g + item.fatPer100g) == 0
+        if needsEnrichment {
+            let query: String = {
+                if !product.name.isEmpty && product.name != "Bilinmeyen Ürün" {
+                    if let brand = product.brand, !brand.isEmpty { return "\(brand) \(product.name)" }
+                    return product.name
+                }
+                if let brand = product.brand, !brand.isEmpty {
+                    return "\(brand) ürünü (Türk markası, barkod \(product.barcode))"
+                }
+                return "Türk ürünü barkod \(product.barcode) — yaygın bir gıda yorumu yap"
+            }()
+            if let est = try? await dependencies.foodIntelligenceService
+                .estimateFromText(query, mealType: currentMealSlot())
+                .first {
+                item = FoodItem(
+                    id: item.id,
+                    source: item.source,
+                    externalID: item.externalID,
+                    name: (item.name == "Bilinmeyen Ürün" || item.name.isEmpty) ? est.name : item.name,
+                    localizedNameTR: (item.localizedNameTR == "Bilinmeyen Ürün" || item.localizedNameTR == nil) ? est.name : item.localizedNameTR,
+                    brand: item.brand,
+                    barcode: product.barcode,
+                    imageURL: item.imageURL,
+                    category: item.category,
+                    subCategory: item.subCategory,
+                    servingSizes: [
+                        .hundredGrams,
+                        ServingSize(label: est.portion, labelTR: est.portion, grams: est.portionGrams, isDefault: true)
+                    ],
+                    nutritionPer100g: NutritionValues(
+                        calories: est.calories,
+                        protein: est.protein,
+                        carbs: est.carbs,
+                        fat: est.fat,
+                        fiber: est.fiber ?? 0,
+                        sodium: est.sodium ?? 0,
+                        sugar: est.sugar ?? 0,
+                        saturatedFat: est.saturatedFat ?? 0
+                    ),
+                    micronutrients: item.micronutrients,
+                    ingredients: item.ingredients,
+                    allergens: item.allergens,
+                    additives: item.additives,
+                    nutriScore: item.nutriScore,
+                    novaGroup: item.novaGroup,
+                    verifiedLevel: .approximate,
+                    confidenceScore: max(0.5, est.confidence),
+                    lastUpdated: Date()
+                )
+            }
+        }
+
         await dependencies.foodRepository.cacheItem(item)
         pendingBarcodeItem = item
     }

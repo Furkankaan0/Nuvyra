@@ -49,6 +49,11 @@ struct AddFoodView: View {
     @State private var saturatedFat: Double?
     @State private var showMicros: Bool = false
 
+    // Phase 11 — rich manual entry (kategori + çoklu porsiyon)
+    @State private var manualCategory: FoodCategory?
+    @State private var manualServings: [ServingSize] = []
+    @State private var showManualDetails: Bool = false
+
     init(mode: Mode) {
         self.mode = mode
         switch mode {
@@ -122,6 +127,9 @@ struct AddFoodView: View {
                         nutritionLookupSection
                         photoSection
                         portionSection
+                        if showsManualDetails {
+                            manualDetailsSection
+                        }
                         if showNutritionAdjustments {
                             macroSection
                             microSection
@@ -407,8 +415,91 @@ struct AddFoodView: View {
         }
     }
 
+    /// Phase 11 — Sadece manuel oluşturma akışında (.create mode + lookup
+    /// seçili değil) görünür. Kullanıcı kategori atayarak ve çoklu porsiyon
+    /// tanımlayarak user-created `FoodItem`'ı zenginleştirir; sonraki
+    /// aramalarda kataloğunda doğru ServingSize seçici ile döner.
+    private var manualDetailsSection: some View {
+        NuvyraCard {
+            VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { showManualDetails.toggle() }
+                } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Detaylı manuel ekleme")
+                                .font(NuvyraTypography.section)
+                            Text(showManualDetails
+                                 ? "Kategori ve porsiyon listesini düzenle"
+                                 : "Kategori ve kendi porsiyonlarını tanımla")
+                                .font(NuvyraTypography.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: showManualDetails ? "chevron.up" : "chevron.down")
+                            .font(.subheadline.weight(.bold))
+                            .foregroundStyle(NuvyraColors.accent)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+
+                if showManualDetails {
+                    categoryPicker
+                    Divider()
+                    Text("Porsiyonlar")
+                        .font(NuvyraTypography.section)
+                    Text("Eklediğin porsiyonlar arama sonuçlarında çıkar; ⭐ ile varsayılanı seç.")
+                        .font(NuvyraTypography.caption)
+                        .foregroundStyle(.secondary)
+                    ManualServingEditor(servings: $manualServings)
+                }
+            }
+        }
+    }
+
+    private var categoryPicker: some View {
+        HStack {
+            Text("Kategori")
+                .font(NuvyraTypography.section)
+            Spacer()
+            Menu {
+                ForEach(FoodCategory.allCases) { category in
+                    Button {
+                        manualCategory = category
+                    } label: {
+                        Label(category.displayLabelTR, systemImage: category.symbolName)
+                    }
+                }
+                if manualCategory != nil {
+                    Divider()
+                    Button(role: .destructive) {
+                        manualCategory = nil
+                    } label: {
+                        Label("Kategori seçimini kaldır", systemImage: "xmark.circle")
+                    }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: manualCategory?.symbolName ?? "square.grid.2x2")
+                        .foregroundStyle(NuvyraColors.accent)
+                    Text(manualCategory?.displayLabelTR ?? "Kategori seç")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(.thinMaterial, in: Capsule())
+            }
+        }
+    }
+
     // MARK: - Derived state
     private var isEditing: Bool { if case .edit = mode { return true } else { return false } }
+    private var showsManualDetails: Bool { !isEditing && selectedLookupItem == nil }
     private var confirmTitle: String {
         if isEditing { return "Değişiklikleri kaydet" }
         if isLookingUpNutrition { return "Besin aranıyor" }
@@ -524,6 +615,15 @@ struct AddFoodView: View {
 
         unit = .grams
         quantity = max(1, serving.grams)
+
+        // Bulunan değerleri kullanıcıya görünür hale getir — gizli kalmasınlar.
+        let hasMicros = (fiber ?? 0) > 0 || (sodium ?? 0) > 0 || (sugar ?? 0) > 0 || (saturatedFat ?? 0) > 0
+        if calories > 0 || protein > 0 || carbs > 0 || fat > 0 {
+            showNutritionAdjustments = true
+        }
+        if hasMicros {
+            showMicros = true
+        }
     }
 
     private func resetNutritionValues() {
@@ -556,10 +656,12 @@ struct AddFoodView: View {
     private static func makeEstimatedLookupItems(_ meals: [EstimatedMealResult]) -> [FoodItem] {
         meals.map { meal in
             let externalID = "estimated:\(FoodSearchNormalizer.normalized(meal.name)):\(meal.portion)"
-            let serving = ServingSize(
+            // EstimatedMealResult artık per-100g değerleri + gerçek
+            // portionGrams taşır → math doğru çalışır.
+            let portionServing = ServingSize(
                 label: meal.portion,
                 labelTR: meal.portion,
-                grams: 100,
+                grams: meal.portionGrams,
                 isDefault: true
             )
             return FoodItem(
@@ -567,15 +669,20 @@ struct AddFoodView: View {
                 externalID: externalID,
                 name: meal.name,
                 localizedNameTR: meal.name,
-                servingSizes: [serving],
+                category: .localTurkish,
+                servingSizes: [.hundredGrams, portionServing],
                 nutritionPer100g: NutritionValues(
                     calories: meal.calories,
                     protein: meal.protein,
                     carbs: meal.carbs,
-                    fat: meal.fat
+                    fat: meal.fat,
+                    fiber: meal.fiber ?? 0,
+                    sodium: meal.sodium ?? 0,
+                    sugar: meal.sugar ?? 0,
+                    saturatedFat: meal.saturatedFat ?? 0
                 ),
                 verifiedLevel: .approximate,
-                confidenceScore: 0.4
+                confidenceScore: meal.confidence
             )
         }
     }
@@ -689,9 +796,18 @@ struct AddFoodView: View {
             sugar: values.sugar * factor,
             saturatedFat: values.saturatedFat * factor
         )
+
+        // Phase 11 — Kullanıcı detaylı manuel girdi yaptıysa onun
+        // porsiyonlarını + kategoriyi kullan; aksi halde quantity'den türeyen
+        // varsayılan tek porsiyon.
+        let resolvedServings: [ServingSize] = manualServings.isEmpty
+            ? [.hundredGrams, ServingSize(label: portionDescription, labelTR: portionDescription, grams: quantity, isDefault: true)]
+            : ([.hundredGrams] + manualServings)
+
         let userItem = FoodItem.userCreated(
             name: trimmedName,
-            servingSizes: [.hundredGrams, ServingSize(label: portionDescription, labelTR: portionDescription, grams: quantity, isDefault: true)],
+            category: manualCategory,
+            servingSizes: resolvedServings,
             nutritionPer100g: per100g
         )
         try? await dependencies.foodRepository.addUserItem(userItem)

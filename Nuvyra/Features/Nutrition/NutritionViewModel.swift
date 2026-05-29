@@ -20,6 +20,13 @@ final class NutritionViewModel: ObservableObject {
     /// `.sheet(item:)` ile `FoodDetailView` olarak açar. Portion picker
     /// sonrası `addFoodSelection` üzerinden öğüne dönüşür.
     @Published var pendingBarcodeItem: FoodItem?
+
+    // Phase 12 — Apple Health dietary import
+    @Published var showingHealthImport = false
+    @Published var healthImportSamples: [ImportedDietarySample] = []
+    @Published var isImportingFromHealth = false
+    @Published var healthImportSelection: Set<UUID> = []
+    @Published var healthImportRangeDays: Int = 7
     @Published var errorMessage: String?
     @Published var smartMealText = ""
     @Published var estimatedResults: [EstimatedMealResult] = []
@@ -186,13 +193,169 @@ final class NutritionViewModel: ObservableObject {
     /// açılmasını tetikler. Portion picker sonrası `addFoodSelection` öğünü
     /// yaratır — eskiden "100 g - barkod" olarak sabit eklenen meal artık
     /// kullanıcı seçimine göre porsiyonlanır.
+    // MARK: - Phase 12: Health dietary import
+
+    /// Health'ten son N gündeki dietary örnekleri çeker, lokal listeyi günceller.
+    /// Önceden Nuvyra'nın kendi yazdığı örnekler service tarafında filtrelenir.
+    func loadHealthDietaryImport(dependencies: DependencyContainer) async {
+        isImportingFromHealth = true
+        defer { isImportingFromHealth = false }
+        let now = Date()
+        let start = Calendar.nuvyra.date(byAdding: .day, value: -healthImportRangeDays, to: now) ?? now
+        let samples = await dependencies.healthService.importDietarySamples(start: start, end: now)
+        healthImportSamples = samples
+        // Yeni listede default olarak tüm örnekleri seçili işaretle.
+        healthImportSelection = Set(samples.map { $0.id })
+    }
+
+    /// Kullanıcı seçimini onayladığında: seçili örnekleri MealEntry olarak
+    /// repository'ye yazar. Bu kayıtlar `isVerifiedTurkishFood = false`,
+    /// `isEstimated = false` (Health verisi düzgün makro taşır) işaretlenir.
+    func confirmHealthImport(context: ModelContext, dependencies: DependencyContainer) async {
+        let selected = healthImportSamples.filter { healthImportSelection.contains($0.id) }
+        guard !selected.isEmpty else { return }
+
+        var savedCount = 0
+        let repository = dependencies.nutritionRepository(context: context)
+        for sample in selected {
+            let meal = MealEntry(
+                date: sample.date,
+                mealType: sample.inferredMealType,
+                name: sample.name,
+                calories: sample.calories,
+                protein: sample.protein > 0 ? sample.protein : nil,
+                carbs: sample.carbs > 0 ? sample.carbs : nil,
+                fat: sample.fat > 0 ? sample.fat : nil,
+                portionDescription: "Health'ten alındı · \(sample.sourceName)",
+                isFavorite: false,
+                isVerifiedTurkishFood: false,
+                isEstimated: false,
+                fiberGrams: sample.fiber,
+                sodiumMg: sample.sodium,
+                sugarGrams: sample.sugar,
+                saturatedFatGrams: sample.saturatedFat
+            )
+            do {
+                try repository.addMeal(meal)
+                savedCount += 1
+            } catch {
+                continue
+            }
+        }
+
+        await dependencies.analytics.track(
+            .mealAdded,
+            payload: AnalyticsPayload(values: ["source": "health_import", "count": "\(savedCount)"])
+        )
+        dependencies.haptics.mealLogged()
+
+        showingHealthImport = false
+        healthImportSamples = []
+        healthImportSelection = []
+        flash("\(savedCount) öğün Health'ten içe aktarıldı")
+        load(context: context, dependencies: dependencies)
+        refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
+    }
+
+    func toggleHealthImportSelection(_ sample: ImportedDietarySample) {
+        if healthImportSelection.contains(sample.id) {
+            healthImportSelection.remove(sample.id)
+        } else {
+            healthImportSelection.insert(sample.id)
+        }
+    }
+
     func handleScannedProduct(_ product: ScannedProduct, dependencies: DependencyContainer) async {
-        let item = FoodItem.from(scannedProduct: product)
+        var item = FoodItem.from(scannedProduct: product)
+
+        // Phase 13 — ScannedProduct'ta veriler eksikse (OFF sparse / Türk
+        // ürünü OFF'ta tam yok) Gemini ile zenginleştir. İsim "Bilinmeyen
+        // Ürün" değil + brand veya bir ipucu varsa AI'ya o ipucuyla sor;
+        // yoksa "Barkod 8690…" + makro tahmini iste.
+        let needsEnrichment = item.caloriesPer100g == 0
+            || (item.proteinPer100g + item.carbsPer100g + item.fatPer100g) == 0
+        if needsEnrichment {
+            let query = enrichmentQuery(for: product)
+            if let enriched = try? await dependencies.foodIntelligenceService
+                .estimateFromText(query, mealType: selectedMealType)
+                .first {
+                item = mergeEnrichment(into: item, from: enriched, originalProduct: product)
+            }
+        }
+
         await dependencies.foodRepository.cacheItem(item)
         pendingBarcodeItem = item
-        // NOT: meal_added analytics burada DEĞİL — kullanıcı daha henüz
-        // porsiyon seçmedi. `addFoodSelection` (FoodDetailView confirm)
-        // tarafından track edilir.
+    }
+
+    private func enrichmentQuery(for product: ScannedProduct) -> String {
+        let isPlaceholderName = product.name == "Bilinmeyen Ürün" || product.name.isEmpty
+        if !isPlaceholderName {
+            // Marka varsa onunla beraber daha spesifik
+            if let brand = product.brand, !brand.isEmpty {
+                return "\(brand) \(product.name)"
+            }
+            return product.name
+        }
+        if let brand = product.brand, !brand.isEmpty {
+            return "\(brand) ürünü (Türk markası, barkod \(product.barcode))"
+        }
+        return "Türk ürünü barkod \(product.barcode) — yaygın bir gıda yorumu yap"
+    }
+
+    private func mergeEnrichment(
+        into item: FoodItem,
+        from estimate: EstimatedMealResult,
+        originalProduct: ScannedProduct
+    ) -> FoodItem {
+        let preferredName = (item.name == "Bilinmeyen Ürün" || item.name.isEmpty)
+            ? estimate.name
+            : item.name
+        let preferredNameTR = item.localizedNameTR == "Bilinmeyen Ürün" || item.localizedNameTR == nil
+            ? estimate.name
+            : item.localizedNameTR
+        let nutrition = NutritionValues(
+            calories: estimate.calories,
+            protein: estimate.protein,
+            carbs: estimate.carbs,
+            fat: estimate.fat,
+            fiber: estimate.fiber ?? 0,
+            sodium: estimate.sodium ?? 0,
+            sugar: estimate.sugar ?? 0,
+            saturatedFat: estimate.saturatedFat ?? 0
+        )
+        let servings: [ServingSize] = [
+            .hundredGrams,
+            ServingSize(
+                label: estimate.portion,
+                labelTR: estimate.portion,
+                grams: estimate.portionGrams,
+                isDefault: true
+            )
+        ]
+        return FoodItem(
+            id: item.id,
+            source: item.source,
+            externalID: item.externalID,
+            name: preferredName,
+            localizedNameTR: preferredNameTR,
+            brand: item.brand,
+            barcode: originalProduct.barcode,
+            imageURL: item.imageURL,
+            category: item.category,
+            subCategory: item.subCategory,
+            servingSizes: servings,
+            nutritionPer100g: nutrition,
+            micronutrients: item.micronutrients,
+            ingredients: item.ingredients,
+            allergens: item.allergens,
+            additives: item.additives,
+            nutriScore: item.nutriScore,
+            novaGroup: item.novaGroup,
+            // Verified→approximate düş çünkü değerler AI tahmini.
+            verifiedLevel: .approximate,
+            confidenceScore: max(0.5, estimate.confidence),
+            lastUpdated: Date()
+        )
     }
 
     func delete(_ meal: MealEntry, context: ModelContext, dependencies: DependencyContainer) {

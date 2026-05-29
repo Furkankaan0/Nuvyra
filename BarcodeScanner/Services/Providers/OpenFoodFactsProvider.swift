@@ -79,36 +79,42 @@ public struct OpenFoodFactsProvider: NutritionProvider {
             public let vitaminB9100G: Double?
             public let vitaminB12100G: Double?
 
+            // Bug fix: HTTPClient `convertFromSnakeCase` ile decode ediyor;
+            // bu strategy JSON anahtarlarındaki underscore'ları kaldırıp
+            // sonraki kelimeyi capitalize ediyor. Dolayısıyla raw value'lar
+            // ORİJİNAL JSON anahtarları değil, **dönüştürülmüş** formları
+            // olmalı (örn. "proteins_100g" → "proteins100g"). Hyphen'lar
+            // korunur. Aksi halde tüm makro alanlar 0 olarak decode olur.
             enum CodingKeys: String, CodingKey {
-                case energyKcal100G = "energy-kcal_100g"
-                case energyKcalValue = "energy-kcal_value"
-                case energyKJ100G = "energy_100g"
-                case proteins100G = "proteins_100g"
-                case fat100G = "fat_100g"
-                case saturatedFat100G = "saturated-fat_100g"
-                case carbohydrates100G = "carbohydrates_100g"
-                case sugars100G = "sugars_100g"
-                case fiber100G = "fiber_100g"
-                case sodium100G = "sodium_100g"
-                case salt100G = "salt_100g"
-                case cholesterol100G = "cholesterol_100g"
-                case calcium100G = "calcium_100g"
-                case iron100G = "iron_100g"
-                case magnesium100G = "magnesium_100g"
-                case phosphorus100G = "phosphorus_100g"
-                case potassium100G = "potassium_100g"
-                case zinc100G = "zinc_100g"
-                case vitaminA100G = "vitamin-a_100g"
-                case vitaminC100G = "vitamin-c_100g"
-                case vitaminD100G = "vitamin-d_100g"
-                case vitaminE100G = "vitamin-e_100g"
-                case vitaminK100G = "vitamin-k_100g"
-                case vitaminB1100G = "vitamin-b1_100g"
-                case vitaminB2100G = "vitamin-b2_100g"
-                case vitaminPP100G = "vitamin-pp_100g"
-                case vitaminB6100G = "vitamin-b6_100g"
-                case vitaminB9100G = "vitamin-b9_100g"
-                case vitaminB12100G = "vitamin-b12_100g"
+                case energyKcal100G = "energy-kcal100g"
+                case energyKcalValue = "energy-kcalValue"
+                case energyKJ100G = "energy100g"
+                case proteins100G = "proteins100g"
+                case fat100G = "fat100g"
+                case saturatedFat100G = "saturated-fat100g"
+                case carbohydrates100G = "carbohydrates100g"
+                case sugars100G = "sugars100g"
+                case fiber100G = "fiber100g"
+                case sodium100G = "sodium100g"
+                case salt100G = "salt100g"
+                case cholesterol100G = "cholesterol100g"
+                case calcium100G = "calcium100g"
+                case iron100G = "iron100g"
+                case magnesium100G = "magnesium100g"
+                case phosphorus100G = "phosphorus100g"
+                case potassium100G = "potassium100g"
+                case zinc100G = "zinc100g"
+                case vitaminA100G = "vitamin-a100g"
+                case vitaminC100G = "vitamin-c100g"
+                case vitaminD100G = "vitamin-d100g"
+                case vitaminE100G = "vitamin-e100g"
+                case vitaminK100G = "vitamin-k100g"
+                case vitaminB1100G = "vitamin-b1100g"
+                case vitaminB2100G = "vitamin-b2100g"
+                case vitaminPP100G = "vitamin-pp100g"
+                case vitaminB6100G = "vitamin-b6100g"
+                case vitaminB9100G = "vitamin-b9100g"
+                case vitaminB12100G = "vitamin-b12100g"
             }
 
             public init(from decoder: Decoder) throws {
@@ -252,6 +258,25 @@ public struct OpenFoodFactsProvider: NutritionProvider {
     func makeProduct(from response: Response, requestedBarcode barcode: String) -> ScannedProduct? {
         guard response.status != 0, let product = response.product else { return nil }
 
+        // OFF DB'de barkod kayıtlı ama hem isim hem besin değeri eksikse,
+        // "Bilinmeyen Ürün + 0 makro" göstermek yerine notFound'a düş ki
+        // chain'deki diğer provider'lar (FatSecret, USDA) denensin, sonunda
+        // ManualProductEntryView açılsın. Brand yeterli signal — onunla
+        // devam edebiliriz.
+        let hasName = (product.productName?.nonEmpty
+            ?? product.productNameTr?.nonEmpty
+            ?? product.productNameEn?.nonEmpty
+            ?? product.genericName?.nonEmpty) != nil
+        let hasBrand = product.brands?.nonEmpty != nil
+        let n = product.nutriments
+        let hasAnyNutrition = (n?.energyKcal100G ?? n?.energyKcalValue ?? n?.energyKJ100G ?? 0) > 0
+            || (n?.proteins100G ?? 0) > 0
+            || (n?.carbohydrates100G ?? 0) > 0
+            || (n?.fat100G ?? 0) > 0
+        if !hasName && !hasBrand && !hasAnyNutrition {
+            return nil
+        }
+
         if let result = makeFoodSearchResult(from: product, fallbackBarcode: barcode) {
             let nutriments = product.nutriments
             let kcal = nutriments?.energyKcal100G
@@ -369,6 +394,20 @@ public struct OpenFoodFactsProvider: NutritionProvider {
             do {
                 let response = try await client.send(request(for: candidate), as: Response.self)
                 guard response.status != 0, let product = response.product else {
+                    throw HTTPClientError.notFound
+                }
+                // Boş/sparse → notFound döndür ki chain'deki diğer provider'lar denensin.
+                let hasName = (product.productName?.nonEmpty
+                    ?? product.productNameTr?.nonEmpty
+                    ?? product.productNameEn?.nonEmpty
+                    ?? product.genericName?.nonEmpty) != nil
+                let hasBrand = product.brands?.nonEmpty != nil
+                let n = product.nutriments
+                let hasNutri = (n?.energyKcal100G ?? n?.energyKcalValue ?? n?.energyKJ100G ?? 0) > 0
+                    || (n?.proteins100G ?? 0) > 0
+                    || (n?.carbohydrates100G ?? 0) > 0
+                    || (n?.fat100G ?? 0) > 0
+                guard hasName || hasBrand || hasNutri else {
                     throw HTTPClientError.notFound
                 }
                 return makeFoodItem(from: product, fallbackBarcode: barcode)
