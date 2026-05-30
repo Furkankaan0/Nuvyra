@@ -239,14 +239,21 @@ struct DashboardView: View {
             || (item.proteinPer100g + item.carbsPer100g + item.fatPer100g) == 0
         if needsEnrichment {
             let query: String = {
+                let countryHint = BarcodeNormalizer.countryHint(for: product.barcode)
+                let countryClause = countryHint.isEmpty ? "" : " (\(countryHint) menşeli)"
                 if !product.name.isEmpty && product.name != "Bilinmeyen Ürün" {
-                    if let brand = product.brand, !brand.isEmpty { return "\(brand) \(product.name)" }
-                    return product.name
+                    if let brand = product.brand, !brand.isEmpty {
+                        return "\(brand) \(product.name)\(countryClause)"
+                    }
+                    return "\(product.name)\(countryClause)"
                 }
                 if let brand = product.brand, !brand.isEmpty {
-                    return "\(brand) ürünü (Türk markası, barkod \(product.barcode))"
+                    return "\(brand) ürünü\(countryClause) — barkod \(product.barcode)"
                 }
-                return "Türk ürünü barkod \(product.barcode) — yaygın bir gıda yorumu yap"
+                if !countryHint.isEmpty {
+                    return "\(countryHint) gıda ürünü (barkod \(product.barcode)) — bu ülkede yaygın bir gıda yorumu yap"
+                }
+                return "Gıda ürünü (barkod \(product.barcode)) — yaygın bir yorum yap"
             }()
             if let est = try? await dependencies.foodIntelligenceService
                 .estimateFromText(query, mealType: currentMealSlot())

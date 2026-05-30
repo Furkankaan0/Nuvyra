@@ -143,11 +143,28 @@ public actor FatSecretProvider: NutritionProvider {
     // MARK: - Public API
 
     /// Barkodu önce FatSecret food_id'ye, sonra detaylı besin verisine çevirir.
+    /// BarcodeNormalizer ile UPC-A ↔ EAN-13 varyantlarını sırayla dener.
     public func fetch(barcode: String) async throws -> ScannedProduct {
         let token = try await ensureToken()
 
-        // 1) Barcode → food_id
-        let foodID = try await lookupFoodID(barcode: barcode, token: token)
+        // 1) Barcode varyantlarından ilkinin bulduğu food_id'yi al
+        var resolvedID: String?
+        var lastError: Error?
+        for candidate in BarcodeNormalizer.variants(of: barcode) {
+            do {
+                resolvedID = try await lookupFoodID(barcode: candidate, token: token)
+                break
+            } catch {
+                lastError = error
+                if let httpError = error as? HTTPClientError, case .notFound = httpError {
+                    continue
+                }
+                throw error
+            }
+        }
+        guard let foodID = resolvedID else {
+            throw lastError ?? HTTPClientError.notFound
+        }
 
         // 2) food_id → detay
         let food = try await fetchFood(foodID: foodID, token: token)

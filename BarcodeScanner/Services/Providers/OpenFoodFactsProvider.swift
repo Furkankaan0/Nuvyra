@@ -430,9 +430,11 @@ public struct OpenFoodFactsProvider: NutritionProvider {
     }
 
     private func barcodeCandidates(from barcode: String) -> [String] {
-        let trimmed = barcode.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmed.count == 13, trimmed.hasPrefix("0") else { return [trimmed] }
-        return [trimmed, String(trimmed.dropFirst())]
+        // BarcodeNormalizer her geçerli format dönüşümünü (UPC-A ↔ EAN-13,
+        // ITF-14 → EAN-13/UPC-A, leading zero stripping) sırayla döner.
+        // OFF bazen UPC-A 12 hane saklarken kamera EAN-13 ile leading-0
+        // okur (veya tersi). Her varyantı sırayla deneriz → coverage ↑.
+        BarcodeNormalizer.variants(of: barcode)
     }
 
     // MARK: - Rich FoodItem path

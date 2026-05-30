@@ -61,9 +61,22 @@ public struct USDAProvider: NutritionProvider {
     // MARK: - Public API
 
     /// USDA arama uç noktasını barkod ile sorgular ve ilk eşleşmeyi
-    /// ScannedProduct'a normalize eder.
+    /// ScannedProduct'a normalize eder. BarcodeNormalizer ile UPC-A ↔
+    /// EAN-13 vs varyantlarını sırayla dener; ilkini bulduğunda döner.
     public func fetch(barcode: String) async throws -> ScannedProduct {
-        try await fetch(barcode: barcode, query: barcode)
+        var lastError: Error?
+        for candidate in BarcodeNormalizer.variants(of: barcode) {
+            do {
+                return try await fetch(barcode: barcode, query: candidate)
+            } catch {
+                lastError = error
+                if let httpError = error as? HTTPClientError, case .notFound = httpError {
+                    continue
+                }
+                throw error
+            }
+        }
+        throw lastError ?? HTTPClientError.notFound
     }
 
     /// Manuel arama / serbest metinle.
@@ -216,23 +229,35 @@ extension USDAProvider: RemoteFoodSearchProvider {
 extension USDAProvider {
 
     func fetchItem(barcode: String) async throws -> FoodItem {
-        guard var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
-            throw HTTPClientError.invalidURL
-        }
-        comps.queryItems = [
-            URLQueryItem(name: "query", value: barcode),
-            URLQueryItem(name: "pageSize", value: "5"),
-            URLQueryItem(name: "api_key", value: apiKey)
-        ]
-        guard let url = comps.url else { throw HTTPClientError.invalidURL }
+        var lastError: Error?
+        for candidate in BarcodeNormalizer.variants(of: barcode) {
+            guard var comps = URLComponents(url: baseURL, resolvingAgainstBaseURL: false) else {
+                throw HTTPClientError.invalidURL
+            }
+            comps.queryItems = [
+                URLQueryItem(name: "query", value: candidate),
+                URLQueryItem(name: "pageSize", value: "5"),
+                URLQueryItem(name: "api_key", value: apiKey)
+            ]
+            guard let url = comps.url else { throw HTTPClientError.invalidURL }
 
-        let response = try await client.send(HTTPRequest(url: url), as: SearchResponse.self)
-        let foods = response.foods ?? []
-        let exact = foods.first { $0.gtinUpc?.trimmingCharacters(in: .whitespaces) == barcode }
-        guard let food = exact ?? foods.first, let item = makeFoodItem(from: food, fallbackBarcode: barcode) else {
-            throw HTTPClientError.notFound
+            do {
+                let response = try await client.send(HTTPRequest(url: url), as: SearchResponse.self)
+                let foods = response.foods ?? []
+                let exact = foods.first { $0.gtinUpc?.trimmingCharacters(in: .whitespaces) == candidate }
+                if let food = exact ?? foods.first, let item = makeFoodItem(from: food, fallbackBarcode: barcode) {
+                    return item
+                }
+                lastError = HTTPClientError.notFound
+            } catch {
+                lastError = error
+                if let httpError = error as? HTTPClientError, case .notFound = httpError {
+                    continue
+                }
+                throw error
+            }
         }
-        return item
+        throw lastError ?? HTTPClientError.notFound
     }
 
     /// Build a rich FoodItem from a USDA food row. Returns nil if the row has
