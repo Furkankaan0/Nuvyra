@@ -412,59 +412,21 @@ public struct OpenFoodFactsProvider: NutritionProvider {
     func makeProduct(from response: Response, requestedBarcode barcode: String) -> ScannedProduct? {
         guard response.status != 0, let product = response.product else { return nil }
 
-        // OFF DB'de barkod kayıtlı ama hem isim hem besin değeri eksikse,
-        // "Bilinmeyen Ürün + 0 makro" göstermek yerine notFound'a düş ki
-        // chain'deki diğer provider'lar (FatSecret, USDA) denensin, sonunda
-        // ManualProductEntryView açılsın. Brand yeterli signal — onunla
-        // devam edebiliriz.
+        let servingGrams = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
+        let resolved = Self.resolveNutrition(product.nutriments, servingGrams: servingGrams)
+
+        // OFF DB'de barkod kayıtlı ama hem isim hem marka hem de besin değeri
+        // eksikse, "Bilinmeyen Ürün + 0 makro" göstermek yerine notFound'a düş
+        // ki chain'deki diğer provider'lar (FatSecret, USDA) denensin, sonunda
+        // ManualProductEntryView açılsın. Brand yeterli signal — onunla devam
+        // edebiliriz.
         let hasName = (product.productName?.nonEmpty
             ?? product.productNameTr?.nonEmpty
             ?? product.productNameEn?.nonEmpty
             ?? product.genericName?.nonEmpty) != nil
         let hasBrand = product.brands?.nonEmpty != nil
-        let n = product.nutriments
-        let hasAnyNutrition = (n?.energyKcal100G ?? n?.energyKcalValue ?? n?.energyKJ100G ?? 0) > 0
-            || (n?.proteins100G ?? 0) > 0
-            || (n?.carbohydrates100G ?? 0) > 0
-            || (n?.fat100G ?? 0) > 0
-        if !hasName && !hasBrand && !hasAnyNutrition {
+        if !hasName && !hasBrand && !resolved.hasAnyMacro {
             return nil
-        }
-
-        if let result = makeFoodSearchResult(from: product, fallbackBarcode: barcode) {
-            let nutriments = product.nutriments
-            let kcal = nutriments?.energyKcal100G
-                ?? nutriments?.energyKcalValue
-                ?? nutriments?.energyKJ100G.map { $0 / 4.184 }
-                ?? Double(result.calories)
-
-            // Sodium fallback: OFF salt_100g (g) varsa × 400 → mg
-            let sodiumMg: Double? = {
-                if let s = nutriments?.sodium100G { return s * 1000 }
-                if let salt = nutriments?.salt100G { return salt * 400 }
-                return nil
-            }()
-            // Servingsize fallback: OFF bazen serving_quantity'yi string yollar
-            // ve Double? decode'u nil bırakır → serving_size text'inden gram
-            // çıkar (örn. "30 g" → 30, "1 piece (30g)" → 30).
-            let servingGrams = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
-            return ScannedProduct(
-                barcode: barcode,
-                name: result.name,
-                brand: result.brand,
-                caloriesPer100g: kcal,
-                protein: result.protein,
-                fat: result.fat,
-                carbs: result.carbs,
-                fiber: result.fiber,
-                sodium: sodiumMg,
-                sugar: nutriments?.sugars100G,
-                saturatedFat: nutriments?.saturatedFat100G,
-                servingGrams: servingGrams,
-                servingLabel: product.servingSize?.nonEmpty,
-                imageURL: result.imageURL,
-                source: .openFoodFacts
-            )
         }
 
         let name = product.productNameTr?.nonEmpty
@@ -473,31 +435,19 @@ public struct OpenFoodFactsProvider: NutritionProvider {
             ?? product.genericName?.nonEmpty
             ?? "Bilinmeyen Ürün"
 
-        let nutriments = product.nutriments
-        let kcal = nutriments?.energyKcal100G
-            ?? nutriments?.energyKcalValue
-            ?? nutriments?.energyKJ100G.map { $0 / 4.184 }
-            ?? 0
-
-        let sodiumMgFallback: Double? = {
-            if let s = nutriments?.sodium100G { return s * 1000 }
-            if let salt = nutriments?.salt100G { return salt * 400 }
-            return nil
-        }()
-        let servingGramsFallback = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
         return ScannedProduct(
             barcode: barcode,
             name: name,
             brand: product.brands?.firstBrand,
-            caloriesPer100g: kcal,
-            protein: nutriments?.proteins100G ?? 0,
-            fat: nutriments?.fat100G ?? 0,
-            carbs: nutriments?.carbohydrates100G ?? 0,
-            fiber: nutriments?.fiber100G,
-            sodium: sodiumMgFallback,
-            sugar: nutriments?.sugars100G,
-            saturatedFat: nutriments?.saturatedFat100G,
-            servingGrams: servingGramsFallback,
+            caloriesPer100g: resolved.calories,
+            protein: resolved.protein,
+            fat: resolved.fat,
+            carbs: resolved.carbs,
+            fiber: resolved.fiber,
+            sodium: resolved.sodiumMg,
+            sugar: resolved.sugar,
+            saturatedFat: resolved.saturatedFat,
+            servingGrams: servingGrams,
             servingLabel: product.servingSize?.nonEmpty,
             imageURL: [product.imageFrontUrl, product.imageUrl]
                 .compactMap { $0?.nonEmpty }
