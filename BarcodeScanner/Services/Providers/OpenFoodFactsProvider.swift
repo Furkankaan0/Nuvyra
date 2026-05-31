@@ -64,6 +64,29 @@ public struct OpenFoodFactsProvider: NutritionProvider {
             public let salt100G: Double?
             public let cholesterol100G: Double?
 
+            // Base values — OFF bazı ürünlerde `*_100g` vermez ama suffix'siz
+            // base key'i (genelde 100g'a eşit) verir. İlk fallback katmanı.
+            public let proteinsBase: Double?
+            public let fatBase: Double?
+            public let carbohydratesBase: Double?
+            public let sugarsBase: Double?
+            public let fiberBase: Double?
+            public let saturatedFatBase: Double?
+            public let sodiumBase: Double?
+            public let saltBase: Double?
+
+            // Per-serving values — son fallback; serving_quantity ile 100g'a
+            // normalize edilir (örn. proteins_serving × 100 / serving_grams).
+            public let energyKcalServing: Double?
+            public let proteinsServing: Double?
+            public let fatServing: Double?
+            public let carbohydratesServing: Double?
+            public let sugarsServing: Double?
+            public let fiberServing: Double?
+            public let saturatedFatServing: Double?
+            public let sodiumServing: Double?
+            public let saltServing: Double?
+
             // Minerals (OFF stores per-100g in grams → multiply by 1000 → mg)
             public let calcium100G: Double?
             public let iron100G: Double?
@@ -104,6 +127,29 @@ public struct OpenFoodFactsProvider: NutritionProvider {
                 case sodium100G = "sodium100g"
                 case salt100G = "salt100g"
                 case cholesterol100G = "cholesterol100g"
+
+                // Base keys (suffix'siz; convertFromSnakeCase değiştirmez —
+                // underscore yok). saturated-fat hyphen korunur.
+                case proteinsBase = "proteins"
+                case fatBase = "fat"
+                case carbohydratesBase = "carbohydrates"
+                case sugarsBase = "sugars"
+                case fiberBase = "fiber"
+                case saturatedFatBase = "saturated-fat"
+                case sodiumBase = "sodium"
+                case saltBase = "salt"
+
+                // Per-serving keys: "proteins_serving" → "proteinsServing".
+                case energyKcalServing = "energy-kcalServing"
+                case proteinsServing = "proteinsServing"
+                case fatServing = "fatServing"
+                case carbohydratesServing = "carbohydratesServing"
+                case sugarsServing = "sugarsServing"
+                case fiberServing = "fiberServing"
+                case saturatedFatServing = "saturated-fatServing"
+                case sodiumServing = "sodiumServing"
+                case saltServing = "saltServing"
+
                 case calcium100G = "calcium100g"
                 case iron100G = "iron100g"
                 case magnesium100G = "magnesium100g"
@@ -137,6 +183,26 @@ public struct OpenFoodFactsProvider: NutritionProvider {
                 sodium100G = try container.decodeFlexibleDouble(forKey: .sodium100G)
                 salt100G = try container.decodeFlexibleDouble(forKey: .salt100G)
                 cholesterol100G = try container.decodeFlexibleDouble(forKey: .cholesterol100G)
+
+                proteinsBase = try container.decodeFlexibleDouble(forKey: .proteinsBase)
+                fatBase = try container.decodeFlexibleDouble(forKey: .fatBase)
+                carbohydratesBase = try container.decodeFlexibleDouble(forKey: .carbohydratesBase)
+                sugarsBase = try container.decodeFlexibleDouble(forKey: .sugarsBase)
+                fiberBase = try container.decodeFlexibleDouble(forKey: .fiberBase)
+                saturatedFatBase = try container.decodeFlexibleDouble(forKey: .saturatedFatBase)
+                sodiumBase = try container.decodeFlexibleDouble(forKey: .sodiumBase)
+                saltBase = try container.decodeFlexibleDouble(forKey: .saltBase)
+
+                energyKcalServing = try container.decodeFlexibleDouble(forKey: .energyKcalServing)
+                proteinsServing = try container.decodeFlexibleDouble(forKey: .proteinsServing)
+                fatServing = try container.decodeFlexibleDouble(forKey: .fatServing)
+                carbohydratesServing = try container.decodeFlexibleDouble(forKey: .carbohydratesServing)
+                sugarsServing = try container.decodeFlexibleDouble(forKey: .sugarsServing)
+                fiberServing = try container.decodeFlexibleDouble(forKey: .fiberServing)
+                saturatedFatServing = try container.decodeFlexibleDouble(forKey: .saturatedFatServing)
+                sodiumServing = try container.decodeFlexibleDouble(forKey: .sodiumServing)
+                saltServing = try container.decodeFlexibleDouble(forKey: .saltServing)
+
                 calcium100G = try container.decodeFlexibleDouble(forKey: .calcium100G)
                 iron100G = try container.decodeFlexibleDouble(forKey: .iron100G)
                 magnesium100G = try container.decodeFlexibleDouble(forKey: .magnesium100G)
@@ -170,6 +236,23 @@ public struct OpenFoodFactsProvider: NutritionProvider {
                 try container.encodeIfPresent(sodium100G, forKey: .sodium100G)
                 try container.encodeIfPresent(salt100G, forKey: .salt100G)
                 try container.encodeIfPresent(cholesterol100G, forKey: .cholesterol100G)
+                try container.encodeIfPresent(proteinsBase, forKey: .proteinsBase)
+                try container.encodeIfPresent(fatBase, forKey: .fatBase)
+                try container.encodeIfPresent(carbohydratesBase, forKey: .carbohydratesBase)
+                try container.encodeIfPresent(sugarsBase, forKey: .sugarsBase)
+                try container.encodeIfPresent(fiberBase, forKey: .fiberBase)
+                try container.encodeIfPresent(saturatedFatBase, forKey: .saturatedFatBase)
+                try container.encodeIfPresent(sodiumBase, forKey: .sodiumBase)
+                try container.encodeIfPresent(saltBase, forKey: .saltBase)
+                try container.encodeIfPresent(energyKcalServing, forKey: .energyKcalServing)
+                try container.encodeIfPresent(proteinsServing, forKey: .proteinsServing)
+                try container.encodeIfPresent(fatServing, forKey: .fatServing)
+                try container.encodeIfPresent(carbohydratesServing, forKey: .carbohydratesServing)
+                try container.encodeIfPresent(sugarsServing, forKey: .sugarsServing)
+                try container.encodeIfPresent(fiberServing, forKey: .fiberServing)
+                try container.encodeIfPresent(saturatedFatServing, forKey: .saturatedFatServing)
+                try container.encodeIfPresent(sodiumServing, forKey: .sodiumServing)
+                try container.encodeIfPresent(saltServing, forKey: .saltServing)
                 try container.encodeIfPresent(calcium100G, forKey: .calcium100G)
                 try container.encodeIfPresent(iron100G, forKey: .iron100G)
                 try container.encodeIfPresent(magnesium100G, forKey: .magnesium100G)
@@ -259,6 +342,69 @@ public struct OpenFoodFactsProvider: NutritionProvider {
         }
 
         throw lastError ?? HTTPClientError.notFound
+    }
+
+    // MARK: - Nutrition resolution
+
+    /// Tek bir ürünün besin değerlerini, OFF'un çoklu key formatlarını
+    /// hesaba katarak çözer. Bazı ürünlerde `*_100g` yoktur ama base key
+    /// (`proteins`) veya `*_serving` vardır. Fallback zinciri:
+    /// `_100g` → base → `_serving` (servingGrams ile 100g'a normalize).
+    struct ResolvedNutrition {
+        var calories: Double = 0
+        var protein: Double = 0
+        var carbs: Double = 0
+        var fat: Double = 0
+        var fiber: Double?
+        var sugar: Double?
+        var saturatedFat: Double?
+        var sodiumMg: Double?
+
+        /// Makrolardan en az biri anlamlı veri taşıyor mu? notFound kararı için.
+        var hasAnyMacro: Bool {
+            calories > 0 || protein > 0 || carbs > 0 || fat > 0
+        }
+    }
+
+    static func resolveNutrition(_ n: Response.Nutriments?, servingGrams: Double?) -> ResolvedNutrition {
+        guard let n else { return ResolvedNutrition() }
+
+        func pick(_ per100g: Double?, _ base: Double?, _ serving: Double?) -> Double? {
+            if let v = per100g, v > 0 { return v }
+            if let v = base, v > 0 { return v }
+            if let v = serving, v > 0, let g = servingGrams, g > 0 { return v * 100 / g }
+            return nil
+        }
+
+        let calories = pick(n.energyKcal100G, n.energyKcalValue, n.energyKcalServing)
+            ?? n.energyKJ100G.map { $0 / 4.184 }
+            ?? 0
+        let protein = pick(n.proteins100G, n.proteinsBase, n.proteinsServing) ?? 0
+        let carbs = pick(n.carbohydrates100G, n.carbohydratesBase, n.carbohydratesServing) ?? 0
+        let fat = pick(n.fat100G, n.fatBase, n.fatServing) ?? 0
+        let fiber = pick(n.fiber100G, n.fiberBase, n.fiberServing)
+        let sugar = pick(n.sugars100G, n.sugarsBase, n.sugarsServing)
+        let saturatedFat = pick(n.saturatedFat100G, n.saturatedFatBase, n.saturatedFatServing)
+
+        // Sodium: g cinsinden sodium → mg (×1000); yoksa salt → mg (×400).
+        let sodiumG = pick(n.sodium100G, n.sodiumBase, n.sodiumServing)
+        let saltG = pick(n.salt100G, n.saltBase, n.saltServing)
+        let sodiumMg: Double? = {
+            if let s = sodiumG { return s * 1000 }
+            if let salt = saltG { return salt * 400 }
+            return nil
+        }()
+
+        return ResolvedNutrition(
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            fiber: fiber,
+            sugar: sugar,
+            saturatedFat: saturatedFat,
+            sodiumMg: sodiumMg
+        )
     }
 
     // MARK: - Mapping
@@ -387,24 +533,21 @@ public struct OpenFoodFactsProvider: NutritionProvider {
             ?? product.genericName?.nonEmpty
             ?? "Bilinmeyen urun"
 
-        let nutriments = product.nutriments
-        let kcal = nutriments?.energyKcal100G
-            ?? nutriments?.energyKcalValue
-            ?? nutriments?.energyKJ100G.map { $0 / 4.184 }
-            ?? 0
+        let servingGrams = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
+        let resolved = Self.resolveNutrition(product.nutriments, servingGrams: servingGrams)
         let externalID = product.code?.nonEmpty ?? fallbackBarcode ?? name
 
         return FoodSearchResult(
             id: FoodSearchResult.remoteID(source: .openFoodFacts, externalID: externalID),
             name: name,
             brand: product.brands?.firstBrand,
-            calories: Int(kcal.rounded()),
+            calories: Int(resolved.calories.rounded()),
             servingDescription: "100 g",
             score: 0,
-            protein: nutriments?.proteins100G ?? 0,
-            carbs: nutriments?.carbohydrates100G ?? 0,
-            fat: nutriments?.fat100G ?? 0,
-            fiber: nutriments?.fiber100G,
+            protein: resolved.protein,
+            carbs: resolved.carbs,
+            fat: resolved.fat,
+            fiber: resolved.fiber,
             imageURL: [product.imageFrontUrl, product.imageUrl]
                 .compactMap { $0?.nonEmpty }
                 .compactMap(URL.init(string:))
@@ -457,11 +600,8 @@ public struct OpenFoodFactsProvider: NutritionProvider {
                     ?? product.productNameEn?.nonEmpty
                     ?? product.genericName?.nonEmpty) != nil
                 let hasBrand = product.brands?.nonEmpty != nil
-                let n = product.nutriments
-                let hasNutri = (n?.energyKcal100G ?? n?.energyKcalValue ?? n?.energyKJ100G ?? 0) > 0
-                    || (n?.proteins100G ?? 0) > 0
-                    || (n?.carbohydrates100G ?? 0) > 0
-                    || (n?.fat100G ?? 0) > 0
+                let servingGrams = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
+                let hasNutri = Self.resolveNutrition(product.nutriments, servingGrams: servingGrams).hasAnyMacro
                 guard hasName || hasBrand || hasNutri else {
                     throw HTTPClientError.notFound
                 }
@@ -613,26 +753,18 @@ extension OpenFoodFactsProvider {
             ?? "Bilinmeyen Ürün"
 
         let nutriments = product.nutriments
-        let kcal = nutriments?.energyKcal100G
-            ?? nutriments?.energyKcalValue
-            ?? nutriments?.energyKJ100G.map { $0 / 4.184 }
-            ?? 0
-
-        let sodiumMg: Double = {
-            if let s = nutriments?.sodium100G { return s * 1000 }
-            if let salt = nutriments?.salt100G { return salt * 400 }
-            return 0
-        }()
+        let servingGrams = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
+        let resolved = Self.resolveNutrition(nutriments, servingGrams: servingGrams)
 
         let nutrition = NutritionValues(
-            calories: Int(kcal.rounded()),
-            protein: nutriments?.proteins100G ?? 0,
-            carbs: nutriments?.carbohydrates100G ?? 0,
-            fat: nutriments?.fat100G ?? 0,
-            fiber: nutriments?.fiber100G ?? 0,
-            sodium: sodiumMg,
-            sugar: nutriments?.sugars100G ?? 0,
-            saturatedFat: nutriments?.saturatedFat100G ?? 0
+            calories: Int(resolved.calories.rounded()),
+            protein: resolved.protein,
+            carbs: resolved.carbs,
+            fat: resolved.fat,
+            fiber: resolved.fiber ?? 0,
+            sodium: resolved.sodiumMg ?? 0,
+            sugar: resolved.sugar ?? 0,
+            saturatedFat: resolved.saturatedFat ?? 0
         )
 
         let micros = makeMicronutrients(from: nutriments)
@@ -655,7 +787,7 @@ extension OpenFoodFactsProvider {
 
         let confidence: Double = {
             var score = 0.65
-            if nutriments?.proteins100G != nil { score += 0.05 }
+            if resolved.protein > 0 { score += 0.05 }
             if nutriScore != nil { score += 0.05 }
             if novaGroup != nil { score += 0.05 }
             if ingredients != nil { score += 0.05 }
@@ -664,11 +796,9 @@ extension OpenFoodFactsProvider {
         }()
 
         // Phase 13.5 — OFF'un kendi `serving_size`/`serving_quantity` field'ları
-        // varsa onu kullan; serving_quantity yoksa serving_size text'inden
-        // gram parse et; o da yoksa generic 1 porsiyon (200 g) fallback.
+        // varsa onu kullan; yoksa generic 1 porsiyon (200 g) fallback.
         let servings: [ServingSize] = {
-            let resolvedGrams = product.servingQuantity ?? Self.parseGrams(from: product.servingSize)
-            if let grams = resolvedGrams, grams > 0 {
+            if let grams = servingGrams, grams > 0 {
                 let label = product.servingSize?.nonEmpty ?? "1 porsiyon"
                 return [
                     .hundredGrams,
