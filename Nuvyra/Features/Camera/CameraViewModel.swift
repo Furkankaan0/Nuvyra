@@ -291,6 +291,14 @@ private struct DetectionTracker {
     let staleAfterMissedFrames: Int
     private var tracks: [String: Track] = [:]
 
+    /// Explicit init — synthesized memberwise init `tracks`'in `private` olması
+    /// nedeniyle struct dışından (CameraViewModel.detectionTracker init'i)
+    /// erişilemez hale geliyordu ve module emit hatası veriyordu.
+    init(smoothingFactor: CGFloat, staleAfterMissedFrames: Int) {
+        self.smoothingFactor = smoothingFactor
+        self.staleAfterMissedFrames = staleAfterMissedFrames
+    }
+
     mutating func ingest(_ raw: [CameraDetection]) -> [CameraDetection] {
         var seenLabels = Set<String>()
 
