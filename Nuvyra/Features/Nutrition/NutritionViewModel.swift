@@ -265,6 +265,27 @@ final class NutritionViewModel: ObservableObject {
         }
     }
 
+    /// Canlı kameradan seçilen detection için makro tahmini üretir.
+    /// `CameraView` bunu doğrudan resolver olarak çağırır → sheet'in `loaded`
+    /// state'ine doldurulur. Servis hiç sonuç döndürmezse hata mesajını
+    /// sheet'in `.failed` state'i taşır.
+    func resolveCameraLabel(_ label: String, dependencies: DependencyContainer) async -> Result<EstimatedMealResult, Error> {
+        let query = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            return .failure(CameraEstimationError.emptyLabel)
+        }
+        do {
+            let results = try await dependencies.foodIntelligenceService
+                .estimateFromText(query, mealType: selectedMealType)
+            if let first = results.first {
+                return .success(first)
+            }
+            return .failure(CameraEstimationError.noEstimate(label: query))
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func handleScannedProduct(_ product: ScannedProduct, dependencies: DependencyContainer) async {
         var item = FoodItem.from(scannedProduct: product)
 

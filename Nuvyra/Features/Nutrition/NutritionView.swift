@@ -62,11 +62,17 @@ struct NutritionView: View {
             AddFoodView(mode: .edit(meal))
         }
         .fullScreenCover(isPresented: $viewModel.showingCamera) {
-            CameraView { detection in
-                viewModel.smartMealText = detection.label
-                viewModel.showingCamera = false
-                Task { await viewModel.estimateSmartMeal(dependencies: dependencies) }
-            }
+            CameraView(
+                resolver: { label in
+                    await viewModel.resolveCameraLabel(label, dependencies: dependencies)
+                },
+                onConfirmEstimate: { estimate in
+                    viewModel.showingCamera = false
+                    Task {
+                        await viewModel.addEstimatedResult(estimate, context: modelContext, dependencies: dependencies)
+                    }
+                }
+            )
         }
         .fullScreenCover(isPresented: $viewModel.showingBarcodeScanner) {
             BarcodeScannerView(viewModel: makeBarcodeScannerViewModel()) { product in

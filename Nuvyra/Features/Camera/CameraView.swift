@@ -4,15 +4,22 @@ import UIKit
 
 struct CameraView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: CameraViewModel
-    private let onSelectDetection: (CameraDetection) -> Void
+    /// Detection label → makro tahmini çözücü. Host (NutritionView) tipik olarak
+    /// `FoodIntelligenceService.estimateFromText` ile kurar.
+    private let resolver: CameraViewModel.DetectionResolver?
+    /// Kullanıcı sheet'te "Ekle" dediğinde fire eder. Host bunu öğüne çevirir.
+    private let onConfirmEstimate: (EstimatedMealResult) -> Void
 
     init(
         viewModel: CameraViewModel = CameraViewModel(),
-        onSelectDetection: @escaping (CameraDetection) -> Void = { _ in }
+        resolver: CameraViewModel.DetectionResolver? = nil,
+        onConfirmEstimate: @escaping (EstimatedMealResult) -> Void = { _ in }
     ) {
         _viewModel = StateObject(wrappedValue: viewModel)
-        self.onSelectDetection = onSelectDetection
+        self.resolver = resolver
+        self.onConfirmEstimate = onConfirmEstimate
     }
 
     var body: some View {
@@ -33,8 +40,35 @@ struct CameraView: View {
             }
             .padding(NuvyraSpacing.lg)
         }
-        .task { await viewModel.start() }
+        .task {
+            viewModel.resolver = resolver
+            await viewModel.start()
+        }
         .onDisappear { Task { @MainActor in viewModel.stop() } }
+        .onChange(of: scenePhase) { _, newValue in
+            viewModel.handleScenePhase(newValue)
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { viewModel.pickState != nil },
+                set: { if !$0 { viewModel.cancelPick() } }
+            )
+        ) {
+            if let state = viewModel.pickState {
+                LiveCameraResultSheet(
+                    state: state,
+                    onAdd: { estimate in
+                        viewModel.cancelPick()
+                        onConfirmEstimate(estimate)
+                        dismiss()
+                    },
+                    onRetry: { viewModel.retryPick() },
+                    onCancel: { viewModel.cancelPick() }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
+            }
+        }
     }
 
     private var topBar: some View {
@@ -90,8 +124,7 @@ struct CameraView: View {
 
             ForEach(viewModel.detections.prefix(3)) { detection in
                 Button {
-                    onSelectDetection(detection)
-                    dismiss()
+                    viewModel.pickDetection(detection)
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 3) {

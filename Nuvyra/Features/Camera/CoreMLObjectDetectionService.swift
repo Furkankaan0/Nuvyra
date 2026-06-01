@@ -23,9 +23,22 @@ struct BundledObjectDetectionModelProvider: ObjectDetectionModelProviding {
 
 final class CoreMLObjectDetectionService {
     private let modelLoadResult: Result<VNCoreMLModel, Error>
+    /// Reuse'a uygun tek bir request — her frame için yeniden alloc etmek
+    /// allocation pressure yaratır ve cache'i ısıtmaz. Frame'ler tek serial
+    /// queue'dan (videoOutputQueue) geldiği için VNRequest reuse'u thread-safe.
+    private let coreMLRequest: VNCoreMLRequest?
+    private let fallbackClassifyRequest = VNClassifyImageRequest()
 
     init(modelProvider: ObjectDetectionModelProviding = BundledObjectDetectionModelProvider()) {
-        modelLoadResult = Result { try modelProvider.makeVisionModel() }
+        let result = Result { try modelProvider.makeVisionModel() }
+        modelLoadResult = result
+        if case .success(let model) = result {
+            let request = VNCoreMLRequest(model: model)
+            request.imageCropAndScaleOption = .scaleFit
+            coreMLRequest = request
+        } else {
+            coreMLRequest = nil
+        }
     }
 
     var isModelAvailable: Bool {
@@ -41,12 +54,9 @@ final class CoreMLObjectDetectionService {
         in sampleBuffer: CMSampleBuffer,
         orientation: CGImagePropertyOrientation = .right
     ) throws -> [CameraDetection] {
-        guard case .success(let model) = modelLoadResult else {
+        guard let request = coreMLRequest else {
             return try classifyImage(in: sampleBuffer, orientation: orientation)
         }
-
-        let request = VNCoreMLRequest(model: model)
-        request.imageCropAndScaleOption = .centerCrop
 
         let handler = VNImageRequestHandler(
             cmSampleBuffer: sampleBuffer,
@@ -59,7 +69,7 @@ final class CoreMLObjectDetectionService {
             return objectResults.compactMap { observation in
                 guard let bestLabel = observation.labels.first else { return nil }
                 return CameraDetection(
-                    label: bestLabel.identifier,
+                    label: VisionLabelTranslator.translate(bestLabel.identifier),
                     confidence: bestLabel.confidence,
                     boundingBox: observation.boundingBox
                 )
@@ -74,7 +84,7 @@ final class CoreMLObjectDetectionService {
                 .prefix(3)
                 .map { observation in
                     CameraDetection(
-                        label: observation.identifier,
+                        label: VisionLabelTranslator.translate(observation.identifier),
                         confidence: observation.confidence,
                         boundingBox: CGRect(x: 0.12, y: 0.18, width: 0.76, height: 0.64)
                     )
@@ -88,20 +98,19 @@ final class CoreMLObjectDetectionService {
         in sampleBuffer: CMSampleBuffer,
         orientation: CGImagePropertyOrientation
     ) throws -> [CameraDetection] {
-        let request = VNClassifyImageRequest()
         let handler = VNImageRequestHandler(
             cmSampleBuffer: sampleBuffer,
             orientation: orientation,
             options: [:]
         )
-        try handler.perform([request])
+        try handler.perform([fallbackClassifyRequest])
 
-        return (request.results ?? [])
+        return (fallbackClassifyRequest.results ?? [])
             .filter { $0.confidence >= 0.18 }
             .prefix(3)
             .map { observation in
                 CameraDetection(
-                    label: observation.identifier,
+                    label: VisionLabelTranslator.translate(observation.identifier),
                     confidence: observation.confidence,
                     boundingBox: CGRect(x: 0.14, y: 0.18, width: 0.72, height: 0.64)
                 )
