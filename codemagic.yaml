@@ -76,9 +76,7 @@ workflows:
         - app_store_credentials
       ios_signing:
         distribution_type: app_store
-        bundle_identifier:
-          - "$BUNDLE_ID"
-          - "$WIDGET_BUNDLE_ID"
+        bundle_identifier: "$BUNDLE_ID"
     integrations:
       app_store_connect: codemagic_app_store_connect
     scripts:
