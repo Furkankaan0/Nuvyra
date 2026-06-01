@@ -85,7 +85,13 @@ public final class BarcodeScannerService: NSObject {
     }
 
     deinit {
-        session.stopRunning()
+        // stopRunning() is a synchronous, blocking AVFoundation call (~1-2s).
+        // SwiftUI releases StateObjects on the main thread, so running it inline
+        // here freezes the UI right after the scanner sheet is dismissed.
+        let session = self.session
+        DispatchQueue.global(qos: .userInitiated).async {
+            if session.isRunning { session.stopRunning() }
+        }
     }
 
     // MARK: - Public API
