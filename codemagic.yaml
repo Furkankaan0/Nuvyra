@@ -1,4 +1,4 @@
-﻿workflows:
+workflows:
   ios-pr-check:
     name: Nuvyra iOS PR Check
     instance_type: mac_mini_m2
@@ -7,7 +7,7 @@
       events:
         - pull_request
     environment:
-      xcode: latest
+      xcode: 16.4
       vars:
         BUNDLE_ID: "com.nuvyra.app"
         WIDGET_BUNDLE_ID: "com.nuvyra.app.widget"
@@ -62,7 +62,7 @@
           include: true
           source: true
     environment:
-      xcode: latest
+      xcode: 16.4
       vars:
         BUNDLE_ID: "com.nuvyra.app"
         WIDGET_BUNDLE_ID: "com.nuvyra.app.widget"
@@ -76,7 +76,9 @@
         - app_store_credentials
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: "$BUNDLE_ID"
+        bundle_identifier:
+          - "$BUNDLE_ID"
+          - "$WIDGET_BUNDLE_ID"
     integrations:
       app_store_connect: codemagic_app_store_connect
     scripts:
