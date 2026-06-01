@@ -44,14 +44,18 @@ public struct ScannerCameraView: UIViewRepresentable {
         public override func layoutSubviews() {
             super.layoutSubviews()
             previewLayer?.frame = bounds
-            // Cihaz dönüşüne göre orientation
-            if let conn = previewLayer?.connection, conn.isVideoOrientationSupported {
+            // Cihaz dönüşüne göre rotation angle (videoOrientation iOS 17'de deprecated)
+            if let conn = previewLayer?.connection {
                 let orientation = UIDevice.current.orientation
+                let angle: CGFloat
                 switch orientation {
-                case .landscapeLeft:  conn.videoOrientation = .landscapeRight
-                case .landscapeRight: conn.videoOrientation = .landscapeLeft
-                case .portraitUpsideDown: conn.videoOrientation = .portraitUpsideDown
-                default:              conn.videoOrientation = .portrait
+                case .landscapeLeft:       angle = 0    // landscapeRight video
+                case .landscapeRight:      angle = 180  // landscapeLeft video
+                case .portraitUpsideDown:   angle = 270
+                default:                   angle = 90   // portrait
+                }
+                if conn.isVideoRotationAngleSupported(angle) {
+                    conn.videoRotationAngle = angle
                 }
             }
         }
