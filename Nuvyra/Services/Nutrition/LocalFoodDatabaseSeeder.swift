@@ -14,7 +14,14 @@ enum LocalFoodDatabaseSeeder {
     /// Bumped whenever the JSON contents materially change. The SQLite layer
     /// stores the last-applied version in `PRAGMA user_version` and re-runs
     /// the seed only when this constant moves ahead.
-    static let version: Int32 = 2
+    ///
+    /// History:
+    ///   1 → initial ship (~50 TR seed inline)
+    ///   2 → LocalFoodDatabase.json (~170 entries; Phase 4)
+    ///   3 → Phase 14 breadth expansion (~330+ entries): deniz ürünleri,
+    ///       genişletilmiş meyve/sebze, et çeşitleri, çorbalar, tatlılar,
+    ///       fast food chain-tarzı, paketli atıştırmalıklar, dünya mutfağı.
+    static let version: Int32 = 3
 
     static let resourceName = "LocalFoodDatabase"
     static let resourceExtension = "json"
