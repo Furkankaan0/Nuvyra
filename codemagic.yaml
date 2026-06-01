@@ -7,7 +7,7 @@ workflows:
       events:
         - pull_request
     environment:
-      xcode: 16.4
+      xcode: 26.4
       vars:
         BUNDLE_ID: "com.nuvyra.app"
         WIDGET_BUNDLE_ID: "com.nuvyra.app.widget"
@@ -62,7 +62,7 @@ workflows:
           include: true
           source: true
     environment:
-      xcode: 16.4
+      xcode: 26.4
       vars:
         BUNDLE_ID: "com.nuvyra.app"
         WIDGET_BUNDLE_ID: "com.nuvyra.app.widget"
