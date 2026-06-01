@@ -193,7 +193,10 @@ final class CameraViewModel: ObservableObject {
         }
     }
 
-    @MainActor
+    /// Caller her zaman `DispatchQueue.main.async`'in içinden çağırır — main
+    /// thread garanti. `@MainActor` annotation'ı bilerek YOK; class non-isolated
+    /// olduğu için non-isolated context'ten (processFrame'in main dispatch'i)
+    /// doğrudan çağrılması gerekiyor, aksi halde Swift module emit hatası verir.
     private func publish(detections smoothed: [CameraDetection]) {
         // Detection array'i sürekli yeni UUID üretmiyor — yalnızca anlamlı değişimde
         // güncelle (UUID dahil değişen referansları engellemek SwiftUI re-render
@@ -220,7 +223,8 @@ final class CameraViewModel: ObservableObject {
         }
     }
 
-    @MainActor
+    /// Main thread'de çağrılır (publish'ten veya processFrame catch'inden).
+    /// `@MainActor` yok — aynı sebep, class non-isolated.
     private func publishStatusIfChanged(key: String, message: String) {
         guard lastPublishedStatusKey != key else { return }
         lastPublishedStatusKey = key
