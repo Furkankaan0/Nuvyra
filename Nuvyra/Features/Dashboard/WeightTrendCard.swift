@@ -21,6 +21,7 @@ struct WeightTrendCard: View {
     /// the Body Measurements screen, not here.
     var shouldRender: Bool { summary.latestWeightKg != nil }
 
+    @ViewBuilder
     var body: some View {
         if shouldRender {
             NuvyraGlassCard {
@@ -237,12 +238,14 @@ struct WeightTrendCard: View {
         VStack(spacing: NuvyraSpacing.md) {
             WeightTrendCard(
                 summary: WeightTrendSummary(
-                    logs: (0..<14).map { offset in
-                        WeightLog(
-                            date: Calendar.nuvyra.date(byAdding: .day, value: -offset, to: Date()) ?? Date(),
-                            weightKg: 78.0 - Double(offset) * 0.12 + (offset.isMultiple(of: 3) ? 0.3 : 0)
-                        )
-                    }.reversed(),
+                    logs: Array(
+                        (0..<14).map { offset in
+                            WeightLog(
+                                date: Calendar.nuvyra.date(byAdding: .day, value: -offset, to: Date()) ?? Date(),
+                                weightKg: 78.0 - Double(offset) * 0.12 + (offset.isMultiple(of: 3) ? 0.3 : 0)
+                            )
+                        }.reversed()
+                    ),
                     latestWeightKg: 78.0,
                     deltaKg: -1.4,
                     projectedGoalDate: nil
