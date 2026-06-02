@@ -13,7 +13,7 @@ protocol AICoachService {
     func reply(to message: String, context: AICoachContext, history: [AICoachMessage]) async throws -> AICoachMessage
 }
 
-enum AICoachError: Error, LocalizedError {
+enum AICoachError: Error, LocalizedError, Equatable {
     case notImplemented
     case rateLimited
     case network

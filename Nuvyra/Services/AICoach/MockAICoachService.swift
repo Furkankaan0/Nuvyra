@@ -38,6 +38,19 @@ final class MockAICoachService: AICoachService {
     }
 
     private func weeklyInsight(context: AICoachContext) -> AICoachInsight {
+        // When we have the full 14-day comparison, surface the calm-coach
+        // storyline directly — it already encodes the biggest movement and
+        // honours the "no medical/weight-loss language" guardrail.
+        if context.weeklyComparison.hasEnoughData {
+            return AICoachInsight(
+                topic: .weekly,
+                title: "Haftalık gelişim",
+                body: context.weeklyComparison.storyline
+            )
+        }
+
+        // Fallback: pre-comparison heuristic when there isn't enough activity
+        // yet (first-week or sparse usage) so the card never goes empty.
         let stepStatus: String
         if context.weeklyAverageSteps == 0 {
             stepStatus = "Bu hafta henüz veri yok; birkaç güne yaymak iyi gelir."
@@ -114,6 +127,15 @@ final class MockAICoachService: AICoachService {
     // MARK: - Chat reply
     private func generateReply(for message: String, context: AICoachContext) -> String {
         let lower = message.lowercased(with: Locale(identifier: "tr_TR"))
+
+        // Weekly comparison intent — answered with the engine snapshot so the
+        // coach echoes the same numbers the dashboard just showed. We check
+        // this first because phrases like "geçen hafta su" otherwise match
+        // the lower-priority generic "su" branch.
+        if Self.matchesComparisonIntent(lower) {
+            return comparisonReply(for: lower, context: context)
+        }
+
         if lower.contains("protein") {
             return "Bilgilendirme amaçlı bir öneri: günlük protein hedefin yaklaşık \(Int(context.proteinTargetGrams)) g. Şu an \(Int(context.proteinGrams)) g alımın var. Yoğurt, mercimek çorbası, ızgara tavuk veya yumurta küçük artışlar için pratik seçenekler. Bu bireysel diyet önerisi değildir."
         }
@@ -138,4 +160,59 @@ final class MockAICoachService: AICoachService {
         }
         return "Bunu net bir cevapla karşılayamadım ama genel bir prensip: küçük ve sürdürülebilir adımlar uzun vadede dengeyi kurar. Daha spesifik bir konu yazarsan birlikte bakabiliriz. (Bu metin genel bilgilendirme amaçlıdır.)"
     }
+
+    // MARK: - Weekly comparison reply
+
+    /// Returns true for messages that are clearly asking about the prior-week
+    /// baseline ("geçen hafta", "trend", "ilerleme", "karşılaştır") so they
+    /// can be answered with the engine snapshot instead of the generic copy.
+    private static func matchesComparisonIntent(_ lower: String) -> Bool {
+        let triggers = ["geçen hafta", "önceki hafta", "geçen haftaya", "haftalık trend", "trend", "ilerleme", "karşılaştır", "bu hafta nasıl"]
+        return triggers.contains { lower.contains($0) }
+    }
+
+    /// Picks the metric matching the user's question (calories / protein /
+    /// steps / water) and echoes its current vs. prior average + change. If
+    /// no specific metric is named, summarises the overall storyline.
+    private func comparisonReply(for lower: String, context: AICoachContext) -> String {
+        let comparison = context.weeklyComparison
+        guard comparison.hasEnoughData else {
+            return "Geçen haftayla karşılaştırma için birkaç güne yayılmış kayıt gerekiyor — bugün küçük bir öğün ya da su kaydı bile yarınki karşılaştırmayı netleştirir. (Bu metin genel bilgilendirme amaçlıdır.)"
+        }
+
+        let focus: WeeklyMetric.Kind? = {
+            if lower.contains("adım") || lower.contains("yürü") { return .steps }
+            if lower.contains("su") { return .water }
+            if lower.contains("protein") { return .protein }
+            if lower.contains("kalori") { return .calories }
+            return nil
+        }()
+
+        if let focus, let metric = comparison.metrics.first(where: { $0.kind == focus }) {
+            return metricSentence(for: metric) + " " + Self.calmCoachOutro
+        }
+
+        // Generic "bu hafta nasıl" / "trend" — surface the storyline plus a
+        // tiny breakdown so the user can see all four metrics at once.
+        let lines = comparison.metrics.map { "• \($0.kind.title): \($0.currentDisplay) \($0.kind.unitLabel) · \($0.changeText)" }
+        return ([comparison.storyline] + lines + [Self.calmCoachOutro]).joined(separator: "\n")
+    }
+
+    /// Per-metric, calm-tone one-liner. Picks a verb consistent with the
+    /// metric direction so the user feels the coach actually read the data.
+    private func metricSentence(for metric: WeeklyMetric) -> String {
+        let label = metric.kind.title.lowercased(with: Locale(identifier: "tr_TR"))
+        switch metric.direction {
+        case .baseline:
+            return "Geçen haftaya ait \(label) verisi henüz yok; karşılaştırma için bir tam haftalık kayıt birikmeli. Bu hafta ortalama \(metric.currentDisplay) \(metric.kind.unitLabel)."
+        case .flat:
+            return "\(metric.kind.title) ortalaman geçen haftaya yakın: bu hafta \(metric.currentDisplay) \(metric.kind.unitLabel), geçen hafta \(metric.previousDisplay). İstikrarlı bir aralıkta gidiyorsun."
+        case .up:
+            return "\(metric.kind.title) ortalaman bu hafta \(metric.currentDisplay) \(metric.kind.unitLabel), geçen haftadan \(metric.changeText) yüksek. Sakin bir ilerleme."
+        case .down:
+            return "\(metric.kind.title) ortalaman bu hafta \(metric.currentDisplay) \(metric.kind.unitLabel), geçen haftadan \(metric.changeText) düşük. Yarın küçük bir ekleme dengeyi kolayca getirir."
+        }
+    }
+
+    private static let calmCoachOutro = "(Bu metin genel bilgilendirme amaçlıdır.)"
 }

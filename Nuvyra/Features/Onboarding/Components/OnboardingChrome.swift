@@ -122,36 +122,57 @@ struct OnboardingProgressHeader: View {
     }
 }
 
-/// Bottom toolbar — error toast + back/primary actions + medical disclaimer.
+/// Bottom toolbar — back/primary actions, optional skip link, medical
+/// disclaimer. Errors are surfaced via the parent's `.alert` instead of an
+/// inline toast so the user never sees the same message twice.
 struct OnboardingControlBar: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var canGoBack: Bool
     var primaryTitle: String
     var primaryIcon: String
     var isCompleting: Bool
-    var errorMessage: String?
+    /// Optional "Şimdi değil" / "Şimdi değil, dashboard'a geç" link rendered
+    /// below the primary button. Only the current step decides if a skip is
+    /// allowed (e.g. health / premium); other steps pass nil and the link
+    /// is hidden.
+    var secondaryTitle: String? = nil
     var onBack: () -> Void
     var onPrimary: () -> Void
+    var onSecondary: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: NuvyraSpacing.sm) {
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(NuvyraTypography.caption)
-                    .foregroundStyle(NuvyraColors.mutedCoral)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
             HStack(spacing: NuvyraSpacing.md) {
                 if canGoBack {
                     NuvyraSecondaryButton(title: "Geri", systemImage: "chevron.left", action: onBack)
                         .frame(width: 118)
                         .transition(.move(edge: .leading).combined(with: .opacity))
+                        .accessibilityIdentifier("onboarding.back")
                 }
 
-                NuvyraPrimaryButton(title: primaryTitle, systemImage: primaryIcon, action: onPrimary)
-                    .disabled(isCompleting)
-                    .opacity(isCompleting ? 0.72 : 1)
+                NuvyraPrimaryButton(
+                    title: primaryTitle,
+                    systemImage: primaryIcon,
+                    isLoading: isCompleting,
+                    action: onPrimary
+                )
+                .accessibilityIdentifier("onboarding.primary")
+            }
+
+            if let secondaryTitle, let onSecondary, !isCompleting {
+                Button(action: onSecondary) {
+                    Text(secondaryTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(NuvyraColors.secondaryText(scheme))
+                        .underline()
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity)
+                .accessibilityIdentifier("onboarding.secondary")
+                .accessibilityHint("Bu adımı şimdi değil olarak işaretle.")
             }
 
             Text("Nuvyra wellness uygulamasıdır; tıbbi tanı veya tedavi tavsiyesi vermez.")
@@ -169,6 +190,8 @@ struct OnboardingControlBar: View {
                 .fill(Color.white.opacity(scheme == .dark ? 0.08 : 0.42))
                 .frame(height: 1)
         }
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: secondaryTitle != nil)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isCompleting)
     }
 }
 

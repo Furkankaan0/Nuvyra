@@ -46,6 +46,9 @@ protocol NutritionRepository {
     func favoriteMeals() throws -> [MealEntry]
     func totalCalories(on date: Date) throws -> Int
     func dailySummary(on date: Date) throws -> DailyMealSummary
+    /// Per-day rollups for a range, oldest → newest. Missing days return `.empty`
+    /// with that day's date stamped, so callers can rely on `result.count == days`.
+    func dailySummaries(days: Int, endingOn date: Date) throws -> [DailyMealSummary]
     func mealStreak(daysBack: Int) throws -> StreakInsight
 }
 
@@ -162,18 +165,34 @@ final class SwiftDataNutritionRepository: NutritionRepository {
     func dailySummary(on date: Date) throws -> DailyMealSummary {
         let items = try meals(on: date)
         let totals = items.reduce(NutritionValues.zero) { acc, meal in
-            acc + NutritionValues(
-                calories: meal.calories,
-                protein: meal.protein ?? 0,
-                carbs: meal.carbs ?? 0,
-                fat: meal.fat ?? 0,
-                fiber: meal.fiberGrams ?? 0,
-                sodium: meal.sodiumMg ?? 0,
-                sugar: meal.sugarGrams ?? 0,
-                saturatedFat: meal.saturatedFatGrams ?? 0
-            )
+            acc + meal.nutritionValues
         }
         return DailyMealSummary(date: date, totals: totals, mealCount: items.count)
+    }
+
+    /// One `MealEntry` fetch over the whole window, then in-memory groupBy by
+    /// start-of-day — keeps the SwiftData round-trip count at 1 regardless of
+    /// `days`. Empty days are filled with `.empty` so the result array is
+    /// always exactly `days` long, oldest → newest.
+    func dailySummaries(days: Int, endingOn endDate: Date = Date()) throws -> [DailyMealSummary] {
+        guard days > 0 else { return [] }
+        let endOfWindow = calendar.startAndEndOfDay(for: endDate).1
+        let startDay = calendar.date(
+            byAdding: .day,
+            value: -(days - 1),
+            to: calendar.startOfDay(for: endDate)
+        ) ?? endDate
+        let descriptor = FetchDescriptor<MealEntry>(
+            predicate: #Predicate { $0.date >= startDay && $0.date < endOfWindow }
+        )
+        let rows = try context.fetch(descriptor)
+        let grouped = Dictionary(grouping: rows) { calendar.startOfDay(for: $0.date) }
+        return (0..<days).reversed().map { offset in
+            let day = calendar.date(byAdding: .day, value: -offset, to: calendar.startOfDay(for: endDate)) ?? endDate
+            let meals = grouped[day] ?? []
+            let totals = meals.reduce(NutritionValues.zero) { $0 + $1.nutritionValues }
+            return DailyMealSummary(date: day, totals: totals, mealCount: meals.count)
+        }
     }
 
     /// "Logged a meal that day" streak. We use *any* meal — even a quick water

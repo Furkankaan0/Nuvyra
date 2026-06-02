@@ -4,12 +4,24 @@ struct NuvyraPrimaryButton: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var title: String
     var systemImage: String? = nil
+    /// When `true`, swaps the leading SF Symbol for an inline `ProgressView`
+    /// and prevents tap-handling so the caller doesn't have to disable the
+    /// button manually. The visual "busy" state stays inline so the button
+    /// keeps its size and the label still tells the user what's happening.
+    var isLoading: Bool = false
     var action: () -> Void
 
     var body: some View {
-        Button(action: action) {
+        Button(action: { if !isLoading { action() } }) {
             HStack(spacing: NuvyraSpacing.sm) {
-                if let systemImage { Image(systemName: systemImage) }
+                if isLoading {
+                    ProgressView()
+                        .progressViewStyle(.circular)
+                        .tint(.white)
+                        .controlSize(.small)
+                } else if let systemImage {
+                    Image(systemName: systemImage)
+                }
                 Text(title).font(.headline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
@@ -19,10 +31,12 @@ struct NuvyraPrimaryButton: View {
                 LinearGradient(colors: [NuvyraColors.accent, NuvyraColors.softMint], startPoint: .topLeading, endPoint: .bottomTrailing),
                 in: Capsule()
             )
+            .opacity(isLoading ? 0.85 : 1)
         }
         .buttonStyle(.plain)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: reduceMotion)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: isLoading)
         .accessibilityLabel(title)
+        .accessibilityAddTraits(isLoading ? [.updatesFrequently] : [])
     }
 }
 

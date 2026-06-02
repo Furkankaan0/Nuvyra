@@ -27,6 +27,8 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
     let smartReminderEngine: SmartReminderEngine
     let upsellTriggerEngine: UpsellTriggerEngine
     let foodRepository: FoodRepository
+    let weeklyInsightEngine: WeeklyInsightEngine
+    let mealTimingEngine: MealTimingEngine
     @Published var subscriptionManager: SubscriptionManager
 
     // MARK: - Init
@@ -48,6 +50,8 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
         smartReminderEngine: SmartReminderEngine? = nil,
         upsellTriggerEngine: UpsellTriggerEngine? = nil,
         foodRepository: FoodRepository? = nil,
+        weeklyInsightEngine: WeeklyInsightEngine? = nil,
+        mealTimingEngine: MealTimingEngine? = nil,
         subscriptionManager: SubscriptionManager? = nil
     ) {
         self.healthService = healthService
@@ -66,6 +70,8 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
             ?? LiveSmartReminderEngine(notificationService: notificationService)
         self.upsellTriggerEngine = upsellTriggerEngine ?? DefaultUpsellTriggerEngine()
         self.foodRepository = foodRepository ?? DefaultFoodRepository()
+        self.weeklyInsightEngine = weeklyInsightEngine ?? DefaultWeeklyInsightEngine()
+        self.mealTimingEngine = mealTimingEngine ?? DefaultMealTimingEngine()
         self.subscriptionManager = subscriptionManager
             ?? SubscriptionManager(storeKitService: storeKitService)
     }
@@ -110,7 +116,8 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
             stepCountService: MockStepCountService(),
             activeEnergyService: MockActiveEnergyService(),
             smartReminderEngine: MockSmartReminderEngine(),
-            foodRepository: MockFoodRepository(seed: MockFoodRepository.previewSeed)
+            foodRepository: MockFoodRepository(seed: MockFoodRepository.previewSeed),
+            weeklyInsightEngine: MockWeeklyInsightEngine(comparison: .previewSample)
         )
     }
 

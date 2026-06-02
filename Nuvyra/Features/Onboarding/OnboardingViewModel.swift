@@ -114,6 +114,18 @@ final class OnboardingViewModel: ObservableObject {
         }
     }
 
+    /// Steps that surface a "Şimdi değil" link below the primary button so
+    /// the user can opt out without backing through the flow. Health and
+    /// premium are deliberately optional — we should never block the path to
+    /// the dashboard behind either.
+    var secondaryButtonTitle: String? {
+        switch currentStep {
+        case .health: return "Şimdi değil"
+        case .premium: return "Premium'u sonra incelerim"
+        default: return nil
+        }
+    }
+
     var healthStatusTitle: String {
         switch healthState {
         case .sharingAuthorized: "Apple Sağlık bağlı"

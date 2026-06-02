@@ -24,6 +24,8 @@ protocol DependencyProvider: AnyObject {
     var smartReminderEngine: SmartReminderEngine { get }
     var upsellTriggerEngine: UpsellTriggerEngine { get }
     var foodRepository: FoodRepository { get }
+    var weeklyInsightEngine: WeeklyInsightEngine { get }
+    var mealTimingEngine: MealTimingEngine { get }
     var subscriptionManager: SubscriptionManager { get }
 
     // MARK: Repository factories (each returns a protocol type)

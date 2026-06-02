@@ -13,6 +13,9 @@ final class DashboardViewModel: ObservableObject {
     @Published var actionFeedback: String?
     @Published var waterStreak: StreakInsight = .empty
     @Published var mealStreak: StreakInsight = .empty
+    @Published var weeklyComparison: WeeklyComparison = .empty
+    @Published var weightSummary: WeightTrendSummary = .empty
+    @Published var mealTiming: MealTimingInsight = .empty
     @Published var didCompleteDayOneTour: Bool = false
     @Published var pendingUpsell: UpsellTrigger?
 
@@ -224,6 +227,26 @@ final class DashboardViewModel: ObservableObject {
             // Streak rollups — repository runs a single 60-day fetch + fast in-memory scan.
             waterStreak = (try? waterRepository.waterStreak(daysBack: 60, targetMl: waterTarget)) ?? .empty
             mealStreak = (try? nutritionRepository.mealStreak(daysBack: 60)) ?? .empty
+
+            // 14-day comparison (this week vs. prior). 3 repo fetches, all
+            // already async-safe on MainActor.
+            weeklyComparison = (try? dependencies.weeklyInsightEngine.computeComparison(
+                nutrition: nutritionRepository,
+                water: waterRepository,
+                activity: activityRepository,
+                endingOn: Date()
+            )) ?? .empty
+
+            // 30-day weight trend — silently falls back to empty when the
+            // user has no measurements; WeightTrendCard hides itself in that case.
+            weightSummary = (try? dependencies.weightRepository(context: context).trendSummary(
+                days: 30,
+                targetWeightKg: profile?.targetWeightKg
+            )) ?? .empty
+
+            // Today's meal-rhythm read — pure in-memory evaluation off the
+            // meals we already fetched, no extra repo round-trip.
+            mealTiming = dependencies.mealTimingEngine.evaluate(meals: meals, at: Date())
 
             // Day-one tour flag — read from AppSettings, auto-complete once every step is done.
             let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first

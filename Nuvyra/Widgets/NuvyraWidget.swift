@@ -19,7 +19,15 @@ struct NuvyraWidget: Widget {
         }
         .configurationDisplayName("Nuvyra Ritmi")
         .description("Kalori, adım, su ve protein ritmini tek bakışta gör.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall,
+            .systemMedium,
+            // iOS 16+ Lock Screen accessory families. Each one renders a
+            // bespoke layout in NuvyraWidgetView via @Environment(\.widgetFamily).
+            .accessoryCircular,
+            .accessoryRectangular,
+            .accessoryInline
+        ])
         .contentMarginsDisabled()
     }
 }

@@ -34,6 +34,9 @@ protocol WaterRepository {
     @discardableResult func removeLastEntry(on date: Date) throws -> Int
     func clearDay(_ date: Date) throws
     func weeklyTotals(endingOn date: Date) throws -> [WaterDayTotal]
+    /// Generalised version of `weeklyTotals` — returns N per-day totals, oldest
+    /// → newest. Uses a single fetch over the whole window.
+    func dailyTotals(days: Int, endingOn date: Date) throws -> [WaterDayTotal]
     func waterStreak(daysBack: Int, targetMl: Int) throws -> StreakInsight
 }
 
@@ -118,11 +121,33 @@ final class SwiftDataWaterRepository: WaterRepository {
     }
 
     func weeklyTotals(endingOn date: Date) throws -> [WaterDayTotal] {
-        let startOfToday = calendar.startOfDay(for: date)
-        return try (0..<7).reversed().map { offset in
-            let day = calendar.date(byAdding: .day, value: -offset, to: startOfToday) ?? startOfToday
-            let total = try totalWater(on: day)
-            return WaterDayTotal(date: day, totalMl: total)
+        try dailyTotals(days: 7, endingOn: date)
+    }
+
+    /// One fetch over the whole window → in-memory groupBy by start-of-day.
+    /// Each missing day is materialised as `totalMl: 0` so the result is
+    /// always exactly `days` long, oldest → newest.
+    func dailyTotals(days: Int, endingOn date: Date) throws -> [WaterDayTotal] {
+        guard days > 0 else { return [] }
+        let endOfWindow = calendar.startAndEndOfDay(for: date).1
+        let startDay = calendar.date(
+            byAdding: .day,
+            value: -(days - 1),
+            to: calendar.startOfDay(for: date)
+        ) ?? date
+        let descriptor = FetchDescriptor<WaterEntry>(
+            predicate: #Predicate { $0.date >= startDay && $0.date < endOfWindow }
+        )
+        let rows = try context.fetch(descriptor)
+        var totalsByDay: [Date: Int] = [:]
+        for row in rows where row.drinkType == .water {
+            let day = calendar.startOfDay(for: row.date)
+            totalsByDay[day, default: 0] += row.amountMl
+        }
+        let startOfEnd = calendar.startOfDay(for: date)
+        return (0..<days).reversed().map { offset in
+            let day = calendar.date(byAdding: .day, value: -offset, to: startOfEnd) ?? startOfEnd
+            return WaterDayTotal(date: day, totalMl: totalsByDay[day] ?? 0)
         }
     }
 

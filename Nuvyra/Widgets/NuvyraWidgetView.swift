@@ -13,13 +13,92 @@ struct NuvyraWidgetView: View {
         Group {
             switch family {
             case .systemSmall:
-                small
+                small.containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
+            case .systemMedium:
+                medium.containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
+            case .accessoryCircular:
+                // Lock-screen ring — single tap into the rhythm score.
+                accessoryCircular.containerBackground(.clear, for: .widget)
+            case .accessoryRectangular:
+                // Three quick lines (kalori · adım · su) for the lock screen.
+                accessoryRectangular.containerBackground(.clear, for: .widget)
+            case .accessoryInline:
+                // One-line glyph + summary; iOS handles tinting.
+                accessoryInline.containerBackground(.clear, for: .widget)
             default:
-                medium
+                medium.containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
             }
         }
         .foregroundStyle(NuvyraColors.primaryText(scheme))
-        .containerBackground(NuvyraColors.calmGradient(scheme), for: .widget)
+    }
+
+    // MARK: - Accessory families (iOS 16+)
+
+    /// Circular gauge — shows the rhythm score as a 0–100% ring. Falls back
+    /// to "—" when there's no data yet so the lock-screen face never reads
+    /// "0%" before the first sync of the day.
+    private var accessoryCircular: some View {
+        Gauge(value: Double(snapshot.rhythmScore) / 100.0) {
+            Image(systemName: "leaf.fill")
+        } currentValueLabel: {
+            if snapshot.hasLoggedToday {
+                Text("\(snapshot.rhythmScore)")
+                    .font(.system(.body, design: .rounded).weight(.bold))
+                    .minimumScaleFactor(0.7)
+            } else {
+                Text("—").font(.system(.body, design: .rounded).weight(.bold))
+            }
+        }
+        .gaugeStyle(.accessoryCircular)
+        .tint(NuvyraColors.accent)
+        .widgetAccentable()
+        .accessibilityLabel("Nuvyra ritim skoru \(snapshot.rhythmScore) yüzde")
+    }
+
+    /// Rectangular complication — three compact metric rows. Stays under
+    /// `accessoryRectangular`'s tight 8-line height by using `.caption2`.
+    private var accessoryRectangular: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 4) {
+                Image(systemName: "leaf.fill").imageScale(.small)
+                Text("Nuvyra")
+                    .font(.caption.weight(.bold))
+                Spacer(minLength: 0)
+                Text("%\(snapshot.rhythmScore)")
+                    .font(.caption.weight(.heavy))
+                    .monospacedDigit()
+            }
+            .widgetAccentable()
+            accessoryRow(icon: "flame.fill", text: "\(snapshot.calorieBalance) kcal kaldı")
+            accessoryRow(icon: "drop.fill", text: shortMl(snapshot.waterMl) + " / " + shortMl(snapshot.waterTargetMl))
+            accessoryRow(icon: "figure.walk", text: "\(compact(snapshot.steps)) / \(compact(snapshot.stepTarget))")
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityRectangularLabel)
+    }
+
+    /// Single-line inline complication. iOS forces a monochrome tint here,
+    /// so we keep it text-only with a leading SF Symbol.
+    private var accessoryInline: some View {
+        // Pattern: "Nuvyra · 1.240 kcal · 6.4k adım"
+        let kcal = snapshot.calorieBalance
+        let stepsLabel = compact(snapshot.steps)
+        return Text("\(Image(systemName: "leaf.fill")) \(kcal) kcal · \(stepsLabel) adım")
+            .accessibilityLabel("Nuvyra: \(kcal) kalori kaldı, \(snapshot.steps) adım.")
+    }
+
+    private func accessoryRow(icon: String, text: String) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon).imageScale(.small)
+            Text(text)
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+    }
+
+    private var accessibilityRectangularLabel: String {
+        "Nuvyra ritmi yüzde \(snapshot.rhythmScore). \(snapshot.calorieBalance) kalori kaldı. \(snapshot.waterMl) mililitre su, \(snapshot.steps) adım."
     }
 
     private var small: some View {

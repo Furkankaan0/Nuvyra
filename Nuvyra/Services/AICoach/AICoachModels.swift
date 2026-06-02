@@ -72,6 +72,38 @@ struct AICoachContext: Equatable {
     var stepTarget: Int
     var weeklyAverageSteps: Int
     var weeklyAverageWaterMl: Int
+    /// Full this-week vs. prior-week comparison. Lets the coach answer
+    /// "geçen haftadan daha mı iyiyim?" with real percentages instead of
+    /// generic copy. `.empty` for first-week users with no baseline.
+    var weeklyComparison: WeeklyComparison
+
+    init(
+        greetingName: String,
+        caloriesConsumed: Int,
+        caloriesTarget: Int,
+        proteinGrams: Double,
+        proteinTargetGrams: Double,
+        waterMl: Int,
+        waterTargetMl: Int,
+        steps: Int,
+        stepTarget: Int,
+        weeklyAverageSteps: Int,
+        weeklyAverageWaterMl: Int,
+        weeklyComparison: WeeklyComparison = .empty
+    ) {
+        self.greetingName = greetingName
+        self.caloriesConsumed = caloriesConsumed
+        self.caloriesTarget = caloriesTarget
+        self.proteinGrams = proteinGrams
+        self.proteinTargetGrams = proteinTargetGrams
+        self.waterMl = waterMl
+        self.waterTargetMl = waterTargetMl
+        self.steps = steps
+        self.stepTarget = stepTarget
+        self.weeklyAverageSteps = weeklyAverageSteps
+        self.weeklyAverageWaterMl = weeklyAverageWaterMl
+        self.weeklyComparison = weeklyComparison
+    }
 
     static let empty = AICoachContext(
         greetingName: "Hoş geldin",
@@ -84,12 +116,14 @@ struct AICoachContext: Equatable {
         steps: 0,
         stepTarget: 7_500,
         weeklyAverageSteps: 0,
-        weeklyAverageWaterMl: 0
+        weeklyAverageWaterMl: 0,
+        weeklyComparison: .empty
     )
 }
 
 /// Pre-baked example questions surfaced in the chat empty state.
 enum AICoachExampleQuestion: String, CaseIterable, Identifiable {
+    case weeklyTrend = "Bu hafta geçen haftaya göre nasılım?"
     case proteinIdeas = "Daha çok protein için ne ekleyebilirim?"
     case waterTips = "Su içmeyi nasıl unutmam?"
     case eveningRoutine = "Akşam atıştırmasını nasıl azaltabilirim?"

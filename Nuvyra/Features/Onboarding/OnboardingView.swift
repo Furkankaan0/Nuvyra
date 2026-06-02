@@ -43,7 +43,7 @@ struct OnboardingView: View {
                 primaryTitle: viewModel.primaryButtonTitle,
                 primaryIcon: viewModel.primaryButtonIcon,
                 isCompleting: viewModel.isCompleting,
-                errorMessage: viewModel.errorMessage,
+                secondaryTitle: viewModel.secondaryButtonTitle,
                 onBack: {
                     withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.24)) {
                         viewModel.back()
@@ -57,12 +57,29 @@ struct OnboardingView: View {
                             viewModel.next()
                         }
                     }
+                },
+                onSecondary: viewModel.secondaryButtonTitle == nil ? nil : {
+                    // Health → skip to next; Premium → finish onboarding right
+                    // away. We keep these branches inline so the view model
+                    // stays unaware of routing logic.
+                    switch viewModel.currentStep {
+                    case .premium:
+                        Task { await viewModel.complete(context: modelContext, dependencies: dependencies) }
+                    default:
+                        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.24)) {
+                            viewModel.next()
+                        }
+                    }
                 }
             )
         }
         .task { await dependencies.analytics.track(.onboardingStarted, payload: AnalyticsPayload()) }
         .alert("Başlangıç tamamlanamadı", isPresented: errorBinding) {
-            Button("Tamam", role: .cancel) { viewModel.errorMessage = nil }
+            Button("Tekrar dene") {
+                viewModel.errorMessage = nil
+                Task { await viewModel.complete(context: modelContext, dependencies: dependencies) }
+            }
+            Button("Vazgeç", role: .cancel) { viewModel.errorMessage = nil }
         } message: {
             Text(viewModel.errorMessage ?? "Lütfen tekrar dene.")
         }

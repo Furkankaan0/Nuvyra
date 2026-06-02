@@ -68,4 +68,18 @@ final class MealEntry: Identifiable {
     var hasMicronutrients: Bool {
         fiberGrams != nil || sodiumMg != nil || sugarGrams != nil || saturatedFatGrams != nil
     }
+
+    /// Macro + calorie rollup as a value type. Optional micros fall back to 0.
+    var nutritionValues: NutritionValues {
+        NutritionValues(
+            calories: calories,
+            protein: protein ?? 0,
+            carbs: carbs ?? 0,
+            fat: fat ?? 0,
+            fiber: fiberGrams ?? 0,
+            sodium: sodiumMg ?? 0,
+            sugar: sugarGrams ?? 0,
+            saturatedFat: saturatedFatGrams ?? 0
+        )
+    }
 }
