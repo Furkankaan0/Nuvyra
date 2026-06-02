@@ -122,7 +122,7 @@ struct ProfileView: View {
     }
 
     private var weightTrendSection: some View {
-        WeightTrendCard(summary: viewModel.weightTrend, targetWeightKg: viewModel.profile?.targetWeightKg)
+        ProfileWeightTrendCard(summary: viewModel.weightTrend, targetWeightKg: viewModel.profile?.targetWeightKg)
     }
 
     @ViewBuilder
@@ -317,7 +317,7 @@ private struct ProfilePill: View {
     }
 }
 
-private struct WeightTrendCard: View {
+private struct ProfileWeightTrendCard: View {
     @Environment(\.colorScheme) private var scheme
     var summary: WeightTrendSummary
     var targetWeightKg: Double?
