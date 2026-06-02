@@ -116,7 +116,6 @@ struct WeeklyComparison: Equatable {
     /// existing call sites that don't care about locale injection.
     static var empty: WeeklyComparison { empty(in: .current) }
 
-    #if DEBUG
     /// Realistic-looking comparison shown in SwiftUI previews and Mock-backed
     /// Dashboard runs. Keeps storyline in sync with the metric movement so
     /// preview screenshots stay consistent.
@@ -131,7 +130,6 @@ struct WeeklyComparison: Equatable {
         hasEnoughData: true,
         activeDaysThisWeek: 6
     )
-    #endif
 }
 
 @MainActor
