@@ -22,7 +22,11 @@ struct NuvyraPrimaryButton: View {
                 } else if let systemImage {
                     Image(systemName: systemImage)
                 }
-                Text(title).font(.headline.weight(.semibold))
+                // Verbatim — callers pre-localize via String(localized:) when
+                // they need translation. Keeps the title type as `String` so
+                // dynamic ViewModel-driven labels (e.g. OnboardingViewModel's
+                // primaryButtonTitle) keep compiling.
+                Text(verbatim: title).font(.headline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
@@ -49,7 +53,7 @@ struct NuvyraSecondaryButton: View {
         Button(action: action) {
             HStack(spacing: NuvyraSpacing.sm) {
                 if let systemImage { Image(systemName: systemImage) }
-                Text(title).font(.headline.weight(.semibold))
+                Text(verbatim: title).font(.headline.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)

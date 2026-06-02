@@ -24,6 +24,9 @@ Thumbs.db
 *.p12
 *.api_key
 .env
+# Local xcconfig override that carries CLAUDE_API_KEY etc. — never commit.
+# Sibling `Secrets.sample.xcconfig` is committed as a template.
+Nuvyra/Resources/Secrets.xcconfig
 
 # OneDrive move fallback duplicate; canonical tests live in Nuvyra/Tests
 /Tests/

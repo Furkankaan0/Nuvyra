@@ -20,6 +20,9 @@ targets:
   Nuvyra:
     type: application
     platform: iOS
+    configFiles:
+      Debug: Nuvyra/Resources/Defaults.xcconfig
+      Release: Nuvyra/Resources/Defaults.xcconfig
     sources:
       - path: Nuvyra
         excludes:

@@ -48,6 +48,27 @@
   <false/>
   <key>LSRequiresIPhoneOS</key>
   <true/>
+  <!-- Runtime API keys read by FoodDataRuntimeConfig + AICoachRuntimeConfig.
+       Values flow in from Defaults.xcconfig / Secrets.xcconfig at build time.
+       Empty values are tolerated and the app falls back to the local mock. -->
+  <key>CLAUDE_API_KEY</key>
+  <string>$(CLAUDE_API_KEY)</string>
+  <key>CLAUDE_MODEL</key>
+  <string>$(CLAUDE_MODEL)</string>
+  <key>CLAUDE_ENDPOINT</key>
+  <string>$(CLAUDE_ENDPOINT)</string>
+  <key>FATSECRET_CLIENT_ID</key>
+  <string>$(FATSECRET_CLIENT_ID)</string>
+  <key>FATSECRET_CLIENT_SECRET</key>
+  <string>$(FATSECRET_CLIENT_SECRET)</string>
+  <key>FATSECRET_SCOPE</key>
+  <string>$(FATSECRET_SCOPE)</string>
+  <key>FATSECRET_REGION</key>
+  <string>$(FATSECRET_REGION)</string>
+  <key>FATSECRET_LANGUAGE</key>
+  <string>$(FATSECRET_LANGUAGE)</string>
+  <key>USDA_API_KEY</key>
+  <string>$(USDA_API_KEY)</string>
   <key>UIDeviceFamily</key>
   <array>
     <integer>1</integer>

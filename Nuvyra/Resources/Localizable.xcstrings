@@ -289,6 +289,114 @@
           }
         }
       }
+    },
+    "nutrition.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Nutrition" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Beslenme" } }
+      }
+    },
+    "nutrition.header.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add, edit and delete meals — your daily macros stay in sync." } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Öğünlerini ekle, düzenle, sil — günlük makroların otomatik güncellensin." } }
+      }
+    },
+    "nutrition.date.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Meal date" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Öğün tarihi" } }
+      }
+    },
+    "nutrition.action.copyPreviousDay" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy previous day to this date" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Önceki günü bu tarihe kopyala" } }
+      }
+    },
+    "nutrition.action.appleHealthImport" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Import from Apple Health" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Apple Health'ten içe aktar" } }
+      }
+    },
+    "nutrition.daily.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Daily total" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Günlük toplam" } }
+      }
+    },
+    "%lld kayıt" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : { "state" : "translated", "value" : "%lld entry" }
+              },
+              "other" : {
+                "stringUnit" : { "state" : "translated", "value" : "%lld entries" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "nutrition.macro.protein" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Protein" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Protein" } }
+      }
+    },
+    "nutrition.macro.carbs.short" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Carbs" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Karb." } }
+      }
+    },
+    "nutrition.macro.fat" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Fat" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yağ" } }
+      }
+    },
+    "nutrition.action.addMeal" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add meal" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yemek ekle" } }
+      }
+    },
+    "nutrition.action.search" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Search" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Ara" } }
+      }
+    },
+    "nutrition.action.barcode" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Barcode" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Barkod" } }
+      }
+    },
+    "nutrition.action.camera" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Camera" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kamera" } }
+      }
     }
   },
   "version" : "1.0"

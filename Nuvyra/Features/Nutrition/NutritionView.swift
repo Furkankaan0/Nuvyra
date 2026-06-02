@@ -53,7 +53,7 @@ struct NutritionView: View {
                 .allowsHitTesting(false)
             }
         }
-        .navigationTitle("Beslenme")
+        .navigationTitle(String(localized: "nutrition.title"))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $viewModel.showingAddMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
             AddFoodView(mode: .create(defaultMealType: viewModel.selectedMealType))
@@ -102,8 +102,8 @@ struct NutritionView: View {
 
     private var header: some View {
         NuvyraSectionHeader(
-            title: "Beslenme",
-            subtitle: "Öğünlerini ekle, düzenle, sil — günlük makroların otomatik güncellensin."
+            title: String(localized: "nutrition.title"),
+            subtitle: String(localized: "nutrition.header.subtitle")
         )
     }
 
@@ -114,12 +114,12 @@ struct NutritionView: View {
                     get: { viewModel.selectedDate },
                     set: { viewModel.changeDate(to: $0, context: modelContext, dependencies: dependencies) }
                 ),
-                title: "Öğün tarihi"
+                title: String(localized: "nutrition.date.title")
             )
-            NuvyraSecondaryButton(title: "Önceki günü bu tarihe kopyala", systemImage: "doc.on.doc") {
+            NuvyraSecondaryButton(title: String(localized: "nutrition.action.copyPreviousDay"), systemImage: "doc.on.doc") {
                 Task { await viewModel.copyPreviousDayMeals(context: modelContext, dependencies: dependencies) }
             }
-            NuvyraSecondaryButton(title: "Apple Health'ten içe aktar", systemImage: "heart.text.square") {
+            NuvyraSecondaryButton(title: String(localized: "nutrition.action.appleHealthImport"), systemImage: "heart.text.square") {
                 viewModel.showingHealthImport = true
             }
         }
@@ -130,22 +130,25 @@ struct NutritionView: View {
             VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Günlük toplam")
+                        Text("nutrition.daily.title")
                             .font(NuvyraTypography.section)
+                        // `\(count) kayıt` is the TR source string used as the
+                        // xcstrings key; EN has CLDR plural variations
+                        // ("%lld entry" / "%lld entries").
                         Text("\(viewModel.summary.mealCount) kayıt")
                             .font(NuvyraTypography.caption)
                             .foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Text("\(viewModel.summary.totals.calories) kcal")
+                    Text(verbatim: "\(viewModel.summary.totals.calories) kcal")
                         .font(.title2.weight(.heavy))
                         .foregroundStyle(NuvyraColors.accent)
                         .contentTransition(.numericText())
                 }
                 HStack(spacing: NuvyraSpacing.sm) {
-                    macroTotal("Protein", grams: viewModel.summary.totals.protein, tint: NuvyraColors.mutedCoral)
-                    macroTotal("Karb.", grams: viewModel.summary.totals.carbs, tint: NuvyraColors.paleLime)
-                    macroTotal("Yağ", grams: viewModel.summary.totals.fat, tint: NuvyraColors.softSand)
+                    macroTotal(String(localized: "nutrition.macro.protein"), grams: viewModel.summary.totals.protein, tint: NuvyraColors.mutedCoral)
+                    macroTotal(String(localized: "nutrition.macro.carbs.short"), grams: viewModel.summary.totals.carbs, tint: NuvyraColors.paleLime)
+                    macroTotal(String(localized: "nutrition.macro.fat"), grams: viewModel.summary.totals.fat, tint: NuvyraColors.softSand)
                 }
             }
         }
@@ -167,16 +170,16 @@ struct NutritionView: View {
 
     private var quickActions: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: NuvyraSpacing.sm) {
-            NuvyraPrimaryButton(title: "Yemek ekle", systemImage: "plus") {
+            NuvyraPrimaryButton(title: String(localized: "nutrition.action.addMeal"), systemImage: "plus") {
                 viewModel.showingAddMeal = true
             }
-            NuvyraSecondaryButton(title: "Ara", systemImage: "magnifyingglass") {
+            NuvyraSecondaryButton(title: String(localized: "nutrition.action.search"), systemImage: "magnifyingglass") {
                 viewModel.showingFoodSearch = true
             }
-            NuvyraSecondaryButton(title: "Barkod", systemImage: "barcode.viewfinder") {
+            NuvyraSecondaryButton(title: String(localized: "nutrition.action.barcode"), systemImage: "barcode.viewfinder") {
                 viewModel.showingBarcodeScanner = true
             }
-            NuvyraSecondaryButton(title: "Kamera", systemImage: "camera.viewfinder") {
+            NuvyraSecondaryButton(title: String(localized: "nutrition.action.camera"), systemImage: "camera.viewfinder") {
                 viewModel.showingCamera = true
             }
         }

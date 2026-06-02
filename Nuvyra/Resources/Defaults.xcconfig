@@ -1,0 +1,34 @@
+// Defaults.xcconfig — committed to git.
+//
+// Holds the **shape** of every runtime config the app reads from Info.plist:
+// each key is declared so xcodebuild does not warn about unresolved
+// `$(VAR_NAME)` substitutions, but the values are intentionally empty.
+//
+// Real values come from one of three sources, in priority order:
+//   1. `Secrets.xcconfig` (sibling file, .gitignored) — local dev overrides.
+//   2. Codemagic CI: a `pre-build` script writes `Secrets.xcconfig` from the
+//      encrypted variable group before xcodebuild runs.
+//   3. `ProcessInfo.processInfo.environment` at runtime — useful for
+//      simulator launches via `xcrun simctl ... --env CLAUDE_API_KEY=…`.
+//
+// FoodDataRuntimeConfig and AICoachRuntimeConfig already implement the
+// env-first, Info.plist-second resolution so all three sources keep working.
+
+// ─── Anthropic Claude API (AICoach) ─────────────────────────────────────────
+CLAUDE_API_KEY =
+CLAUDE_MODEL =
+CLAUDE_ENDPOINT =
+
+// ─── FatSecret food provider (optional) ─────────────────────────────────────
+FATSECRET_CLIENT_ID =
+FATSECRET_CLIENT_SECRET =
+FATSECRET_SCOPE =
+FATSECRET_REGION =
+FATSECRET_LANGUAGE =
+
+// ─── USDA FoodData Central (optional) ───────────────────────────────────────
+USDA_API_KEY =
+
+// Local secrets override — falls back silently when the file is absent so
+// fresh clones build without manual setup.
+#include? "Secrets.xcconfig"
