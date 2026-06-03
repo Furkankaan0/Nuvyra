@@ -74,19 +74,18 @@ private struct WalkingFocusCard: View {
     var onEnd: () -> Void
 
     var body: some View {
-        NuvyraGlassCard {
+        NuvyraGlassCard(.prominent) {
             VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
                 HStack {
                     Label(isActive ? "Yürüyüş odağı açık" : "Yürüyüş odağı", systemImage: "figure.walk.motion")
                         .font(NuvyraTypography.section)
                         .foregroundStyle(NuvyraColors.primaryText(scheme))
                     Spacer()
-                    Text(isActive ? "\(elapsedMinutes) dk" : motionState.title)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(NuvyraColors.accent)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(NuvyraColors.accent.opacity(0.12), in: Capsule())
+                    NuvyraGlassPill(
+                        systemImage: isActive ? "clock.fill" : "figure.walk",
+                        title: isActive ? "\(elapsedMinutes) dk" : motionState.title,
+                        tint: isActive ? NuvyraColors.accent : NuvyraColors.softSand
+                    )
                 }
 
                 Text(isActive ? "Live Activity ile Kilit Ekranı ve Dynamic Island’da yürüyüş ritmini takip et." : "Kısa yürüyüşü başlat; Nuvyra hedefini nazikçe görünür tutar.")

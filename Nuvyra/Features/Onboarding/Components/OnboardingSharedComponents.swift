@@ -116,7 +116,25 @@ struct PremiumOnboardingHero: View {
         .frame(maxWidth: .infinity)
         .frame(height: 292)
         .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
-        .shadow(color: NuvyraShadow.card(scheme), radius: 28, x: 0, y: 20)
+        // Liquid-glass hairline + top-edge specular highlight so the hero
+        // joins the rest of the Liquid Glass family (cards + pills).
+        .overlay(
+            RoundedRectangle(cornerRadius: 44, style: .continuous)
+                .stroke(NuvyraColors.glassStroke(scheme), lineWidth: 1)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 44, style: .continuous)
+                .strokeBorder(NuvyraColors.specularHighlight(scheme), lineWidth: 1.2)
+                .mask(
+                    LinearGradient(
+                        colors: [Color.black, Color.black.opacity(0)],
+                        startPoint: .top,
+                        endPoint: .center
+                    )
+                )
+                .allowsHitTesting(false)
+        )
+        .nuvyraShadow(.elevated, scheme: scheme)
         .accessibilityElement(children: .combine)
         .onAppear {
             guard !reduceMotion else { return }
@@ -195,15 +213,23 @@ struct SelectableOptionCard: View {
                     .symbolEffect(.bounce, value: isSelected)
             }
             .padding(16)
+            // Selected → brand-tinted glass; unselected → soft card surface.
+            // The stroke picks the glassStroke gradient on the unselected path
+            // so all the option cards live in the Liquid Glass family.
             .background(
                 isSelected ? NuvyraColors.accent.opacity(scheme == .dark ? 0.18 : 0.11) : NuvyraColors.card(scheme).opacity(scheme == .dark ? 0.50 : 0.72),
                 in: RoundedRectangle(cornerRadius: NuvyraRadius.lg, style: .continuous)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: NuvyraRadius.lg, style: .continuous)
-                    .stroke(isSelected ? NuvyraColors.accent.opacity(0.55) : Color.white.opacity(scheme == .dark ? 0.08 : 0.36), lineWidth: isSelected ? 1.5 : 1)
+                    .stroke(
+                        isSelected
+                            ? AnyShapeStyle(NuvyraColors.accent.opacity(0.55))
+                            : AnyShapeStyle(NuvyraColors.glassStroke(scheme)),
+                        lineWidth: isSelected ? 1.5 : 0.8
+                    )
             )
-            .shadow(color: isSelected ? NuvyraColors.accent.opacity(0.16) : .clear, radius: 18, x: 0, y: 10)
+            .modifier(SelectableCardElevationModifier(isSelected: isSelected, scheme: scheme))
             .scaleEffect(isSelected ? 1.015 : 1.0)
             .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.72), value: isSelected)
         }
@@ -227,6 +253,25 @@ private struct SelectableCardButtonStyle: ButtonStyle {
     }
 }
 
+/// Tiers the option-card shadow: `.ambient` when unselected (so a long
+/// list doesn't read as a wall of identical floats), `.elevated` when
+/// selected with an extra accent halo so the choice "lifts" into the
+/// foreground.
+private struct SelectableCardElevationModifier: ViewModifier {
+    let isSelected: Bool
+    let scheme: ColorScheme
+
+    func body(content: Content) -> some View {
+        if isSelected {
+            content
+                .nuvyraShadow(.elevated, scheme: scheme)
+                .shadow(color: NuvyraColors.accent.opacity(0.18), radius: 18, x: 0, y: 10)
+        } else {
+            content.nuvyraShadow(.ambient, scheme: scheme)
+        }
+    }
+}
+
 // MARK: - Small inline cards
 
 struct PremiumBullet: View {
@@ -237,11 +282,18 @@ struct PremiumBullet: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: NuvyraSpacing.md) {
-            Image(systemName: symbol)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(NuvyraColors.accent)
-                .frame(width: 32, height: 32)
-                .background(NuvyraColors.accent.opacity(0.12), in: Circle())
+            // Glass medallion — same shape language as the dashboard
+            // greeting + illustrated placeholders so the family stays
+            // visually consistent across feature areas.
+            ZStack {
+                Circle().fill(.ultraThinMaterial)
+                Circle().fill(NuvyraColors.accent.opacity(scheme == .dark ? 0.20 : 0.14))
+                Circle().stroke(NuvyraColors.glassStroke(scheme), lineWidth: 0.5)
+                Image(systemName: symbol)
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(NuvyraColors.accent)
+            }
+            .frame(width: 32, height: 32)
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)

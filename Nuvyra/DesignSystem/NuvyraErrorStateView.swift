@@ -1,6 +1,11 @@
 import SwiftUI
 
+/// Calm-tone error surface used across feature loaders. `style: .full` uses
+/// the full illustrated placeholder; `style: .compact` collapses into a
+/// single-row glass strip for inline error messaging.
 struct NuvyraErrorStateView: View {
+    @Environment(\.colorScheme) private var scheme
+
     enum Style {
         case full
         case compact
@@ -15,57 +20,62 @@ struct NuvyraErrorStateView: View {
     var onDismiss: (() -> Void)?
 
     var body: some View {
-        NuvyraGlassCard {
-            if style == .compact {
-                compactContent
-            } else {
-                fullContent
+        Group {
+            switch style {
+            case .full: fullContent
+            case .compact: compactContent
             }
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title). \(message)")
     }
 
+    // MARK: - Full
+
     private var fullContent: some View {
-        VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-            icon
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title)
-                    .font(NuvyraTypography.section)
-                Text(message)
-                    .font(NuvyraTypography.body)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        NuvyraGlassCard {
+            NuvyraIllustratedPlaceholder(
+                systemImage: systemImage,
+                title: title,
+                subtitle: message,
+                tint: NuvyraColors.mutedCoral,
+                bullets: []
+            ) {
+                actions
             }
-            actions
         }
     }
+
+    // MARK: - Compact
 
     private var compactContent: some View {
-        VStack(alignment: .leading, spacing: NuvyraSpacing.sm) {
-            HStack(alignment: .top, spacing: NuvyraSpacing.sm) {
+        HStack(alignment: .top, spacing: NuvyraSpacing.sm) {
+            // Tiny glass medallion — same shape language as the full state
+            // but at row-height so it slots into any list / sheet.
+            ZStack {
+                Circle().fill(.ultraThinMaterial)
+                Circle().fill(NuvyraColors.mutedCoral.opacity(scheme == .dark ? 0.22 : 0.16))
+                Circle().stroke(NuvyraColors.glassStroke(scheme), lineWidth: 0.6)
                 Image(systemName: systemImage)
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(NuvyraColors.mutedCoral)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
-                        .font(.subheadline.weight(.bold))
-                    Text(message)
-                        .font(NuvyraTypography.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
-            actions
+            .frame(width: 28, height: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+                Text(message)
+                    .font(NuvyraTypography.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                actions
+            }
         }
+        .padding(.vertical, NuvyraSpacing.xs)
     }
 
-    private var icon: some View {
-        Image(systemName: systemImage)
-            .font(.title2.weight(.bold))
-            .foregroundStyle(.white)
-            .frame(width: 48, height: 48)
-            .background(NuvyraColors.mutedCoral, in: RoundedRectangle(cornerRadius: NuvyraRadius.md, style: .continuous))
-    }
+    // MARK: - Shared actions
 
     @ViewBuilder
     private var actions: some View {
@@ -85,10 +95,25 @@ struct NuvyraErrorStateView: View {
     }
 }
 
-#Preview {
+#if DEBUG
+#Preview("Full") {
+    ZStack {
+        NuvyraBackground()
+        NuvyraErrorStateView(
+            message: "Sunucuya bağlanılamadı. İnternet bağlantını kontrol edip tekrar dene.",
+            onRetry: {}
+        )
+        .padding()
+    }
+}
+
+#Preview("Compact") {
     NuvyraErrorStateView(
-        message: "Sunucuya bağlanılamadı. İnternet bağlantını kontrol edip tekrar dene.",
-        onRetry: {}
+        message: "Yanıt alınamadı.",
+        style: .compact,
+        onRetry: {},
+        onDismiss: {}
     )
     .padding()
 }
+#endif

@@ -39,17 +39,29 @@ struct DashboardView: View {
                         .dashboardSlide(index: 0, animated: didAnimateAppearance)
                     }
 
-                    CalorieBalanceCard(summary: viewModel.nutritionSummary)
-                        .dashboardSlide(index: 1, animated: didAnimateAppearance)
+                    // Single-glance "ritim skoru" hero — same numerical
+                    // weighting as the lock-screen widget so the dashboard
+                    // and the lock screen always agree.
+                    DashboardRhythmHero(
+                        summary: viewModel.nutritionSummary,
+                        water: viewModel.waterSummary,
+                        steps: viewModel.stepSummary,
+                        proteinGrams: viewModel.totalProtein,
+                        proteinTargetGrams: viewModel.proteinTarget
+                    )
+                    .dashboardSlide(index: 1, animated: didAnimateAppearance)
 
-                    EnergyBalanceCard(balance: viewModel.energyBalance)
+                    CalorieBalanceCard(summary: viewModel.nutritionSummary)
                         .dashboardSlide(index: 2, animated: didAnimateAppearance)
 
-                    MacroSummaryCard(macros: viewModel.macroSummaries)
+                    EnergyBalanceCard(balance: viewModel.energyBalance)
                         .dashboardSlide(index: 3, animated: didAnimateAppearance)
 
+                    MacroSummaryCard(macros: viewModel.macroSummaries)
+                        .dashboardSlide(index: 4, animated: didAnimateAppearance)
+
                     QuickActionsCard { handle($0) }
-                        .dashboardSlide(index: 3, animated: didAnimateAppearance)
+                        .dashboardSlide(index: 4, animated: didAnimateAppearance)
 
                     NavigationLink(value: DashboardDestination.waterTracking) {
                         WaterCard(
@@ -60,30 +72,30 @@ struct DashboardView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                    .dashboardSlide(index: 4, animated: didAnimateAppearance)
+                    .dashboardSlide(index: 5, animated: didAnimateAppearance)
 
                     StepRingCard(summary: viewModel.stepSummary) {
                         Task { await viewModel.startWalking(dependencies: dependencies) }
                     }
-                    .dashboardSlide(index: 5, animated: didAnimateAppearance)
+                    .dashboardSlide(index: 6, animated: didAnimateAppearance)
 
                     TodayMealsCard(meals: viewModel.meals) { type in
                         presentedSheet = .addMeal(type)
                     }
-                    .dashboardSlide(index: 6, animated: didAnimateAppearance)
+                    .dashboardSlide(index: 7, animated: didAnimateAppearance)
 
                     MealTimingCard(insight: viewModel.mealTiming) { type in
                         presentedSheet = .addMeal(type)
                     }
-                    .dashboardSlide(index: 7, animated: didAnimateAppearance)
+                    .dashboardSlide(index: 8, animated: didAnimateAppearance)
 
                     RecentFoodsCard(entries: viewModel.recentFoods) {
                         router.selectedTab = .nutrition
                     }
-                    .dashboardSlide(index: 8, animated: didAnimateAppearance)
+                    .dashboardSlide(index: 9, animated: didAnimateAppearance)
 
                     WeeklyComparisonCard(comparison: viewModel.weeklyComparison)
-                        .dashboardSlide(index: 9, animated: didAnimateAppearance)
+                        .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
                     if viewModel.weightSummary.latestWeightKg != nil {
                         NavigationLink(value: DashboardDestination.bodyMeasurements) {
@@ -94,32 +106,32 @@ struct DashboardView: View {
                             )
                         }
                         .buttonStyle(.plain)
-                        .dashboardSlide(index: 10, animated: didAnimateAppearance)
+                        .dashboardSlide(index: 11, animated: didAnimateAppearance)
                     }
 
                     VStack(spacing: NuvyraSpacing.md) {
                         StreakCard(kind: .meal, insight: viewModel.mealStreak)
                         StreakCard(kind: .water, insight: viewModel.waterStreak)
                     }
-                    .dashboardSlide(index: 11, animated: didAnimateAppearance)
+                    .dashboardSlide(index: 12, animated: didAnimateAppearance)
 
                     if let achievement = viewModel.shareableAchievement {
                         AchievementShareCard(achievement: achievement)
-                            .dashboardSlide(index: 12, animated: didAnimateAppearance)
+                            .dashboardSlide(index: 13, animated: didAnimateAppearance)
                     }
 
                     NavigationLink(value: DashboardDestination.coach) {
                         DailyInsightCard(text: viewModel.insight, onAskCoach: nil)
                     }
                     .buttonStyle(.plain)
-                    .dashboardSlide(index: 13, animated: didAnimateAppearance)
+                    .dashboardSlide(index: 14, animated: didAnimateAppearance)
 
                     if !viewModel.shouldShowDayOneTour && !viewModel.hasAnyData {
                         DashboardEmptyStateCard(
                             onAddFirstMeal: { presentedSheet = .addMeal(.breakfast) },
                             onAddWater: { Task { await viewModel.addWater(context: modelContext, dependencies: dependencies, amount: 250) } }
                         )
-                        .dashboardSlide(index: 14, animated: didAnimateAppearance)
+                        .dashboardSlide(index: 15, animated: didAnimateAppearance)
                     }
 
                     Color.clear.frame(height: NuvyraSpacing.md)

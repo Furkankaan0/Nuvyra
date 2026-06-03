@@ -34,7 +34,7 @@ struct WelcomeStepView: View {
                     .offset(y: hasAppeared ? 0 : 12)
             }
 
-            NuvyraGlassCard {
+            NuvyraGlassCard(.prominent) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
                     PremiumBullet(title: "Kişisel hedefler", subtitle: "Kalori, protein, karbonhidrat, yağ, su ve adım hedeflerin otomatik hesaplanır.", symbol: "sparkles")
                     PremiumBullet(title: "Wellness dili", subtitle: "Nuvyra suçluluk değil, sürdürülebilir ritim kurar.", symbol: "heart.text.square")
