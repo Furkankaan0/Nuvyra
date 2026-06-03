@@ -143,7 +143,6 @@ struct WeightTrendCard: View {
             .padding(.vertical, NuvyraSpacing.xs)
     }
 
-    @ViewBuilder
     private var sevenDayDeltaChip: some View {
         let delta = sevenDayDelta
         let absKg = abs(delta)
@@ -159,7 +158,7 @@ struct WeightTrendCard: View {
             arrow = "↓"
             tint = NuvyraColors.accent
         }
-        VStack(alignment: .trailing, spacing: 4) {
+        return VStack(alignment: .trailing, spacing: 4) {
             NuvyraGlassPill(tint: tint) {
                 HStack(spacing: 4) {
                     Text(arrow).font(.caption.weight(.bold))
