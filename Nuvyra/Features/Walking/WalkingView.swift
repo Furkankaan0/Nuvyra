@@ -29,7 +29,12 @@ struct WalkingView: View {
                             onEnd: { Task { await viewModel.endWalkingFocus(dependencies: dependencies) } }
                         )
                     }
-                    WalkingStreakCard(streak: viewModel.streak, averageSteps: viewModel.averageSteps, completionRate: viewModel.completionRate)
+                    WalkingStreakCard(
+                        streak: viewModel.streak,
+                        averageSteps: viewModel.averageSteps,
+                        completionRate: viewModel.completionRate,
+                        recentSteps: viewModel.logs.map(\.steps)
+                    )
                     WeeklyStepsChart(logs: viewModel.logs, goal: viewModel.stepGoal)
                     NuvyraGlassCard {
                         Label("Yürüyüş önerisi", systemImage: "figure.walk.motion")

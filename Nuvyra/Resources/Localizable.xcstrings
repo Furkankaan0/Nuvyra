@@ -397,6 +397,195 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Camera" } },
         "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kamera" } }
       }
+    },
+    "aiCoach.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Wellness Coach" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Wellness Koçu" } }
+      }
+    },
+    "aiCoach.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Small, safe nudges based on your daily numbers." } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Günlük verilerinden küçük, güvenli öneriler." } }
+      }
+    },
+    "aiCoach.insights.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Today's insights" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bugünkü içgörüler" } }
+      }
+    },
+    "aiCoach.insights.loading" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing…" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Hazırlanıyor..." } }
+      }
+    },
+    "aiCoach.insights.preparing.full" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Coach insights are being prepared…" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Koç içgörüleri hazırlanıyor..." } }
+      }
+    },
+    "aiCoach.insights.empty" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No data yet — once you log a meal, water or steps, the coach starts speaking up here." } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Henüz veri yok — öğün, su veya yürüyüş kaydı eklediğinde koç burada konuşmaya başlar." } }
+      }
+    },
+    "aiCoach.chat.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Ask the coach" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Koça sor" } }
+      }
+    },
+    "aiCoach.chat.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Chat is available to Premium members" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sohbet alanı premium üyelere açıktır" } }
+      }
+    },
+    "aiCoach.chat.composer.placeholder" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Write a question…" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bir soru yaz..." } }
+      }
+    },
+    "aiCoach.chat.clear" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Clear chat" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sohbeti temizle" } }
+      }
+    },
+    "aiCoach.chat.send" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Send" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Gönder" } }
+      }
+    },
+    "aiCoach.premium.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "AI chat is Premium" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "AI sohbet premium" } }
+      }
+    },
+    "aiCoach.premium.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Chatting with the wellness coach and getting personalised suggestions unlocks with Premium." } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Wellness koçuyla sohbet etmek, kişisel öneriler almak için Premium'a geç." } }
+      }
+    },
+    "onboarding.primary.continue" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Continue" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Devam" } }
+      }
+    },
+    "onboarding.primary.appleHealth" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Set up Apple Health" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Apple Sağlık'ı ayarla" } }
+      }
+    },
+    "onboarding.primary.seePremium" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "See Premium" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Premium'u gör" } }
+      }
+    },
+    "onboarding.primary.goToDashboard" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Go to Dashboard" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Dashboard'a geç" } }
+      }
+    },
+    "onboarding.primary.preparing" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Preparing your rhythm" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Ritmin hazırlanıyor" } }
+      }
+    },
+    "onboarding.secondary.notNow" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Not now" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Şimdi değil" } }
+      }
+    },
+    "onboarding.secondary.premiumLater" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Review Premium later" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Premium'u sonra incelerim" } }
+      }
+    },
+    "onboarding.back" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Back" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Geri" } }
+      }
+    },
+    "onboarding.error.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Setup couldn't complete" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Başlangıç tamamlanamadı" } }
+      }
+    },
+    "onboarding.error.fallback" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Please try again." } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Lütfen tekrar dene." } }
+      }
+    },
+    "addFood.title.create" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Add meal" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Yemek ekle" } }
+      }
+    },
+    "addFood.title.edit" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Edit meal" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Öğünü düzenle" } }
+      }
+    },
+    "addFood.action.close" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Close" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Kapat" } }
+      }
+    },
+    "addFood.action.delete" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sil" } }
+      }
     }
   },
   "version" : "1.0"

@@ -1,58 +1,91 @@
 import SwiftUI
 
+/// Loading state — small glass surface with a spinner, so the page doesn't
+/// flash empty between view appear and the first repository fetch landing.
 struct AnalyticsLoadingState: View {
+    @Environment(\.colorScheme) private var scheme
+
     var body: some View {
         NuvyraGlassCard {
             HStack(spacing: NuvyraSpacing.md) {
-                ProgressView()
+                ZStack {
+                    Circle().fill(.ultraThinMaterial)
+                    Circle().fill(NuvyraColors.accent.opacity(scheme == .dark ? 0.20 : 0.14))
+                    Circle().stroke(NuvyraColors.glassStroke(scheme), lineWidth: 0.6)
+                    ProgressView()
+                        .tint(NuvyraColors.accent)
+                }
+                .frame(width: 44, height: 44)
+                .nuvyraShadow(.ambient, scheme: scheme)
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Analiz hazırlanıyor")
                         .font(NuvyraTypography.section)
                     Text("Haftalık ve aylık ritim verilerin toplanıyor.")
+                        .font(NuvyraTypography.caption)
                         .foregroundStyle(.secondary)
                 }
+                Spacer(minLength: 0)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Analiz hazırlanıyor")
     }
 }
 
+/// Error state — coral-tinted illustrated placeholder + retry CTA. Uses
+/// the same scaffold the dashboard / error views ship.
 struct AnalyticsErrorState: View {
     let message: String
     let retry: () -> Void
 
     var body: some View {
         NuvyraGlassCard {
-            VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-                Label("Analiz yüklenemedi", systemImage: "exclamationmark.triangle.fill")
-                    .font(NuvyraTypography.section)
-                    .foregroundStyle(NuvyraColors.mutedCoral)
-                Text(message)
-                    .foregroundStyle(.secondary)
+            NuvyraIllustratedPlaceholder(
+                systemImage: "exclamationmark.triangle.fill",
+                title: "Analiz yüklenemedi",
+                subtitle: message,
+                tint: NuvyraColors.mutedCoral,
+                bullets: []
+            ) {
                 NuvyraSecondaryButton(title: "Tekrar dene", systemImage: "arrow.clockwise", action: retry)
             }
         }
     }
 }
 
+/// Empty state — `.prominent` glass + illustrated placeholder with three
+/// glass-pill examples that hint at what the user can log to fill the
+/// charts up. Period-aware copy.
 struct AnalyticsEmptyState: View {
-    @Environment(\.colorScheme) private var scheme
     let period: AnalyticsPeriod
 
     var body: some View {
-        NuvyraGlassCard {
-            VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
-                Image(systemName: "chart.xyaxis.line")
-                    .font(.largeTitle.weight(.bold))
-                    .foregroundStyle(NuvyraColors.accent)
-
-                Text("\(period.title) analiz için kayıt bekleniyor")
-                    .font(.title3.weight(.heavy))
-                    .foregroundStyle(NuvyraColors.primaryText(scheme))
-
-                Text("Bir öğün, birkaç su kaydı ve yürüyüş verisi eklediğinde grafikler otomatik olarak dolacak.")
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(NuvyraColors.secondaryText(scheme))
+        NuvyraGlassCard(.prominent) {
+            NuvyraIllustratedPlaceholder(
+                systemImage: "chart.xyaxis.line",
+                title: "\(period.title) analiz için kayıt bekleniyor",
+                subtitle: "Bir öğün, birkaç su kaydı ve yürüyüş verisi eklediğinde grafikler otomatik olarak dolacak.",
+                bullets: ["Bir öğün", "Su kaydı", "Adım verisi"]
+            ) {
+                EmptyView()
             }
         }
     }
 }
+
+#if DEBUG
+#Preview("Analytics states") {
+    ZStack {
+        NuvyraBackground()
+        ScrollView {
+            VStack(spacing: NuvyraSpacing.md) {
+                AnalyticsLoadingState()
+                AnalyticsErrorState(message: "Sunucuya bağlanılamadı. Tekrar dene.") {}
+                AnalyticsEmptyState(period: .weekly)
+            }
+            .padding()
+        }
+    }
+}
+#endif

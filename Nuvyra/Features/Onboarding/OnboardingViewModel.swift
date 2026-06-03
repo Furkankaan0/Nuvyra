@@ -94,15 +94,15 @@ final class OnboardingViewModel: ObservableObject {
     var primaryButtonTitle: String {
         switch currentStep {
         case .welcome:
-            "Devam"
+            String(localized: "onboarding.primary.continue")
         case .summary:
-            "Apple Sağlık'ı ayarla"
+            String(localized: "onboarding.primary.appleHealth")
         case .health:
-            "Premium'u gör"
+            String(localized: "onboarding.primary.seePremium")
         case .premium:
-            isCompleting ? "Ritmin hazırlanıyor" : "Dashboard'a geç"
+            String(localized: isCompleting ? "onboarding.primary.preparing" : "onboarding.primary.goToDashboard")
         default:
-            "Devam"
+            String(localized: "onboarding.primary.continue")
         }
     }
 
@@ -120,8 +120,8 @@ final class OnboardingViewModel: ObservableObject {
     /// the dashboard behind either.
     var secondaryButtonTitle: String? {
         switch currentStep {
-        case .health: return "Şimdi değil"
-        case .premium: return "Premium'u sonra incelerim"
+        case .health: return String(localized: "onboarding.secondary.notNow")
+        case .premium: return String(localized: "onboarding.secondary.premiumLater")
         default: return nil
         }
     }

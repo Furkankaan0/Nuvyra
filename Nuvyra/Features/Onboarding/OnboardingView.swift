@@ -74,14 +74,14 @@ struct OnboardingView: View {
             )
         }
         .task { await dependencies.analytics.track(.onboardingStarted, payload: AnalyticsPayload()) }
-        .alert("Başlangıç tamamlanamadı", isPresented: errorBinding) {
-            Button("Tekrar dene") {
+        .alert(String(localized: "onboarding.error.title"), isPresented: errorBinding) {
+            Button(String(localized: "error.retry")) {
                 viewModel.errorMessage = nil
                 Task { await viewModel.complete(context: modelContext, dependencies: dependencies) }
             }
-            Button("Vazgeç", role: .cancel) { viewModel.errorMessage = nil }
+            Button(String(localized: "error.dismiss"), role: .cancel) { viewModel.errorMessage = nil }
         } message: {
-            Text(viewModel.errorMessage ?? "Lütfen tekrar dene.")
+            Text(viewModel.errorMessage ?? String(localized: "onboarding.error.fallback"))
         }
     }
 

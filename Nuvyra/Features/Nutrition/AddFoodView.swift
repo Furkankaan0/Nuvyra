@@ -156,11 +156,11 @@ struct AddFoodView: View {
                     .padding(NuvyraSpacing.lg)
                 }
             }
-            .navigationTitle(isEditing ? "Öğünü düzenle" : "Yemek ekle")
+            .navigationTitle(String(localized: isEditing ? "addFood.title.edit" : "addFood.title.create"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Kapat") { dismiss() }
+                    Button(String(localized: "addFood.action.close")) { dismiss() }
                 }
                 if isEditing, case .edit(let meal) = mode {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -169,7 +169,7 @@ struct AddFoodView: View {
                         } label: {
                             Image(systemName: "trash")
                         }
-                        .accessibilityLabel("Sil")
+                        .accessibilityLabel(String(localized: "addFood.action.delete"))
                     }
                 }
             }

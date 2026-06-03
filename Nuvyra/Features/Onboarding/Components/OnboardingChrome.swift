@@ -146,7 +146,7 @@ struct OnboardingControlBar: View {
         VStack(spacing: NuvyraSpacing.sm) {
             HStack(spacing: NuvyraSpacing.md) {
                 if canGoBack {
-                    NuvyraSecondaryButton(title: "Geri", systemImage: "chevron.left", action: onBack)
+                    NuvyraSecondaryButton(title: String(localized: "onboarding.back"), systemImage: "chevron.left", action: onBack)
                         .frame(width: 118)
                         .transition(.move(edge: .leading).combined(with: .opacity))
                         .accessibilityIdentifier("onboarding.back")
