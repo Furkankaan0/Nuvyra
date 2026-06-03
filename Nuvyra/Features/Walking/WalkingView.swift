@@ -8,7 +8,7 @@ struct WalkingView: View {
 
     var body: some View {
         ZStack {
-            NuvyraBackground()
+            NuvyraBackground(.animated)
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     NuvyraSectionHeader(title: "Yürüyüş", subtitle: "Bugün düşük tempoda kalmak da sorun değil. Devamlılık daha önemli.")

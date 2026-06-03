@@ -15,7 +15,7 @@ struct DashboardView: View {
 
     var body: some View {
         ZStack {
-            NuvyraBackground()
+            NuvyraBackground(.animated)
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     DashboardGreetingHeader(name: viewModel.greetingName, date: Date())
@@ -49,12 +49,15 @@ struct DashboardView: View {
                         proteinGrams: viewModel.totalProtein,
                         proteinTargetGrams: viewModel.proteinTarget
                     )
+                    .nuvyraScrollTilt()
                     .dashboardSlide(index: 1, animated: didAnimateAppearance)
 
                     CalorieBalanceCard(summary: viewModel.nutritionSummary)
+                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 2, animated: didAnimateAppearance)
 
                     EnergyBalanceCard(balance: viewModel.energyBalance)
+                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 3, animated: didAnimateAppearance)
 
                     MacroSummaryCard(macros: viewModel.macroSummaries)
@@ -71,7 +74,8 @@ struct DashboardView: View {
                             onRemove: { Task { await viewModel.removeLastWater(context: modelContext, dependencies: dependencies) } }
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.nuvyraPressTilt)
+                    .nuvyraScrollTilt()
                     .dashboardSlide(index: 5, animated: didAnimateAppearance)
 
                     StepRingCard(summary: viewModel.stepSummary) {
@@ -95,6 +99,7 @@ struct DashboardView: View {
                     .dashboardSlide(index: 9, animated: didAnimateAppearance)
 
                     WeeklyComparisonCard(comparison: viewModel.weeklyComparison)
+                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
                     if viewModel.weightSummary.latestWeightKg != nil {
@@ -105,7 +110,8 @@ struct DashboardView: View {
                                 onAddMeasurement: { router.selectedTab = .profile }
                             )
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.nuvyraPressTilt)
+                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 11, animated: didAnimateAppearance)
                     }
 
@@ -123,7 +129,8 @@ struct DashboardView: View {
                     NavigationLink(value: DashboardDestination.coach) {
                         DailyInsightCard(text: viewModel.insight, onAskCoach: nil)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.nuvyraPressTilt)
+                    .nuvyraScrollTilt()
                     .dashboardSlide(index: 14, animated: didAnimateAppearance)
 
                     if !viewModel.shouldShowDayOneTour && !viewModel.hasAnyData {

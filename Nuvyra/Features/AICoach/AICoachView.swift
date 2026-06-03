@@ -33,7 +33,7 @@ struct AICoachView: View {
     // MARK: - Background
     @ViewBuilder
     private var background: some View {
-        NuvyraBackground()
+        NuvyraBackground(.animated)
             .overlay(alignment: .topLeading) {
                 Circle()
                     .fill(NuvyraColors.softMint.opacity(0.18))

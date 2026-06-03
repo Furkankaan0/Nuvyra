@@ -8,7 +8,7 @@ struct AnalyticsView: View {
 
     var body: some View {
         ZStack {
-            NuvyraBackground()
+            NuvyraBackground(.animated)
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     AnalyticsHeader(summary: viewModel.currentSummary)

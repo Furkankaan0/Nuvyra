@@ -11,7 +11,7 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            NuvyraBackground()
+            NuvyraBackground(.animated)
             VStack(spacing: 0) {
                 OnboardingProgressHeader(
                     progress: viewModel.progress,
