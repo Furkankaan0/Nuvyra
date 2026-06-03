@@ -24,7 +24,7 @@ struct WeightTrendCard: View {
     @ViewBuilder
     var body: some View {
         if shouldRender {
-            NuvyraGlassCard {
+            NuvyraGlassCard(.prominent) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
                     header
                     heroRow
@@ -143,6 +143,7 @@ struct WeightTrendCard: View {
             .padding(.vertical, NuvyraSpacing.xs)
     }
 
+    @ViewBuilder
     private var sevenDayDeltaChip: some View {
         let delta = sevenDayDelta
         let absKg = abs(delta)
@@ -158,13 +159,14 @@ struct WeightTrendCard: View {
             arrow = "↓"
             tint = NuvyraColors.accent
         }
-        return VStack(alignment: .trailing, spacing: 2) {
-            HStack(spacing: 4) {
-                Text(arrow).font(.caption.weight(.bold))
-                Text(absKg < 0.1 ? "Sabit" : "\(formatKg(absKg))")
-                    .font(.caption.weight(.bold))
+        VStack(alignment: .trailing, spacing: 4) {
+            NuvyraGlassPill(tint: tint) {
+                HStack(spacing: 4) {
+                    Text(arrow).font(.caption.weight(.bold))
+                    Text(absKg < 0.1 ? "Sabit" : "\(formatKg(absKg))")
+                        .font(.caption.weight(.bold))
+                }
             }
-            .foregroundStyle(tint)
             Text("weight.trend.seven.day")
                 .font(.caption2)
                 .foregroundStyle(.secondary)

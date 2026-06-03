@@ -15,7 +15,7 @@ struct EnergyBalanceCard: View {
     }
 
     var body: some View {
-        NuvyraGlassCard {
+        NuvyraGlassCard(.prominent) {
             VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
                 header
                 if balance.tdee == 0 {

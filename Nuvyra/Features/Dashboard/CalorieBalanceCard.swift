@@ -19,7 +19,7 @@ struct CalorieBalanceCard: View {
     }
 
     var body: some View {
-        NuvyraGlassCard {
+        NuvyraGlassCard(.prominent) {
             VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                 header
                 HStack(spacing: NuvyraSpacing.lg) {

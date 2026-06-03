@@ -18,7 +18,7 @@ struct MealTimingCard: View {
     }
 
     var body: some View {
-        NuvyraCard {
+        NuvyraGlassCard(.prominent) {
             VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
                 header
                 Text(insight.headline)

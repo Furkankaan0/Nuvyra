@@ -10,7 +10,7 @@ struct WeeklyComparisonCard: View {
     var comparison: WeeklyComparison
 
     var body: some View {
-        NuvyraGlassCard {
+        NuvyraGlassCard(.prominent) {
             VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
                 header
                 Text(comparison.storyline)
@@ -139,12 +139,12 @@ private struct WeeklyMetricTile: View {
     }
 
     private var changeChip: some View {
-        Text(metric.changeText)
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(directionColor)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(directionColor.opacity(0.14), in: Capsule())
+        // Glass pill — picks up the surrounding accent material so the chip
+        // reads as part of the card hierarchy instead of a flat label.
+        NuvyraGlassPill(tint: directionColor) {
+            Text(metric.changeText)
+                .font(.caption2.weight(.bold))
+        }
     }
 
     private var accessibilityLabel: String {
