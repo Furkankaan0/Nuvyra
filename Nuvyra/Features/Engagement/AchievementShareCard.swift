@@ -36,10 +36,16 @@ struct ShareableAchievement: Identifiable, Equatable {
 
 struct AchievementShareCard: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var achievement: ShareableAchievement
 
+    /// Drives the confetti burst. Initialised to a sentinel so the first
+    /// `.onAppear` flip into the real achievement id triggers one burst.
+    /// Subsequent achievement changes also re-fire the celebration.
+    @State private var celebrationID: String = "_pending"
+
     var body: some View {
-        NuvyraGlassCard {
+        NuvyraGlassCard(.prominent) {
             VStack(alignment: .leading, spacing: NuvyraSpacing.md) {
                 HStack(alignment: .top, spacing: NuvyraSpacing.md) {
                     icon
@@ -83,6 +89,8 @@ struct AchievementShareCard: View {
                 .accessibilityLabel("Başarı kartını paylaş")
             }
         }
+        // Top-right brand halo — same blur the original card had, kept so
+        // dark mode still reads the achievement tint through the glass.
         .overlay(alignment: .topTrailing) {
             Circle()
                 .fill(achievement.kind.tint.opacity(scheme == .dark ? 0.22 : 0.14))
@@ -90,6 +98,27 @@ struct AchievementShareCard: View {
                 .blur(radius: 18)
                 .offset(x: 42, y: -54)
                 .allowsHitTesting(false)
+        }
+        // Calm confetti — fires once on appear, again whenever the
+        // achievement id flips (e.g. user crosses two milestones in
+        // one day).
+        .overlay(
+            NuvyraConfettiBurst(
+                trigger: AnyHashable(celebrationID),
+                palette: [achievement.kind.tint, NuvyraColors.softMint, NuvyraColors.paleLime, NuvyraColors.softSand]
+            )
+        )
+        .onAppear {
+            // Defer the trigger by one runloop tick so SwiftUI has the
+            // card laid out before the Canvas reads its size — otherwise
+            // particles can paint outside the eventual frame.
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 220_000_000)
+                celebrationID = achievement.id
+            }
+        }
+        .onChange(of: achievement.id) { _, newID in
+            celebrationID = newID
         }
     }
 
@@ -99,6 +128,12 @@ struct AchievementShareCard: View {
             .foregroundStyle(achievement.kind.tint)
             .frame(width: 52, height: 52)
             .background(achievement.kind.tint.opacity(0.14), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            // iOS 17+ symbol bounce — fires once on every achievement
+            // change. Visually pairs with the confetti burst above.
+            .symbolEffect(.bounce, value: achievement.id)
+            // Soft halo pulse around the icon while the card is visible
+            // so the user keeps catching the celebration at scroll-by.
+            .nuvyraGoalGlow(isActive: true, tint: achievement.kind.tint)
             .accessibilityHidden(true)
     }
 }

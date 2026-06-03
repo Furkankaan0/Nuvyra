@@ -60,6 +60,10 @@ struct DashboardRhythmHero: View {
 
     // MARK: - Ring
 
+    /// Goal-reached threshold. 80% is the score we treat as "today's
+    /// rhythm is on", same line the lock-screen widget uses.
+    private var hasReachedGoal: Bool { rhythmPercent >= 80 }
+
     private var rhythmRing: some View {
         ZStack {
             // Background ring — faint accent so the ring still reads on the
@@ -87,6 +91,12 @@ struct DashboardRhythmHero: View {
             }
         }
         .frame(width: 124, height: 124)
+        // Slow ambient breath behind the ring so the hero feels alive
+        // even before the user logs anything.
+        .nuvyraBreath(amount: 1.018, duration: 3.6)
+        // Soft accent halo + one-shot scale pop the moment the rhythm
+        // crosses 80%. Pulses gently while the goal stays reached.
+        .nuvyraGoalGlow(isActive: hasReachedGoal)
     }
 
     // MARK: - Companion metrics

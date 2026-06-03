@@ -37,6 +37,14 @@ struct StreakCard: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animatedStreak: Double = 0
+    /// The last milestone (3, 7, 14, 30) we celebrated. Stored so we only
+    /// fire confetti once per milestone instead of every appearance.
+    @State private var lastCelebratedMilestone: Int = 0
+
+    /// Streak counts we treat as "worth a quiet celebration". The list is
+    /// deliberately short — Nuvyra's tone is calm, so confetti every day
+    /// would devalue the moment.
+    private static let milestoneStreaks: Set<Int> = [3, 7, 14, 30]
 
     var kind: Kind
     var insight: StreakInsight
@@ -65,8 +73,23 @@ struct StreakCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        // Single-shot calm confetti on milestone hits. The trigger only
+        // changes when the new streak is one of the milestone values
+        // AND wasn't the last one we celebrated — so re-rendering the
+        // card with the same data is a no-op.
+        .overlay(
+            NuvyraConfettiBurst(
+                trigger: AnyHashable(lastCelebratedMilestone),
+                palette: [kind.tint, NuvyraColors.softMint, NuvyraColors.softSand, NuvyraColors.paleLime]
+            )
+        )
         .onAppear { animate() }
-        .onChange(of: insight.currentStreak) { _, _ in animate() }
+        .onChange(of: insight.currentStreak) { _, newValue in
+            animate()
+            if Self.milestoneStreaks.contains(newValue), newValue != lastCelebratedMilestone {
+                lastCelebratedMilestone = newValue
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(kind.title): \(insight.currentStreak) gün; en uzun \(insight.longestStreak) gün")
     }
