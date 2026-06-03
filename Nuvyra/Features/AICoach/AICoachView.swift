@@ -76,7 +76,10 @@ struct AICoachView: View {
         } else if viewModel.insights.isEmpty, viewModel.isLoadingInsights {
             NuvyraGlassCard {
                 HStack(spacing: NuvyraSpacing.sm) {
-                    ProgressView()
+                    Image(systemName: "sparkles")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(NuvyraColors.accent)
+                        .nuvyraLoadingPulse(true)
                     Text("aiCoach.insights.preparing.full")
                         .font(NuvyraTypography.body)
                         .foregroundStyle(.secondary)

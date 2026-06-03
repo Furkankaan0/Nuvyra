@@ -69,6 +69,7 @@ struct MealTimingCard: View {
             Image(systemName: "clock.badge.checkmark.fill")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(heroTint)
+                .nuvyraAmbientIcon()
         }
     }
 

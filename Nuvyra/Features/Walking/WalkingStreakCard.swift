@@ -49,6 +49,7 @@ struct WalkingStreakCard: View {
             Image(systemName: "figure.walk.motion")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(NuvyraColors.accent)
+                .nuvyraAmbientIcon()
         }
     }
 

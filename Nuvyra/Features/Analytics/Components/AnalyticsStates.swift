@@ -12,8 +12,10 @@ struct AnalyticsLoadingState: View {
                     Circle().fill(.ultraThinMaterial)
                     Circle().fill(NuvyraColors.accent.opacity(scheme == .dark ? 0.20 : 0.14))
                     Circle().stroke(NuvyraColors.glassStroke(scheme), lineWidth: 0.6)
-                    ProgressView()
-                        .tint(NuvyraColors.accent)
+                    Image(systemName: "chart.line.uptrend.xyaxis")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(NuvyraColors.accent)
+                        .nuvyraLoadingPulse(true)
                 }
                 .frame(width: 44, height: 44)
                 .nuvyraShadow(.ambient, scheme: scheme)

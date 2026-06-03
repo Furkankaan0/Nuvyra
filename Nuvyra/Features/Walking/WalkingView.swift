@@ -91,6 +91,10 @@ private struct WalkingFocusCard: View {
                         title: isActive ? "\(elapsedMinutes) dk" : motionState.title,
                         tint: isActive ? NuvyraColors.accent : NuvyraColors.softSand
                     )
+                    // Cross-fades between the two glyphs whenever the
+                    // focus toggles instead of hard-cutting through the
+                    // pill body.
+                    .nuvyraSymbolReplace()
                 }
 
                 Text(isActive ? "Live Activity ile Kilit Ekranı ve Dynamic Island’da yürüyüş ritmini takip et." : "Kısa yürüyüşü başlat; Nuvyra hedefini nazikçe görünür tutar.")

@@ -144,7 +144,7 @@ struct ProfileView: View {
                     tint: NuvyraColors.accent
                 )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
         }
     }
 
@@ -160,7 +160,7 @@ struct ProfileView: View {
                     tint: NuvyraColors.mutedCoral
                 )
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
         }
     }
 
@@ -178,7 +178,7 @@ struct ProfileView: View {
             } label: {
                 SettingsRow(title: "Hedefleri düzenle", subtitle: "Kalori, su ve adım hedefini güncelle.", systemImage: "slider.horizontal.3")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
         }
     }
 
@@ -189,7 +189,7 @@ struct ProfileView: View {
             } label: {
                 SettingsRow(title: "Premium durum", subtitle: viewModel.premiumStatusTitle, systemImage: "crown.fill", tint: NuvyraColors.softSand)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
 
             SettingsDivider()
 
@@ -198,14 +198,14 @@ struct ProfileView: View {
             } label: {
                 SettingsRow(title: "Premium'u keşfet", subtitle: "AI Coach, barkod, kamera tanıma ve gelişmiş analizler.", systemImage: "sparkles", tint: NuvyraColors.accent)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
 
             SettingsDivider()
 
             Link(destination: URL(string: "https://apps.apple.com/account/subscriptions")!) {
                 SettingsRow(title: "Abonelik yönetimi", subtitle: "Apple ID abonelik ayarlarını aç.", systemImage: "creditcard.fill")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
         }
     }
 
@@ -218,7 +218,7 @@ struct ProfileView: View {
             } label: {
                 SettingsRow(title: "Health iznini yenile", subtitle: "Adım ve aktivite verisi için izin iste.", systemImage: "heart")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
         }
     }
 
@@ -246,14 +246,14 @@ struct ProfileView: View {
             } label: {
                 SettingsRow(title: "Gizlilik politikası", subtitle: "HealthKit ve KVKK notları.", systemImage: "lock.shield.fill")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
 
             SettingsDivider()
 
             Link(destination: URL(string: "https://nuvyra.app/terms")!) {
                 SettingsRow(title: "Kullanım şartları", subtitle: "Abonelik ve uygulama kullanım koşulları.", systemImage: "doc.text.fill")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
         }
     }
 
@@ -264,7 +264,7 @@ struct ProfileView: View {
             } label: {
                 SettingsRow(title: "Hesabı yönet", subtitle: "Veri dışa aktarma, yerel veri silme ve oturum bilgileri.", systemImage: "person.crop.circle.badge.exclamationmark")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.nuvyraPressTilt)
         }
     }
 

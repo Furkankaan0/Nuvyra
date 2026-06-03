@@ -46,6 +46,7 @@ struct EnergyBalanceCard: View {
             Image(systemName: "scalemass")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(primaryTint)
+                .nuvyraAmbientIcon()
         }
     }
 

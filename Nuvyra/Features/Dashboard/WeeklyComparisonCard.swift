@@ -48,6 +48,7 @@ struct WeeklyComparisonCard: View {
             Image(systemName: "chart.line.uptrend.xyaxis")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(NuvyraColors.accent)
+                .nuvyraAmbientIcon()
         }
     }
 
