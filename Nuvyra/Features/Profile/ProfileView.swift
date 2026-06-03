@@ -11,6 +11,7 @@ struct ProfileView: View {
     @StateObject private var auth = AuthManager.shared
     @State private var showsGoalEditor = false
     @State private var showsProfileEditor = false
+    @State private var showsAppIconPicker = false
 
     var body: some View {
         ZStack {
@@ -54,6 +55,9 @@ struct ProfileView: View {
                     viewModel.updateProfile(context: modelContext, dependencies: dependencies, name: name, input: input)
                 }
             }
+        }
+        .sheet(isPresented: $showsAppIconPicker) {
+            NavigationStack { AppIconPickerSheet() }
         }
         .alert("Profil", isPresented: alertBinding) {
             Button("Tamam", role: .cancel) { viewModel.alertMessage = nil }
@@ -236,6 +240,25 @@ struct ProfileView: View {
                     .padding(.top, NuvyraSpacing.xs)
             }
             .padding(.vertical, 12)
+
+            // App icon variants — opens the picker sheet that lives in
+            // `AppIconPickerSheet.swift`. Only renders the row when the
+            // device actually supports alternates, so the picker can't
+            // be opened to a dead-end screen on iPad / older builds.
+            if NuvyraAppIconService.shared.supportsAlternates {
+                SettingsDivider()
+                Button {
+                    showsAppIconPicker = true
+                } label: {
+                    SettingsRow(
+                        title: "Uygulama ikonu",
+                        subtitle: "Ana ekrandaki Nuvyra simgesini değiştir.",
+                        systemImage: "app.badge.fill",
+                        tint: NuvyraColors.softMint
+                    )
+                }
+                .buttonStyle(.nuvyraPressTilt)
+            }
         }
     }
 

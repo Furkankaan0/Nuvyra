@@ -103,9 +103,14 @@ struct AchievementShareCard: View {
         // achievement id flips (e.g. user crosses two milestones in
         // one day).
         .overlay(
+            // Symbol-particle mode picks SF Symbols matched to the kind
+            // of achievement (steps → walking, water → drop, etc.) — much
+            // richer than the dot field, while still calm enough for the
+            // wellness tone.
             NuvyraConfettiBurst(
                 trigger: AnyHashable(celebrationID),
-                palette: [achievement.kind.tint, NuvyraColors.softMint, NuvyraColors.paleLime, NuvyraColors.softSand]
+                palette: [achievement.kind.tint, NuvyraColors.softMint, NuvyraColors.paleLime, NuvyraColors.softSand],
+                style: .symbols(symbolsForAchievement)
             )
         )
         .onAppear {
@@ -119,6 +124,17 @@ struct AchievementShareCard: View {
         }
         .onChange(of: achievement.id) { _, newID in
             celebrationID = newID
+        }
+    }
+
+    /// Per-kind symbol palette. We mix the achievement's own glyph with
+    /// a sparkles + heart so the field reads "you earned it" instead of
+    /// "the same emoji 22 times".
+    private var symbolsForAchievement: [String] {
+        switch achievement.kind {
+        case .steps: ["figure.walk.circle.fill", "sparkles", "leaf.fill", "star.fill"]
+        case .waterStreak, .waterGoal: ["drop.fill", "sparkles", "star.fill", "heart.fill"]
+        case .mealStreak: ["fork.knife", "sparkles", "leaf.fill", "heart.fill"]
         }
     }
 

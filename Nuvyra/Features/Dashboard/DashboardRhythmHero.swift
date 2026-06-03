@@ -78,6 +78,16 @@ struct DashboardRhythmHero: View {
                 .rotationEffect(.degrees(-90))
                 .shadow(color: NuvyraColors.accent.opacity(0.36), radius: 10, x: 0, y: 4)
 
+            // Shimmer overlay — only paints once the rhythm is "on".
+            // Reads as a premium reward instead of an always-on
+            // decoration; the rotating angular-gradient window catches
+            // the eye, then drops off in soft-light blend.
+            if hasReachedGoal {
+                NuvyraShimmerRing(lineWidth: 12, duration: 6.0)
+                    .frame(width: 124, height: 124)
+                    .transition(.opacity.animation(.easeInOut(duration: 0.4)))
+            }
+
             // Center label stack.
             VStack(spacing: 0) {
                 Text("\(rhythmPercent)")

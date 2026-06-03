@@ -1,4 +1,4 @@
-﻿import SwiftData
+import SwiftData
 import SwiftUI
 
 struct AppRootView: View {
@@ -26,26 +26,34 @@ private struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $router.selectedTab) {
-            NavigationStack { DashboardView() }
-                .tabItem { Label(AppTab.dashboard.title, systemImage: AppTab.dashboard.systemImage) }
-                .tag(AppTab.dashboard)
-
-            NavigationStack { NutritionView() }
-                .tabItem { Label(AppTab.nutrition.title, systemImage: AppTab.nutrition.systemImage) }
-                .tag(AppTab.nutrition)
-
-            NavigationStack { WalkingView() }
-                .tabItem { Label(AppTab.walking.title, systemImage: AppTab.walking.systemImage) }
-                .tag(AppTab.walking)
-
-            NavigationStack { InsightsView() }
-                .tabItem { Label(AppTab.insights.title, systemImage: AppTab.insights.systemImage) }
-                .tag(AppTab.insights)
-
-            NavigationStack { ProfileView() }
-                .tabItem { Label(AppTab.profile.title, systemImage: AppTab.profile.systemImage) }
-                .tag(AppTab.profile)
+            tab(.dashboard) { DashboardView() }
+            tab(.nutrition) { NutritionView() }
+            tab(.walking) { WalkingView() }
+            tab(.insights) { InsightsView() }
+            tab(.profile) { ProfileView() }
         }
+    }
+
+    /// Tab item builder shared by every entry. Wraps the navigation stack
+    /// in a `.tabItem` whose symbol gets the iOS 17 `.symbolEffect(.bounce)`
+    /// tied to the router's selection — every tap nods the icon, but the
+    /// effect only fires on the active tab so background tabs stay still.
+    @ViewBuilder
+    private func tab<Content: View>(_ tab: AppTab, @ViewBuilder content: () -> Content) -> some View {
+        NavigationStack { content() }
+            .tabItem {
+                Label {
+                    Text(tab.title)
+                } icon: {
+                    Image(systemName: tab.systemImage)
+                        // Bounce on every router selection change.
+                        // iOS 17 `value:` parameter — fires only when
+                        // the new value equals this tab, so other tabs
+                        // stay quiet.
+                        .symbolEffect(.bounce.up, value: router.selectedTab == tab)
+                }
+            }
+            .tag(tab)
     }
 }
 
