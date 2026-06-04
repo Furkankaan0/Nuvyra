@@ -31,10 +31,10 @@ struct NuvyraAR3DRingView: View {
             NuvyraBackground(.animated)
             VStack(spacing: NuvyraSpacing.lg) {
                 Spacer()
-                if reduceMotion {
-                    staticRing
-                } else {
+                if !reduceMotion, #available(iOS 18.0, *) {
                     realityScene
+                } else {
+                    staticRing
                 }
                 Spacer()
                 hint
@@ -49,6 +49,7 @@ struct NuvyraAR3DRingView: View {
 
     // MARK: - Scene
 
+    @available(iOS 18.0, *)
     private var realityScene: some View {
         RealityView { content in
             let scene = makeScene()
