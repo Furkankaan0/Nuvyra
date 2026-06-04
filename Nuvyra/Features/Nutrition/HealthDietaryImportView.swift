@@ -101,27 +101,18 @@ struct HealthDietaryImportView: View {
         }
     }
 
+    /// Range picker — brand glass segmented control. Used to be a hand-
+    /// rolled horizontal chip row; the new picker slides the indicator
+    /// between options for a more polished feel and matches the rest
+    /// of the Liquid Glass family.
     private var rangeChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(rangeOptions, id: \.self) { days in
-                    Button {
-                        viewModel.healthImportRangeDays = days
-                    } label: {
-                        Text("Son \(days) gün")
-                            .font(NuvyraTypography.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .foregroundStyle(viewModel.healthImportRangeDays == days ? .white : .primary)
-                            .background(
-                                Capsule().fill(viewModel.healthImportRangeDays == days
-                                    ? NuvyraColors.accent
-                                    : Color.primary.opacity(0.07))
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+        NuvyraSegmentedPicker(
+            selection: $viewModel.healthImportRangeDays,
+            options: rangeOptions
+        ) { days in
+            Text("\(days) gün")
+        } accessibilityLabel: { days in
+            "Son \(days) gün"
         }
     }
 

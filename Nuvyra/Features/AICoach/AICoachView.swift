@@ -4,6 +4,7 @@ import SwiftUI
 struct AICoachView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var dependencies: DependencyContainer
+    @EnvironmentObject private var toastCenter: NuvyraToastCenter
     @StateObject private var viewModel = AICoachViewModel()
     @FocusState private var composerFocused: Bool
 
@@ -27,6 +28,18 @@ struct AICoachView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.load(context: modelContext, dependencies: dependencies)
+        }
+        // Coach errors (Anthropic 429 / network / decoding) routed to
+        // the shared toast bar so the inline error states stay reserved
+        // for "no insights at all" — transient blips don't push the
+        // entire chat surface into an empty-state card.
+        .onChange(of: viewModel.errorMessage) { _, message in
+            guard
+                let message,
+                !message.isEmpty,
+                viewModel.hasMessages || !viewModel.insights.isEmpty
+            else { return }
+            toastCenter.error(message)
         }
     }
 

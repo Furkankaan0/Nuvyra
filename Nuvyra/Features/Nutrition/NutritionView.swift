@@ -4,6 +4,7 @@ import SwiftUI
 struct NutritionView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var dependencies: DependencyContainer
+    @EnvironmentObject private var toastCenter: NuvyraToastCenter
     @StateObject private var viewModel = NutritionViewModel()
 
     var body: some View {
@@ -38,23 +39,14 @@ struct NutritionView: View {
                 .padding(NuvyraSpacing.lg)
             }
 
-            if let feedback = viewModel.actionFeedback {
-                VStack {
-                    Spacer()
-                    Text(feedback)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 10)
-                        .background(NuvyraColors.accent.opacity(0.92), in: Capsule())
-                        .padding(.bottom, NuvyraSpacing.xl)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-                .allowsHitTesting(false)
-            }
         }
         .navigationTitle(String(localized: "nutrition.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: viewModel.actionFeedback) { _, message in
+            guard let message else { return }
+            toastCenter.success(message)
+            viewModel.actionFeedback = nil
+        }
         .sheet(isPresented: $viewModel.showingAddMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
             AddFoodView(mode: .create(defaultMealType: viewModel.selectedMealType))
         }

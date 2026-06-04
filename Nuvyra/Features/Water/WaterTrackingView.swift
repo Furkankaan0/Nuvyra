@@ -6,6 +6,7 @@ struct WaterTrackingView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var scheme
     @EnvironmentObject private var dependencies: DependencyContainer
+    @EnvironmentObject private var toastCenter: NuvyraToastCenter
     @StateObject private var viewModel = WaterTrackingViewModel()
 
     var body: some View {
@@ -57,11 +58,14 @@ struct WaterTrackingView: View {
                 }
                 .transition(.opacity)
             }
-
-            feedbackOverlay
         }
         .navigationTitle("Su")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: viewModel.actionFeedback) { _, message in
+            guard let message else { return }
+            toastCenter.success(message)
+            viewModel.actionFeedback = nil
+        }
         .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
     }
 
@@ -205,25 +209,6 @@ struct WaterTrackingView: View {
             .foregroundStyle(.secondary)
     }
 
-    @ViewBuilder
-    private var feedbackOverlay: some View {
-        if let feedback = viewModel.actionFeedback {
-            VStack {
-                Spacer()
-                Text(feedback)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background(Color(red: 0.20, green: 0.56, blue: 0.95).opacity(0.92), in: Capsule())
-                    .shadow(color: Color(red: 0.20, green: 0.56, blue: 0.95).opacity(0.35), radius: 12, y: 6)
-                    .padding(.bottom, NuvyraSpacing.xl)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-            .allowsHitTesting(false)
-            .animation(.spring(response: 0.45, dampingFraction: 0.8), value: viewModel.actionFeedback)
-        }
-    }
 }
 
 private struct WaterEntryRow: View {

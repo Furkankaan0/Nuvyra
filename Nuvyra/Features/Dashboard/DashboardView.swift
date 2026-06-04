@@ -6,6 +6,7 @@ struct DashboardView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var dependencies: DependencyContainer
     @EnvironmentObject private var router: AppRouter
+    @EnvironmentObject private var toastCenter: NuvyraToastCenter
     @StateObject private var viewModel = DashboardViewModel()
 
     @State private var presentedSheet: DashboardSheet?
@@ -20,6 +21,16 @@ struct DashboardView: View {
                 LazyVStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     DashboardGreetingHeader(name: viewModel.greetingName, date: Date())
                         .padding(.top, NuvyraSpacing.xs)
+
+                    // First-launch skeleton: shown only while the initial
+                    // repository fetch is in flight *and* there's no
+                    // local data yet. Prevents the "zero everywhere"
+                    // flash that used to happen on the first second
+                    // after sign-up.
+                    if viewModel.isLoading && !viewModel.hasAnyData && viewModel.profile == nil {
+                        NuvyraCardSkeleton(style: .hero)
+                        NuvyraCardSkeleton(style: .strip)
+                    }
 
                     if viewModel.shouldShowDayOneTour {
                         DayOneTourCard(
@@ -152,11 +163,17 @@ struct DashboardView: View {
                 .padding(.bottom, NuvyraSpacing.lg)
             }
             .refreshable { await viewModel.load(context: modelContext, dependencies: dependencies) }
-
-            actionFeedbackOverlay
         }
         .navigationTitle("Nuvyra")
         .navigationBarTitleDisplayMode(.inline)
+        // Forward the view model's action feedback into the shared toast
+        // centre. Keeps the view model toast-agnostic (no DI bloat) while
+        // moving the user-facing flash to the brand renderer.
+        .onChange(of: viewModel.actionFeedback) { _, message in
+            guard let message else { return }
+            toastCenter.success(message)
+            viewModel.actionFeedback = nil
+        }
         .task {
             await viewModel.load(context: modelContext, dependencies: dependencies)
             withAnimation(reduceMotion ? nil : .spring(response: 0.7, dampingFraction: 0.78)) {
@@ -218,25 +235,6 @@ struct DashboardView: View {
         }
     }
 
-    @ViewBuilder
-    private var actionFeedbackOverlay: some View {
-        if let feedback = viewModel.actionFeedback {
-            VStack {
-                Spacer()
-                Text(feedback)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 18)
-                    .padding(.vertical, 10)
-                    .background(NuvyraColors.accent.opacity(0.92), in: Capsule())
-                    .shadow(color: NuvyraColors.accent.opacity(0.35), radius: 12, y: 6)
-                    .padding(.bottom, NuvyraSpacing.xl)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-            .allowsHitTesting(false)
-            .animation(.spring(response: 0.45, dampingFraction: 0.8), value: viewModel.actionFeedback)
-        }
-    }
 
     private func handle(_ action: DashboardQuickAction) {
         switch action {
