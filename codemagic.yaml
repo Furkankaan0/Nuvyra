@@ -230,7 +230,8 @@ workflows:
           mkdir -p /tmp/xcodebuild_logs
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME" 2>&1 | tee /tmp/xcodebuild_logs/build-ipa.log
+            --scheme "$XCODE_SCHEME" \
+            --verbose 2>&1 | tee /tmp/xcodebuild_logs/build-ipa.log
       - name: Validate IPA metadata
         script: |
           set -euo pipefail
