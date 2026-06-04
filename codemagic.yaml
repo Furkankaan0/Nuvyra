@@ -27,8 +27,24 @@ workflows:
           if xcrun -sdk iphonesimulator metal -help >/dev/null 2>&1; then
             echo "Metal Toolchain already available."
           else
-            echo "Metal Toolchain missing; downloading Xcode component."
-            xcodebuild -downloadComponent MetalToolchain
+            echo "Metal Toolchain missing; downloading and importing Xcode component."
+            METAL_EXPORT_DIR="/tmp/nuvyra-metal-toolchain"
+            rm -rf "$METAL_EXPORT_DIR"
+            mkdir -p "$METAL_EXPORT_DIR"
+
+            xcodebuild -downloadComponent MetalToolchain -exportPath "$METAL_EXPORT_DIR"
+            METAL_BUNDLE="$(find "$METAL_EXPORT_DIR" -name 'MetalToolchain*.exportedBundle' -print -quit)"
+            if [ -n "$METAL_BUNDLE" ]; then
+              xcodebuild -importComponent MetalToolchain -importPath "$METAL_BUNDLE" || true
+            fi
+
+            if ! xcrun -sdk iphonesimulator metal -help >/dev/null 2>&1; then
+              METAL_DMG="$(find /System/Library/AssetsV2/com_apple_MobileAsset_MetalToolchain -path '*/AssetData/Restore/*.dmg' -print 2>/dev/null | sort | tail -n 1)"
+              if [ -n "$METAL_DMG" ]; then
+                hdiutil attach -nobrowse -readonly "$METAL_DMG"
+              fi
+            fi
+
             xcrun -sdk iphonesimulator metal -help >/dev/null
           fi
       - name: Install XcodeGen if needed
@@ -124,8 +140,24 @@ workflows:
           if xcrun -sdk iphonesimulator metal -help >/dev/null 2>&1; then
             echo "Metal Toolchain already available."
           else
-            echo "Metal Toolchain missing; downloading Xcode component."
-            xcodebuild -downloadComponent MetalToolchain
+            echo "Metal Toolchain missing; downloading and importing Xcode component."
+            METAL_EXPORT_DIR="/tmp/nuvyra-metal-toolchain"
+            rm -rf "$METAL_EXPORT_DIR"
+            mkdir -p "$METAL_EXPORT_DIR"
+
+            xcodebuild -downloadComponent MetalToolchain -exportPath "$METAL_EXPORT_DIR"
+            METAL_BUNDLE="$(find "$METAL_EXPORT_DIR" -name 'MetalToolchain*.exportedBundle' -print -quit)"
+            if [ -n "$METAL_BUNDLE" ]; then
+              xcodebuild -importComponent MetalToolchain -importPath "$METAL_BUNDLE" || true
+            fi
+
+            if ! xcrun -sdk iphonesimulator metal -help >/dev/null 2>&1; then
+              METAL_DMG="$(find /System/Library/AssetsV2/com_apple_MobileAsset_MetalToolchain -path '*/AssetData/Restore/*.dmg' -print 2>/dev/null | sort | tail -n 1)"
+              if [ -n "$METAL_DMG" ]; then
+                hdiutil attach -nobrowse -readonly "$METAL_DMG"
+              fi
+            fi
+
             xcrun -sdk iphonesimulator metal -help >/dev/null
           fi
       - name: Install XcodeGen if needed
