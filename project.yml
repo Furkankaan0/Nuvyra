@@ -59,6 +59,11 @@ targets:
       - sdk: CoreHaptics.framework
       - sdk: AuthenticationServices.framework
       - sdk: WatchConnectivity.framework
+      - sdk: ARKit.framework
+      - sdk: RealityKit.framework
+      - sdk: Metal.framework
+      - sdk: MetalKit.framework
+      - sdk: CloudKit.framework
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nuvyra.app
@@ -176,3 +181,11 @@ schemes:
       targets:
         - NuvyraTests
       gatherCoverageData: true
+  NuvyraWatch:
+    build:
+      targets:
+        NuvyraWatch: all
+    run:
+      config: Debug
+    archive:
+      config: Release

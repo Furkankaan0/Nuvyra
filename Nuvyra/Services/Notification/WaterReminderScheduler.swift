@@ -45,6 +45,7 @@ final class DefaultWaterReminderScheduler: WaterReminderScheduler {
             content.title = "Su molası"
             content.body = "Kısa bir su molası ritmini canlı tutar."
             content.sound = .default
+            content.categoryIdentifier = NuvyraNotificationCategoryService.Category.waterReminder.rawValue
             let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
             let request = UNNotificationRequest(
                 identifier: "\(identifierPrefix).\(hour)",

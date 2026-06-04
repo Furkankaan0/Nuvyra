@@ -5,6 +5,7 @@ struct WalkingView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var dependencies: DependencyContainer
     @StateObject private var viewModel = WalkingViewModel()
+    @State private var isShowingARStepCounter = false
 
     var body: some View {
         ZStack {
@@ -20,6 +21,11 @@ struct WalkingView: View {
                         title: "Yürüyüş tarihi"
                     )
                     StepGoalCard(steps: viewModel.snapshot.steps, goal: viewModel.stepGoal, remaining: viewModel.remainingSteps)
+                    if viewModel.isViewingToday {
+                        NuvyraSecondaryButton(title: "AR adım sayacı", systemImage: "arkit") {
+                            isShowingARStepCounter = true
+                        }
+                    }
                     if viewModel.isViewingToday {
                         WalkingFocusCard(
                             isActive: viewModel.walkingFocusActive,
@@ -60,6 +66,9 @@ struct WalkingView: View {
         .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         .onReceive(NotificationCenter.default.publisher(for: .nuvyraAppDidBecomeActive)) { _ in
             Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+        }
+        .sheet(isPresented: $isShowingARStepCounter) {
+            NuvyraARStepCounterView(steps: viewModel.snapshot.steps, goal: viewModel.stepGoal)
         }
     }
 }

@@ -169,6 +169,9 @@ final class OnboardingViewModel: ObservableObject {
         await dependencies.analytics.track(.healthPermissionRequested, payload: AnalyticsPayload())
         healthState = await dependencies.healthService.requestAuthorization()
         if healthState == .sharingAuthorized {
+            _ = await dependencies.vitalsService.requestAuthorization()
+        }
+        if healthState == .sharingAuthorized {
             await dependencies.analytics.track(.healthPermissionGranted, payload: AnalyticsPayload())
         }
     }

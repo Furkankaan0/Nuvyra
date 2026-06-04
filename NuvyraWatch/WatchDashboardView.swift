@@ -10,6 +10,22 @@ struct WatchDashboardView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
+                    // Hero rhythm score — same formula the iPhone widget
+                    // uses, so the watch face number matches whatever
+                    // the user just saw on the lock screen.
+                    HStack {
+                        Spacer()
+                        WatchRhythmRing(
+                            calorieProgress: 0,    // no calorie data on the watch yet
+                            waterProgress: viewModel.waterProgress,
+                            stepProgress: viewModel.stepProgress,
+                            proteinProgress: 0
+                        )
+                        .frame(width: 110, height: 110)
+                        Spacer()
+                    }
+                    .padding(.vertical, 6)
+
                     metricCard(
                         title: "Su",
                         value: "\(viewModel.waterMl) ml",

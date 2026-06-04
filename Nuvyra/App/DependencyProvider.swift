@@ -26,6 +26,8 @@ protocol DependencyProvider: AnyObject {
     var foodRepository: FoodRepository { get }
     var weeklyInsightEngine: WeeklyInsightEngine { get }
     var mealTimingEngine: MealTimingEngine { get }
+    var vitalsService: NuvyraVitalsService { get }
+    var cloudSyncService: NuvyraCloudSyncService { get }
     var subscriptionManager: SubscriptionManager { get }
 
     // MARK: Repository factories (each returns a protocol type)

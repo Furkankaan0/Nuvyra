@@ -102,6 +102,10 @@ struct DashboardView: View {
                         .nuvyraScrollTilt()
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
+                    SleepHeartCard(vitals: viewModel.vitals)
+                        .nuvyraScrollTilt()
+                        .dashboardSlide(index: 10, animated: didAnimateAppearance)
+
                     if viewModel.weightSummary.latestWeightKg != nil {
                         NavigationLink(value: DashboardDestination.bodyMeasurements) {
                             WeightTrendCard(

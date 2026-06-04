@@ -16,6 +16,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var weeklyComparison: WeeklyComparison = .empty
     @Published var weightSummary: WeightTrendSummary = .empty
     @Published var mealTiming: MealTimingInsight = .empty
+    @Published var vitals: NuvyraVitalsSnapshot = .empty
     @Published var didCompleteDayOneTour: Bool = false
     @Published var pendingUpsell: UpsellTrigger?
 
@@ -247,6 +248,11 @@ final class DashboardViewModel: ObservableObject {
             // Today's meal-rhythm read — pure in-memory evaluation off the
             // meals we already fetched, no extra repo round-trip.
             mealTiming = dependencies.mealTimingEngine.evaluate(meals: meals, at: Date())
+
+            // Sleep + resting heart-rate snapshot. Runs in parallel with
+            // the rest of the load() and falls back silently to .empty
+            // when HealthKit auth is missing.
+            vitals = await dependencies.vitalsService.snapshot()
 
             // Day-one tour flag — read from AppSettings, auto-complete once every step is done.
             let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first

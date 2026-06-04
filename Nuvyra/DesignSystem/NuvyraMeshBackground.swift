@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Slowly-shifting "liquid" background. Two paths under one umbrella:
 ///
@@ -26,6 +27,7 @@ struct NuvyraMeshBackground: View {
             }
         }
         .ignoresSafeArea()
+        .nuvyraFluidDistortion(intensity: scheme == .dark ? 7 : 8)
     }
 
     // MARK: - iOS 18+ MeshGradient

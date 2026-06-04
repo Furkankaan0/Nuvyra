@@ -207,12 +207,23 @@ struct AddBodyMeasurementSheet: View {
             defer { isSaving = false }
             do {
                 try dependencies.weightRepository(context: modelContext).saveBodyMeasurement(snap)
+                await syncSavedMeasurement(for: snap.date)
                 dependencies.haptics.mealLogged()
                 dismiss()
             } catch {
                 errorMessage = "Kayıt başarısız oldu. Tekrar dene."
             }
         }
+    }
+
+    private func syncSavedMeasurement(for date: Date) async {
+        let day = Calendar.nuvyra.startOfDay(for: date)
+        let (start, end) = Calendar.nuvyra.startAndEndOfDay(for: day)
+        let descriptor = FetchDescriptor<WeightLog>(
+            predicate: #Predicate { $0.date >= start && $0.date < end }
+        )
+        guard let saved = try? modelContext.fetch(descriptor).first else { return }
+        try? await dependencies.cloudSyncService.push(saved)
     }
 
     private func delete(_ log: WeightLog) {

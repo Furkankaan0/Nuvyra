@@ -18,6 +18,12 @@ struct AppRootView: View {
             }
         }
         .tint(NuvyraColors.accent)
+        .onReceive(NotificationCenter.default.publisher(for: .nuvyraOpenNutritionRequested)) { _ in
+            router.selectedTab = .nutrition
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .nuvyraOpenWalkingRequested)) { _ in
+            router.selectedTab = .walking
+        }
     }
 }
 
