@@ -89,11 +89,24 @@ final class NuvyraToastCenter: ObservableObject {
     @Published private(set) var current: NuvyraToast?
 
     private var dismissTask: Task<Void, Never>?
+    /// Anti-spam memory: the last (kind, title) we surfaced and when.
+    /// Identical events fired inside `dedupeWindow` are suppressed so
+    /// repeat refresh actions don't shower the user with toasts.
+    private var lastShown: (key: String, at: Date)?
+    private let dedupeWindow: TimeInterval = 5.0
 
     /// Pushes a toast onto the bar. If one is already visible it is
     /// replaced — the user only ever sees the latest event from the
-    /// app, never a backlog.
+    /// app, never a backlog. Identical (kind + title) repeats inside
+    /// the dedupe window are dropped silently.
     func show(_ toast: NuvyraToast) {
+        let key = dedupeKey(for: toast)
+        if let lastShown,
+           lastShown.key == key,
+           Date().timeIntervalSince(lastShown.at) < dedupeWindow {
+            return
+        }
+        lastShown = (key, Date())
         dismissTask?.cancel()
         current = toast
         dismissTask = Task { @MainActor [weak self] in
@@ -102,6 +115,16 @@ final class NuvyraToastCenter: ObservableObject {
             if self.current?.id == toast.id {
                 self.current = nil
             }
+        }
+    }
+
+    /// Same kind + same title forms one event for dedupe purposes. Two
+    /// successive errors with different copies still both surface.
+    private func dedupeKey(for toast: NuvyraToast) -> String {
+        switch toast.kind {
+        case .success: return "success:\(toast.title)"
+        case .error: return "error:\(toast.title)"
+        case .info: return "info:\(toast.title)"
         }
     }
 

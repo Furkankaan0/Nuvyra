@@ -8,6 +8,9 @@ struct WaterTrackingView: View {
     @EnvironmentObject private var dependencies: DependencyContainer
     @EnvironmentObject private var toastCenter: NuvyraToastCenter
     @StateObject private var viewModel = WaterTrackingViewModel()
+    /// First-launch gate for the shimmer skeleton — matches the
+    /// Dashboard / Nutrition / Walking pattern.
+    @State private var hasLoadedOnce = false
 
     var body: some View {
         ZStack {
@@ -25,6 +28,10 @@ struct WaterTrackingView: View {
                         ),
                         title: "Su tarihi"
                     )
+                    if !hasLoadedOnce && viewModel.entries.isEmpty {
+                        NuvyraCardSkeleton(style: .hero)
+                        NuvyraCardSkeleton(style: .strip)
+                    }
                     WaterProgressCard(
                         summary: viewModel.summary,
                         label: Calendar.nuvyra.isDateInToday(viewModel.selectedDate) ? "Bugün" : viewModel.selectedDate.formatted(date: .abbreviated, time: .omitted)
@@ -66,7 +73,10 @@ struct WaterTrackingView: View {
             toastCenter.success(message)
             viewModel.actionFeedback = nil
         }
-        .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+        .task {
+            await viewModel.load(context: modelContext, dependencies: dependencies)
+            hasLoadedOnce = true
+        }
     }
 
     // MARK: - Background

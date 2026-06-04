@@ -21,6 +21,12 @@ struct NutritionView: View {
                     if !hasLoadedOnce && viewModel.meals.isEmpty {
                         NuvyraCardSkeleton(style: .hero)
                         NuvyraCardSkeleton(style: .strip)
+                    } else if hasLoadedOnce && viewModel.meals.isEmpty {
+                        // Loaded but no meals on the selected date — invite
+                        // the user to log their first entry instead of
+                        // dropping them straight into the zeroed daily
+                        // totals card.
+                        firstMealCTA
                     }
                     dailyTotalsCard
                     StreakCard(kind: .meal, insight: viewModel.streak)
@@ -108,6 +114,35 @@ struct NutritionView: View {
             title: String(localized: "nutrition.title"),
             subtitle: String(localized: "nutrition.header.subtitle")
         )
+    }
+
+    /// Empty-state placeholder shown when the selected date has no
+    /// meals yet. Uses the shared `NuvyraIllustratedPlaceholder` so the
+    /// look stays consistent with the Dashboard's empty-state card.
+    private var firstMealCTA: some View {
+        NuvyraGlassCard(.prominent) {
+            NuvyraIllustratedPlaceholder(
+                systemImage: "fork.knife",
+                title: "Bu güne ilk öğününü ekle",
+                subtitle: "Ekledikçe günlük makro toplamın aşağıdaki kartta birikir.",
+                bullets: ["Yemek ekle", "Ara", "Barkod"]
+            ) {
+                HStack(spacing: NuvyraSpacing.sm) {
+                    NuvyraPrimaryButton(
+                        title: String(localized: "nutrition.action.addMeal"),
+                        systemImage: "plus"
+                    ) {
+                        viewModel.showingAddMeal = true
+                    }
+                    NuvyraSecondaryButton(
+                        title: String(localized: "nutrition.action.search"),
+                        systemImage: "magnifyingglass"
+                    ) {
+                        viewModel.showingFoodSearch = true
+                    }
+                }
+            }
+        }
     }
 
     private var dateSelector: some View {

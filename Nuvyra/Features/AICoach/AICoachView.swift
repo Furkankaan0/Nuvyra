@@ -29,17 +29,15 @@ struct AICoachView: View {
         .task {
             await viewModel.load(context: modelContext, dependencies: dependencies)
         }
-        // Coach errors (Anthropic 429 / network / decoding) routed to
-        // the shared toast bar so the inline error states stay reserved
-        // for "no insights at all" — transient blips don't push the
-        // entire chat surface into an empty-state card.
+        // Every coach error funnels through the shared toast centre —
+        // the inline error card was removed in favour of an illustrated
+        // empty-state placeholder, and the toast carries the actionable
+        // copy. Dedupe is handled inside NuvyraToastCenter so a flaky
+        // network doesn't flood the user.
         .onChange(of: viewModel.errorMessage) { _, message in
-            guard
-                let message,
-                !message.isEmpty,
-                viewModel.hasMessages || !viewModel.insights.isEmpty
-            else { return }
+            guard let message, !message.isEmpty else { return }
             toastCenter.error(message)
+            viewModel.errorMessage = nil
         }
     }
 
@@ -78,15 +76,10 @@ struct AICoachView: View {
             title: String(localized: "aiCoach.insights.title"),
             subtitle: viewModel.isLoadingInsights ? String(localized: "aiCoach.insights.loading") : nil
         )
-        if let error = viewModel.errorMessage, viewModel.insights.isEmpty {
-            NuvyraErrorStateView(
-                title: String(localized: "ai.insights.error.title"),
-                message: error,
-                onRetry: {
-                    Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
-                }
-            )
-        } else if viewModel.insights.isEmpty, viewModel.isLoadingInsights {
+        // Transient errors flow through the global toast bar now; the
+        // empty-insights branch is reserved for "we genuinely have
+        // nothing to say yet" with an illustrated placeholder.
+        if viewModel.insights.isEmpty, viewModel.isLoadingInsights {
             NuvyraGlassCard {
                 HStack(spacing: NuvyraSpacing.sm) {
                     Image(systemName: "sparkles")
@@ -99,10 +92,20 @@ struct AICoachView: View {
                 }
             }
         } else if viewModel.insights.isEmpty {
-            NuvyraGlassCard {
-                Text("aiCoach.insights.empty")
-                    .font(NuvyraTypography.body)
-                    .foregroundStyle(.secondary)
+            NuvyraGlassCard(.prominent) {
+                NuvyraIllustratedPlaceholder(
+                    systemImage: "sparkles",
+                    title: String(localized: "aiCoach.title"),
+                    subtitle: String(localized: "aiCoach.insights.empty"),
+                    bullets: []
+                ) {
+                    NuvyraSecondaryButton(
+                        title: String(localized: "error.retry"),
+                        systemImage: "arrow.clockwise"
+                    ) {
+                        Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+                    }
+                }
             }
         } else {
             VStack(spacing: NuvyraSpacing.sm) {
