@@ -145,7 +145,7 @@ struct NuvyraAR3DRingView: View {
     /// materials are constructed from `Material.Color` (UIColor on
     /// iOS), so we sample the SwiftUI gradient at the segment's `t`.
     @MainActor
-    private static func ringMaterial(for t: Float) -> Material {
+    private static func ringMaterial(for t: Float) -> SimpleMaterial {
         let start = UIColor(NuvyraColors.accent)
         let end = UIColor(NuvyraColors.softMint)
         let blended = blend(start: start, end: end, t: t)
