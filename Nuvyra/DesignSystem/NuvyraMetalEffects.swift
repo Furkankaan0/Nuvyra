@@ -34,7 +34,7 @@ struct NuvyraFluidGlow: ViewModifier {
         if reduceMotion {
             content
         } else {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { context in
                 let t = Float(context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 600))
                 let rgba = Self.componentsOf(tint)
                 content
@@ -76,7 +76,7 @@ struct NuvyraMetalShimmer: ViewModifier {
         if reduceMotion {
             content
         } else {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { context in
                 let t = Float(context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 600))
                 content
                     .layerEffect(
@@ -117,7 +117,7 @@ struct NuvyraFluidDistortion: ViewModifier {
         if reduceMotion || intensity <= 0 {
             content
         } else {
-            TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+            TimelineView(.animation(minimumInterval: 1.0 / 24.0)) { context in
                 let t = Float(context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 600))
                 content.layerEffect(
                     ShaderLibrary.nuvyraFluidDistortion(

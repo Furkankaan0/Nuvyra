@@ -53,69 +53,49 @@ extension View {
 /// the eye reads it as "yes, you hit it" without any haptic.
 struct NuvyraGoalGlowModifier: ViewModifier {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var popScale: CGFloat = 1.0
     @State private var pulse: CGFloat = 1.0
     var isActive: Bool
     var tint: Color = NuvyraColors.accent
 
     func body(content: Content) -> some View {
         content
-            .scaleEffect(popScale)
             .background(glowLayers)
+            .onAppear { startPulseIfNeeded() }
             .onChange(of: isActive) { _, newValue in
-                guard newValue, !reduceMotion else { return }
-                playPop()
-            }
-            .onAppear {
-                guard isActive, !reduceMotion else { return }
-                // Pulse the glow gently while the goal stays reached so
-                // the user keeps catching it at scroll.
-                withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
-                    pulse = 1.08
-                }
+                if newValue { startPulseIfNeeded() } else { pulse = 1.0 }
             }
     }
 
+    /// Two-layer halo (inner + outer). Three layers added optical
+    /// confusion when stacked with the host ring's own shadow / breath
+    /// modifier — the middle ring's pulse phase didn't line up with the
+    /// inner one and read as a flicker. Trimming to two keeps the depth
+    /// without the conflict.
     @ViewBuilder
     private var glowLayers: some View {
         if isActive {
             ZStack {
-                // Inner halo — sits right at the ring stroke.
                 Circle()
-                    .fill(tint.opacity(0.18))
-                    .blur(radius: 14)
-                    .scaleEffect(pulse * 0.94)
-                // Mid halo — gives the "depth" to the glow.
+                    .fill(tint.opacity(0.16))
+                    .blur(radius: 16)
+                    .scaleEffect(pulse * 0.98)
                 Circle()
-                    .fill(tint.opacity(0.10))
-                    .blur(radius: 28)
-                    .scaleEffect(pulse * 1.06)
-                // Outer halo — barely visible, anchors the effect to the
-                // card so it doesn't look like a bug.
-                Circle()
-                    .fill(tint.opacity(0.05))
-                    .blur(radius: 48)
-                    .scaleEffect(pulse * 1.20)
+                    .fill(tint.opacity(0.07))
+                    .blur(radius: 36)
+                    .scaleEffect(pulse * 1.12)
             }
             .allowsHitTesting(false)
         }
     }
 
-    /// One-shot scale pop on activation. Spring physics — same response
-    /// shape the press tilt uses so the family feels coherent.
-    private func playPop() {
-        withAnimation(.spring(response: 0.34, dampingFraction: 0.62)) {
-            popScale = 1.08
-        }
-        Task { @MainActor in
-            try? await Task.sleep(nanoseconds: 220_000_000)
-            withAnimation(.spring(response: 0.42, dampingFraction: 0.78)) {
-                popScale = 1.0
-            }
-            // Kick the pulse loop now that the pop has settled.
-            withAnimation(.easeInOut(duration: 2.4).repeatForever(autoreverses: true)) {
-                pulse = 1.08
-            }
+    /// Single source of truth for the pulse loop. Idempotent: the
+    /// `pulse` state is reset to 1.0 first so re-activations after a
+    /// dormant period start from a clean baseline instead of jumping.
+    private func startPulseIfNeeded() {
+        guard isActive, !reduceMotion else { return }
+        pulse = 1.0
+        withAnimation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true)) {
+            pulse = 1.08
         }
     }
 }

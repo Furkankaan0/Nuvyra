@@ -72,12 +72,26 @@ struct DashboardRhythmHero: View {
                 .stroke(NuvyraColors.accent.opacity(scheme == .dark ? 0.22 : 0.14), lineWidth: 12)
 
             // Gradient progress arc.
-            Circle()
-                .trim(from: 0, to: animatedScore)
-                .stroke(NuvyraColors.accentGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .shadow(color: NuvyraColors.accent.opacity(0.36), radius: 10, x: 0, y: 4)
-                .nuvyraFluidGlow()
+            // Gradient progress arc. The Metal fluid-glow modifier is
+            // *only* applied once the rhythm reaches the goal so the
+            // shader's 24 fps TimelineView doesn't burn cycles all day
+            // — it's a reward effect, not ambient decoration.
+            Group {
+                if hasReachedGoal {
+                    Circle()
+                        .trim(from: 0, to: animatedScore)
+                        .stroke(NuvyraColors.accentGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .shadow(color: NuvyraColors.accent.opacity(0.36), radius: 10, x: 0, y: 4)
+                        .nuvyraFluidGlow()
+                } else {
+                    Circle()
+                        .trim(from: 0, to: animatedScore)
+                        .stroke(NuvyraColors.accentGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .shadow(color: NuvyraColors.accent.opacity(0.28), radius: 8, x: 0, y: 3)
+                }
+            }
 
             // Shimmer overlay — only paints once the rhythm is "on".
             // Reads as a premium reward instead of an always-on

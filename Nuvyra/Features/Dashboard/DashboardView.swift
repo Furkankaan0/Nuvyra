@@ -74,8 +74,11 @@ struct DashboardView: View {
                             onRemove: { Task { await viewModel.removeLastWater(context: modelContext, dependencies: dependencies) } }
                         )
                     }
+                    // NavigationLink-wrapped cards use *only* press tilt.
+                    // Stacking scrollTilt on top adds a second X-axis
+                    // rotation3DEffect that conflicts with the tap-down
+                    // tilt and reads as a jitter while the card scrolls.
                     .buttonStyle(.nuvyraPressTilt)
-                    .nuvyraScrollTilt()
                     .dashboardSlide(index: 5, animated: didAnimateAppearance)
 
                     StepRingCard(summary: viewModel.stepSummary) {
@@ -115,7 +118,6 @@ struct DashboardView: View {
                             )
                         }
                         .buttonStyle(.nuvyraPressTilt)
-                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 11, animated: didAnimateAppearance)
                     }
 
@@ -134,7 +136,6 @@ struct DashboardView: View {
                         DailyInsightCard(text: viewModel.insight, onAskCoach: nil)
                     }
                     .buttonStyle(.nuvyraPressTilt)
-                    .nuvyraScrollTilt()
                     .dashboardSlide(index: 14, animated: didAnimateAppearance)
 
                     if !viewModel.shouldShowDayOneTour && !viewModel.hasAnyData {

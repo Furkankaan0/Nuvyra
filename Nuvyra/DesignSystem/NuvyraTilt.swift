@@ -63,9 +63,11 @@ extension ButtonStyle where Self == NuvyraPressTiltStyle {
 /// Requires iOS 17's `.scrollTransition(_:transition:)`. ReduceMotion
 /// disables the rotation entirely so the card sits flat.
 extension View {
-    /// - parameter maxDegrees: peak tilt at the top/bottom of the visible
-    ///   strip. 4° feels right for hero cards on iPhone-sized screens.
-    func nuvyraScrollTilt(maxDegrees: Double = 4) -> some View {
+    /// Default 2.5° — the previous 4° was readable on its own, but it
+    /// kept compounding with the host ring's breath modifier on the
+    /// rhythm-hero card and read as a wobble. 2.5° keeps the depth
+    /// without conflict.
+    func nuvyraScrollTilt(maxDegrees: Double = 2.5) -> some View {
         modifier(NuvyraScrollTiltModifier(maxDegrees: maxDegrees))
     }
 }
@@ -75,23 +77,21 @@ private struct NuvyraScrollTiltModifier: ViewModifier {
     var maxDegrees: Double
 
     func body(content: Content) -> some View {
-        // `.scrollTransition` runs during the scroll, passing the
-        // ScrollTransitionPhase that says where we are relative to the
-        // visible bounds. We map that to a small rotation3DEffect.
+        // We deliberately dropped the opacity falloff that used to come
+        // with this modifier. On animated backgrounds (mesh / blurred
+        // blobs) the falloff plus a parallax tilt read as flicker
+        // because the alpha kept changing under the user's eye during
+        // the scroll. Pure rotation reads steadier and still gives the
+        // "next card is on the way" affordance.
         content.scrollTransition(.interactive, axis: .vertical) { view, phase in
-            let value = phase.value  // -1 (top fold) → 0 (centre) → 1 (bottom fold)
+            let value = phase.value
             let degrees = reduceMotion ? 0 : Double(value) * maxDegrees
-            return view
-                .rotation3DEffect(
-                    .degrees(degrees),
-                    axis: (x: 1, y: 0, z: 0),
-                    anchor: .center,
-                    perspective: 0.6
-                )
-                // A whisper of opacity falloff at the very top/bottom so
-                // cards feel like they're slipping behind the safe area
-                // instead of getting hard-clipped.
-                .opacity(reduceMotion ? 1 : (1 - abs(Double(value)) * 0.05))
+            return view.rotation3DEffect(
+                .degrees(degrees),
+                axis: (x: 1, y: 0, z: 0),
+                anchor: .center,
+                perspective: 0.5
+            )
         }
     }
 }

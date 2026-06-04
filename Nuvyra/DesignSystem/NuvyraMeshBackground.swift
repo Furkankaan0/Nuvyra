@@ -38,7 +38,7 @@ struct NuvyraMeshBackground: View {
         // morphs between three palettes (warm / mint / sand) over 12s.
         // `points` (control-point lattice) is fixed — only colours move,
         // which keeps the perceived motion calm.
-        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 30.0)) { context in
+        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 24.0)) { context in
             let phase = reduceMotion
                 ? 0.0
                 : sin(context.date.timeIntervalSinceReferenceDate * (.pi / 6.0)) * 0.5 + 0.5
@@ -116,7 +116,7 @@ struct NuvyraMeshBackground: View {
     // MARK: - iOS 17 fallback (TimelineView + Canvas)
 
     private var canvasFallback: some View {
-        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 30.0)) { context in
+        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 24.0)) { context in
             Canvas { ctx, size in
                 // Static base gradient — same calmGradient the original
                 // background uses, painted with a Path so Canvas can

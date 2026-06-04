@@ -54,28 +54,29 @@ struct NuvyraConfettiBurst: View {
     var duration: Double = 1.4
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
-            Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
-                guard !reduceMotion else { return }
-                let now = context.date.timeIntervalSinceReferenceDate
-                let elapsed = now - field.startTime
-                guard field.isActive, elapsed >= 0, elapsed < duration else { return }
-                drawField(ctx: ctx, size: size, elapsed: elapsed)
-            } symbols: {
-                // Pre-resolved symbol glyphs. The canvas renders them by
-                // index (matches particle.symbolIndex). We always provide
-                // the symbol set even in `.circles` mode so SwiftUI
-                // doesn't have to rebuild the ViewBuilder on style switch.
-                ForEach(Array(symbolPaletteFor(style: style).enumerated()), id: \.offset) { index, name in
-                    Image(systemName: name)
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                        .tag(index)
+        Group {
+            if isPlaying {
+                // Only spin up the TimelineView / Canvas during the
+                // active 1.4 s window. Without this gate every host
+                // (StreakCard, AchievementShareCard, …) keeps a 30 fps
+                // canvas re-drawing forever, which is exactly the kind
+                // of background load that makes the UI feel "off".
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { context in
+                    Canvas(opaque: false, rendersAsynchronously: false) { ctx, size in
+                        guard !reduceMotion else { return }
+                        let elapsed = context.date.timeIntervalSinceReferenceDate - field.startTime
+                        guard field.isActive, elapsed >= 0, elapsed < duration else { return }
+                        drawField(ctx: ctx, size: size, elapsed: elapsed)
+                    } symbols: {
+                        symbolBank
+                    }
                 }
+            } else {
+                Color.clear
             }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
         }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
         .onChange(of: trigger) { _, _ in
             guard !reduceMotion else { return }
             let symbolCount = symbolPaletteFor(style: style).count
@@ -84,6 +85,37 @@ struct NuvyraConfettiBurst: View {
                 palette: palette,
                 symbolCount: symbolCount
             )
+            // Schedule a quick stop right after the window ends so the
+            // canvas tears itself down instead of idling on screen.
+            scheduleAutoStop()
+        }
+    }
+
+    /// `true` for the brief duration of an active burst. Drives the
+    /// conditional TimelineView so we don't hold an animation timer
+    /// open between celebrations.
+    @State private var isPlaying: Bool = false
+
+    private func scheduleAutoStop() {
+        isPlaying = true
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000) + 100_000_000)
+            isPlaying = false
+        }
+    }
+
+    /// Symbol bank for the canvas's `symbols:` builder. Pre-resolves
+    /// each glyph so the draw loop can reference an Int index instead
+    /// of a name string per frame. Returns an empty bank in `.circles`
+    /// mode — Canvas tolerates a zero-element builder cleanly.
+    @ViewBuilder
+    private var symbolBank: some View {
+        let names = symbolPaletteFor(style: style)
+        ForEach(0..<names.count, id: \.self) { index in
+            Image(systemName: names[index])
+                .font(.system(size: 18, weight: .bold))
+                .foregroundStyle(.white)
+                .tag(index)
         }
     }
 
