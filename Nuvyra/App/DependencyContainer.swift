@@ -77,7 +77,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
         self.weeklyInsightEngine = weeklyInsightEngine ?? DefaultWeeklyInsightEngine()
         self.mealTimingEngine = mealTimingEngine ?? DefaultMealTimingEngine()
         self.vitalsService = vitalsService ?? LiveNuvyraVitalsService()
-        self.cloudSyncService = cloudSyncService ?? LiveNuvyraCloudSyncService()
+        self.cloudSyncService = cloudSyncService ?? DisabledNuvyraCloudSyncService()
         self.subscriptionManager = subscriptionManager
             ?? SubscriptionManager(storeKitService: storeKitService)
     }

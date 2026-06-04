@@ -141,6 +141,25 @@ final class LiveNuvyraCloudSyncService: NuvyraCloudSyncService {
     }
 }
 
+/// Production-safe fallback used while App Store signing profiles do not carry
+/// CloudKit entitlements. It keeps Nuvyra local-first and avoids touching
+/// `CKContainer` during app launch, which can terminate the app when the
+/// entitlement is absent.
+@MainActor
+final class DisabledNuvyraCloudSyncService: NuvyraCloudSyncService {
+    func accountStatus() async -> CKAccountStatus {
+        .couldNotDetermine
+    }
+
+    func push<T: NuvyraSyncable>(_ value: T) async throws {
+        throw NuvyraSyncError.iCloudUnavailable
+    }
+
+    func fetchAll<T: NuvyraSyncable>(_ type: T.Type) async throws -> [T] {
+        throw NuvyraSyncError.iCloudUnavailable
+    }
+}
+
 /// In-memory stub used by tests and previews. Keeps every pushed
 /// record in a dictionary keyed by record type so tests can assert on
 /// shape without spinning up a real CKContainer.
