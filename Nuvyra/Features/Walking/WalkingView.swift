@@ -5,6 +5,9 @@ struct WalkingView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var dependencies: DependencyContainer
     @StateObject private var viewModel = WalkingViewModel()
+    /// First-launch gate for the shimmer skeleton — matches the
+    /// NutritionView / DashboardView pattern.
+    @State private var hasLoadedOnce = false
     @State private var isShowingARStepCounter = false
 
     var body: some View {
@@ -20,6 +23,10 @@ struct WalkingView: View {
                         ),
                         title: "Yürüyüş tarihi"
                     )
+                    if !hasLoadedOnce && viewModel.snapshot.steps == 0 && viewModel.logs.isEmpty {
+                        NuvyraCardSkeleton(style: .hero)
+                        NuvyraCardSkeleton(style: .strip)
+                    }
                     StepGoalCard(steps: viewModel.snapshot.steps, goal: viewModel.stepGoal, remaining: viewModel.remainingSteps)
                     if viewModel.isViewingToday {
                         NuvyraSecondaryButton(title: "AR adım sayacı", systemImage: "arkit") {
@@ -63,7 +70,10 @@ struct WalkingView: View {
         }
         .navigationTitle("Yürüyüş")
         .navigationBarTitleDisplayMode(.inline)
-        .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+        .task {
+            await viewModel.load(context: modelContext, dependencies: dependencies)
+            hasLoadedOnce = true
+        }
         .onReceive(NotificationCenter.default.publisher(for: .nuvyraAppDidBecomeActive)) { _ in
             Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         }

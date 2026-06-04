@@ -140,15 +140,29 @@ private struct NuvyraToastOverlayModifier: ViewModifier {
     @EnvironmentObject private var center: NuvyraToastCenter
 
     func body(content: Content) -> some View {
-        content.overlay(alignment: .top) {
-            if let toast = center.current {
-                NuvyraToastView(toast: toast) { center.dismiss() }
-                    .padding(.horizontal, NuvyraSpacing.lg)
-                    .padding(.top, NuvyraSpacing.sm)
-                    .transition(.move(edge: .top).combined(with: .opacity))
+        content
+            .overlay(alignment: .top) {
+                if let toast = center.current {
+                    NuvyraToastView(toast: toast) { center.dismiss() }
+                        .padding(.horizontal, NuvyraSpacing.lg)
+                        .padding(.top, NuvyraSpacing.sm)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
             }
-        }
-        .animation(.spring(response: 0.48, dampingFraction: 0.84), value: center.current?.id)
+            .animation(.spring(response: 0.48, dampingFraction: 0.84), value: center.current?.id)
+            // Pair each toast appearance with a matching Core Haptics
+            // pulse so the user feels the same signal they read. iOS 17+
+            // `.sensoryFeedback(_:trigger:)` handles the engine + dispose
+            // dance for us and is a no-op when the user has disabled
+            // system haptics.
+            .sensoryFeedback(trigger: center.current?.id) { _, _ in
+                guard let toast = center.current else { return nil }
+                switch toast.kind {
+                case .success: return .success
+                case .error:   return .error
+                case .info:    return .selection
+                }
+            }
     }
 }
 

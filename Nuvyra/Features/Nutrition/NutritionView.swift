@@ -6,6 +6,10 @@ struct NutritionView: View {
     @EnvironmentObject private var dependencies: DependencyContainer
     @EnvironmentObject private var toastCenter: NuvyraToastCenter
     @StateObject private var viewModel = NutritionViewModel()
+    /// First-launch gate for the shimmer skeleton. Flips on the first
+    /// completed load so the placeholder doesn't reappear between
+    /// pull-to-refresh cycles.
+    @State private var hasLoadedOnce = false
 
     var body: some View {
         ZStack {
@@ -14,6 +18,10 @@ struct NutritionView: View {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     header
                     dateSelector
+                    if !hasLoadedOnce && viewModel.meals.isEmpty {
+                        NuvyraCardSkeleton(style: .hero)
+                        NuvyraCardSkeleton(style: .strip)
+                    }
                     dailyTotalsCard
                     StreakCard(kind: .meal, insight: viewModel.streak)
                     FoodQualityCard(totals: viewModel.summary.totals, target: viewModel.macroTarget)
@@ -89,7 +97,10 @@ struct NutritionView: View {
             HealthDietaryImportView(viewModel: viewModel)
                 .environmentObject(dependencies)
         }
-        .task { viewModel.load(context: modelContext, dependencies: dependencies) }
+        .task {
+            viewModel.load(context: modelContext, dependencies: dependencies)
+            hasLoadedOnce = true
+        }
     }
 
     private var header: some View {
