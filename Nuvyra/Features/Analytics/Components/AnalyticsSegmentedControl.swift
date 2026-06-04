@@ -1,38 +1,19 @@
 import SwiftUI
 
+/// Period picker for the Analytics screen. Wraps the brand-side
+/// `NuvyraSegmentedPicker` so this file stays as the single place we'd
+/// patch if the Analytics period list ever grew a new entry.
 struct AnalyticsSegmentedControl: View {
-    @Environment(\.colorScheme) private var scheme
     @Binding var selection: AnalyticsPeriod
 
     var body: some View {
-        HStack(spacing: NuvyraSpacing.xs) {
-            ForEach(AnalyticsPeriod.allCases) { period in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.24)) {
-                        selection = period
-                    }
-                } label: {
-                    Text(period.title)
-                        .font(.headline.weight(.bold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .foregroundStyle(selection == period ? .white : NuvyraColors.primaryText(scheme))
-                        .background {
-                            if selection == period {
-                                Capsule()
-                                    .fill(LinearGradient(colors: [NuvyraColors.accent, NuvyraColors.softMint], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            } else {
-                                Capsule().fill(Color.clear)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(period.title)
-                .accessibilityValue(selection == period ? "Seçili" : "Seçili değil")
-            }
+        NuvyraSegmentedPicker(
+            selection: $selection,
+            options: AnalyticsPeriod.allCases
+        ) { period in
+            Text(period.title)
+        } accessibilityLabel: { period in
+            period.title
         }
-        .padding(5)
-        .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().stroke(Color.white.opacity(scheme == .dark ? 0.08 : 0.34)))
     }
 }

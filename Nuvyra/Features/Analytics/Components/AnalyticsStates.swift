@@ -1,34 +1,14 @@
 import SwiftUI
 
-/// Loading state — small glass surface with a spinner, so the page doesn't
-/// flash empty between view appear and the first repository fetch landing.
+/// Loading state — shimmer-filled skeletons that match the eventual
+/// chart layout. Avoids the layout jump that a generic spinner card
+/// would cause when the real data arrives.
 struct AnalyticsLoadingState: View {
-    @Environment(\.colorScheme) private var scheme
-
     var body: some View {
-        NuvyraGlassCard {
-            HStack(spacing: NuvyraSpacing.md) {
-                ZStack {
-                    Circle().fill(.ultraThinMaterial)
-                    Circle().fill(NuvyraColors.accent.opacity(scheme == .dark ? 0.20 : 0.14))
-                    Circle().stroke(NuvyraColors.glassStroke(scheme), lineWidth: 0.6)
-                    Image(systemName: "chart.line.uptrend.xyaxis")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(NuvyraColors.accent)
-                        .nuvyraLoadingPulse(true)
-                }
-                .frame(width: 44, height: 44)
-                .nuvyraShadow(.ambient, scheme: scheme)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Analiz hazırlanıyor")
-                        .font(NuvyraTypography.section)
-                    Text("Haftalık ve aylık ritim verilerin toplanıyor.")
-                        .font(NuvyraTypography.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer(minLength: 0)
-            }
+        VStack(spacing: NuvyraSpacing.md) {
+            NuvyraCardSkeleton(style: .hero)
+            NuvyraCardSkeleton(style: .hero)
+            NuvyraCardSkeleton(style: .strip)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Analiz hazırlanıyor")

@@ -1,0 +1,242 @@
+import SwiftUI
+
+/// Glass-tinted notification toast. Three pieces:
+///
+/// - **`NuvyraToast`** is the value type. A toast is identifiable so
+///   the centre can replace an in-flight one when a new event lands
+///   on the same key (e.g. fresh water save toast on top of the old).
+/// - **`NuvyraToastCenter`** is the ObservableObject that hosts the
+///   active toast and handles queueing + auto-dismiss. Lives on the
+///   environment via `@EnvironmentObject`.
+/// - **`.nuvyraToastOverlay()`** is the View modifier the app root
+///   applies once; it picks up the centre from the environment and
+///   draws the toast above all content.
+///
+/// Why a centre instead of per-screen `actionFeedback` strings? Three
+/// reasons:
+///   1. The dashboard, nutrition and water screens all flash their own
+///      home-grown overlay today. Different shape, different timing,
+///      different swipe behaviour.
+///   2. Replacing them with one centre + one renderer means there is
+///      a single place to apply Liquid Glass + reduce-motion + haptic
+///      polish.
+///   3. Errors raised by services (NuvyraSyncError, AICoachError) can
+///      be surfaced through the same channel without each screen
+///      knowing how to render them.
+
+// MARK: - Model
+
+struct NuvyraToast: Identifiable, Equatable {
+    enum Kind: Equatable {
+        case success
+        case error
+        case info
+
+        var tint: Color {
+            switch self {
+            case .success: NuvyraColors.accent
+            case .error: NuvyraColors.mutedCoral
+            case .info: NuvyraColors.softSand
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .success: "checkmark.circle.fill"
+            case .error: "exclamationmark.triangle.fill"
+            case .info: "info.circle.fill"
+            }
+        }
+
+        var hapticName: String {
+            switch self {
+            case .success: "success"
+            case .error: "warning"
+            case .info: "selection"
+            }
+        }
+    }
+
+    let id: UUID
+    let kind: Kind
+    let title: String
+    /// Optional second line. Single-line toasts read faster; the
+    /// second line is reserved for context the title can't carry.
+    let detail: String?
+    /// Total display time. Defaults to 2.4 s — long enough to read a
+    /// short Turkish sentence, short enough to feel non-intrusive.
+    let duration: TimeInterval
+
+    init(
+        id: UUID = UUID(),
+        kind: Kind,
+        title: String,
+        detail: String? = nil,
+        duration: TimeInterval = 2.4
+    ) {
+        self.id = id
+        self.kind = kind
+        self.title = title
+        self.detail = detail
+        self.duration = duration
+    }
+}
+
+// MARK: - Centre
+
+@MainActor
+final class NuvyraToastCenter: ObservableObject {
+    @Published private(set) var current: NuvyraToast?
+
+    private var dismissTask: Task<Void, Never>?
+
+    /// Pushes a toast onto the bar. If one is already visible it is
+    /// replaced — the user only ever sees the latest event from the
+    /// app, never a backlog.
+    func show(_ toast: NuvyraToast) {
+        dismissTask?.cancel()
+        current = toast
+        dismissTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(toast.duration * 1_000_000_000))
+            guard let self else { return }
+            if self.current?.id == toast.id {
+                self.current = nil
+            }
+        }
+    }
+
+    /// Convenience for the success-text-only path that most screens
+    /// were already using ad-hoc.
+    func success(_ message: String) {
+        show(NuvyraToast(kind: .success, title: message))
+    }
+
+    func error(_ message: String, detail: String? = nil) {
+        show(NuvyraToast(kind: .error, title: message, detail: detail, duration: 3.2))
+    }
+
+    func info(_ message: String) {
+        show(NuvyraToast(kind: .info, title: message))
+    }
+
+    func dismiss() {
+        dismissTask?.cancel()
+        current = nil
+    }
+}
+
+// MARK: - Renderer
+
+extension View {
+    /// Mount this once at the app root so every screen shares the same
+    /// renderer. The centre is read from the environment object so
+    /// any nested view can call `center.success(...)`.
+    func nuvyraToastOverlay() -> some View {
+        modifier(NuvyraToastOverlayModifier())
+    }
+}
+
+private struct NuvyraToastOverlayModifier: ViewModifier {
+    @EnvironmentObject private var center: NuvyraToastCenter
+
+    func body(content: Content) -> some View {
+        content.overlay(alignment: .top) {
+            if let toast = center.current {
+                NuvyraToastView(toast: toast) { center.dismiss() }
+                    .padding(.horizontal, NuvyraSpacing.lg)
+                    .padding(.top, NuvyraSpacing.sm)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.48, dampingFraction: 0.84), value: center.current?.id)
+    }
+}
+
+private struct NuvyraToastView: View {
+    @Environment(\.colorScheme) private var scheme
+    let toast: NuvyraToast
+    let onDismiss: () -> Void
+
+    @State private var dragOffset: CGFloat = 0
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: NuvyraRadius.lg, style: .continuous)
+        return HStack(alignment: .top, spacing: NuvyraSpacing.sm) {
+            ZStack {
+                Circle().fill(toast.kind.tint.opacity(scheme == .dark ? 0.22 : 0.16))
+                Image(systemName: toast.kind.systemImage)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(toast.kind.tint)
+            }
+            .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(toast.title)
+                    .font(.subheadline.weight(.bold))
+                if let detail = toast.detail {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, NuvyraSpacing.md)
+        .padding(.vertical, NuvyraSpacing.sm)
+        .background(.ultraThinMaterial, in: shape)
+        .overlay(shape.stroke(NuvyraColors.glassStroke(scheme), lineWidth: 0.7))
+        .overlay(
+            shape
+                .strokeBorder(NuvyraColors.specularHighlight(scheme), lineWidth: 1)
+                .mask(LinearGradient(colors: [Color.black, Color.black.opacity(0)], startPoint: .top, endPoint: .center))
+                .allowsHitTesting(false)
+        )
+        .nuvyraShadow(.floating, scheme: scheme)
+        .offset(y: dragOffset)
+        .gesture(
+            DragGesture()
+                .onChanged { value in
+                    // Allow drag-up to dismiss; clamp downward drag so
+                    // the toast doesn't slide into the dashboard body.
+                    dragOffset = min(value.translation.height, 0)
+                }
+                .onEnded { value in
+                    if value.translation.height < -24 {
+                        onDismiss()
+                    } else {
+                        withAnimation(.spring(response: 0.34, dampingFraction: 0.78)) {
+                            dragOffset = 0
+                        }
+                    }
+                }
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(toast.kind == .error ? "Hata: " : "")\(toast.title)")
+        .accessibilityHint("Yukarı kaydırarak kapat.")
+    }
+}
+
+#if DEBUG
+#Preview("Toast variants") {
+    struct DemoView: View {
+        @StateObject private var center = NuvyraToastCenter()
+        var body: some View {
+            ZStack {
+                NuvyraBackground(.animated)
+                VStack(spacing: NuvyraSpacing.md) {
+                    Spacer()
+                    Button("Success") { center.success("250 ml su eklendi") }
+                    Button("Error") { center.error("Kayıt başarısız", detail: "Yeniden bağlanmayı denedik, sonuç olmadı.") }
+                    Button("Info") { center.info("Yarın için hatırlatma kuruldu") }
+                    Spacer()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .environmentObject(center)
+            .nuvyraToastOverlay()
+        }
+    }
+    return DemoView()
+}
+#endif
