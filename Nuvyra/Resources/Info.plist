@@ -37,43 +37,6 @@
       <key>CFBundleIconName</key>
       <string>AppIcon</string>
     </dict>
-    <!-- Alternate icons. Each entry needs matching raster sets at
-         60pt + 76pt 1x/2x/3x dropped into Resources/AppIconFiles.
-         Until the artwork lands the picker silently falls back to an
-         SF Symbol placeholder, so this scaffold is safe to ship. -->
-    <key>CFBundleAlternateIcons</key>
-    <dict>
-      <key>AppIcon-Mint</key>
-      <dict>
-        <key>CFBundleIconFiles</key>
-        <array>
-          <string>AppIcon-Mint60x60</string>
-          <string>AppIcon-Mint76x76</string>
-        </array>
-        <key>UIPrerenderedIcon</key>
-        <false/>
-      </dict>
-      <key>AppIcon-Sand</key>
-      <dict>
-        <key>CFBundleIconFiles</key>
-        <array>
-          <string>AppIcon-Sand60x60</string>
-          <string>AppIcon-Sand76x76</string>
-        </array>
-        <key>UIPrerenderedIcon</key>
-        <false/>
-      </dict>
-      <key>AppIcon-Night</key>
-      <dict>
-        <key>CFBundleIconFiles</key>
-        <array>
-          <string>AppIcon-Night60x60</string>
-          <string>AppIcon-Night76x76</string>
-        </array>
-        <key>UIPrerenderedIcon</key>
-        <false/>
-      </dict>
-    </dict>
   </dict>
   <key>CFBundlePackageType</key>
   <string>APPL</string>

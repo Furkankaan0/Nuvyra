@@ -1,29 +1,19 @@
 import UIKit
 
-/// The set of alternate app icons Nuvyra ships. Adding a new entry here
-/// requires three things:
-///   1. The `key` must match the `CFBundleAlternateIcons` dictionary key
-///      added to `Nuvyra/Resources/Info.plist`.
-///   2. A 60pt + 76pt 1x/2x/3x asset set must be added to the project's
-///      icons folder (the placeholder catalogue in `Resources/AppIconFiles`).
-///   3. The `previewSystemImage` is what the picker draws when the asset
-///      isn't bundled yet — this lets us ship the UI scaffold first and
-///      drop in the artwork later without breaking the screen.
+/// The set of app icons Nuvyra currently ships.
+///
+/// Add alternate cases only after their matching `CFBundleAlternateIcons`
+/// entries and raster icon files are bundled, otherwise App Store Connect
+/// rejects the upload with invalid image path errors.
 enum NuvyraAppIcon: String, CaseIterable, Identifiable {
     /// Default Apple-icon-name token. iOS treats `nil` as the primary icon.
     case `default`
-    case mint
-    case sand
-    case night
 
-    /// `nil` for the primary icon — UIKit insists on `nil` and not the
+    /// `nil` for the primary icon; UIKit insists on `nil` and not the
     /// string "default".
     var alternateKey: String? {
         switch self {
         case .default: nil
-        case .mint: "AppIcon-Mint"
-        case .sand: "AppIcon-Sand"
-        case .night: "AppIcon-Night"
         }
     }
 
@@ -32,29 +22,18 @@ enum NuvyraAppIcon: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .default: "Nuvyra"
-        case .mint: "Mint"
-        case .sand: "Soft Sand"
-        case .night: "Gece"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .default: "Varsayılan"
-        case .mint: "Sakin yeşil ton"
-        case .sand: "Sıcak kum tonu"
-        case .night: "Karanlık ekranlar için"
+        case .default: "Varsayilan"
         }
     }
 
-    /// Preview symbol used by the picker before / instead of the actual
-    /// app icon asset. Lets the UI ship without raster artwork.
     var previewSystemImage: String {
         switch self {
         case .default: "leaf.fill"
-        case .mint: "leaf.circle.fill"
-        case .sand: "sun.haze.fill"
-        case .night: "moon.stars.fill"
         }
     }
 }
@@ -73,7 +52,8 @@ final class NuvyraAppIconService {
     }
 
     var supportsAlternates: Bool {
-        UIApplication.shared.supportsAlternateIcons
+        UIApplication.shared.supportsAlternateIcons &&
+            NuvyraAppIcon.allCases.contains { $0.alternateKey != nil }
     }
 
     /// Sets the alternate icon. Swallows `setAlternateIconName`'s error
