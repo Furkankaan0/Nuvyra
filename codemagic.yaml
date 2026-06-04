@@ -207,9 +207,22 @@ workflows:
             -scheme "$XCODE_TEST_SCHEME" \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcodebuild_logs/validate-simulator-build.log
+      - name: Fetch App Store signing files
+        script: |
+          set -euo pipefail
+          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
+          app-store-connect fetch-signing-files "$WIDGET_BUNDLE_ID" --type IOS_APP_STORE --create
+          keychain add-certificates
       - name: Set up code signing
         script: |
           xcode-project use-profiles
+      - name: Show archive signing settings
+        script: |
+          set -o pipefail
+          mkdir -p /tmp/xcodebuild_logs
+          xcodebuild -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -showBuildSettings \
+            | egrep 'PRODUCT_BUNDLE_IDENTIFIER|CODE_SIGN_STYLE|CODE_SIGN_ENTITLEMENTS|DEVELOPMENT_TEAM|PROVISIONING_PROFILE_SPECIFIER|PROVISIONING_PROFILE =' \
+            | tee /tmp/xcodebuild_logs/archive-signing-settings.log
       - name: Increment build number
         script: |
           set -euo pipefail
@@ -219,9 +232,11 @@ workflows:
           xcodebuild -project "$XCODE_PROJECT" -scheme "$XCODE_SCHEME" -showBuildSettings | grep CURRENT_PROJECT_VERSION
       - name: Build ipa
         script: |
+          set -o pipefail
+          mkdir -p /tmp/xcodebuild_logs
           xcode-project build-ipa \
             --project "$XCODE_PROJECT" \
-            --scheme "$XCODE_SCHEME"
+            --scheme "$XCODE_SCHEME" 2>&1 | tee /tmp/xcodebuild_logs/build-ipa.log
       - name: Validate IPA metadata
         script: |
           set -euo pipefail
