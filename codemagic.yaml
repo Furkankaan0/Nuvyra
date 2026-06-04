@@ -207,12 +207,6 @@ workflows:
             -scheme "$XCODE_TEST_SCHEME" \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcodebuild_logs/validate-simulator-build.log
-      - name: Fetch App Store signing files
-        script: |
-          set -euo pipefail
-          app-store-connect fetch-signing-files "$BUNDLE_ID" --type IOS_APP_STORE --create
-          app-store-connect fetch-signing-files "$WIDGET_BUNDLE_ID" --type IOS_APP_STORE --create
-          keychain add-certificates
       - name: Set up code signing
         script: |
           xcode-project use-profiles
