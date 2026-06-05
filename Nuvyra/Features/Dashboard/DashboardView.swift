@@ -16,7 +16,7 @@ struct DashboardView: View {
 
     var body: some View {
         ZStack {
-            NuvyraBackground(.animated)
+            NuvyraBackground()
             ScrollView(showsIndicators: false) {
                 LazyVStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     DashboardGreetingHeader(name: viewModel.greetingName, date: Date())
@@ -60,15 +60,12 @@ struct DashboardView: View {
                         proteinGrams: viewModel.totalProtein,
                         proteinTargetGrams: viewModel.proteinTarget
                     )
-                    .nuvyraScrollTilt()
                     .dashboardSlide(index: 1, animated: didAnimateAppearance)
 
                     CalorieBalanceCard(summary: viewModel.nutritionSummary)
-                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 2, animated: didAnimateAppearance)
 
                     EnergyBalanceCard(balance: viewModel.energyBalance)
-                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 3, animated: didAnimateAppearance)
 
                     MacroSummaryCard(macros: viewModel.macroSummaries)
@@ -113,11 +110,9 @@ struct DashboardView: View {
                     .dashboardSlide(index: 9, animated: didAnimateAppearance)
 
                     WeeklyComparisonCard(comparison: viewModel.weeklyComparison)
-                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
                     SleepHeartCard(vitals: viewModel.vitals)
-                        .nuvyraScrollTilt()
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
                     if viewModel.weightSummary.latestWeightKg != nil {
@@ -162,7 +157,7 @@ struct DashboardView: View {
                 .padding(.horizontal, NuvyraSpacing.lg)
                 .padding(.bottom, NuvyraSpacing.lg)
             }
-            .refreshable { await viewModel.load(context: modelContext, dependencies: dependencies) }
+            .refreshable { await viewModel.load(context: modelContext, dependencies: dependencies, force: true) }
         }
         .navigationTitle("Nuvyra")
         .navigationBarTitleDisplayMode(.inline)
@@ -213,7 +208,7 @@ struct DashboardView: View {
                 AddMealView(defaultMealType: type)
                     .presentationDetents([.large])
                     .onDisappear {
-                        Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+                        Task { await viewModel.load(context: modelContext, dependencies: dependencies, force: true) }
                     }
             case .barcode:
                 BarcodeScannerView(viewModel: makeBarcodeScannerViewModel()) { product in
@@ -224,7 +219,7 @@ struct DashboardView: View {
                 }
             }
         }
-        .sheet(item: $pendingBarcodeItem, onDismiss: { Task { await viewModel.load(context: modelContext, dependencies: dependencies) } }) { item in
+        .sheet(item: $pendingBarcodeItem, onDismiss: { Task { await viewModel.load(context: modelContext, dependencies: dependencies, force: true) } }) { item in
             FoodDetailView(item: item) { values, serving, quantity in
                 let selection = FoodSelection(item: item, values: values, serving: serving, quantity: quantity)
                 Task { await addFoodSelection(selection) }
@@ -235,14 +230,14 @@ struct DashboardView: View {
             case .waterTracking:
                 WaterTrackingView()
                     .onDisappear {
-                        Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+                        Task { await viewModel.load(context: modelContext, dependencies: dependencies, force: true) }
                     }
             case .coach:
                 AICoachView()
             case .bodyMeasurements:
                 BodyMeasurementsView()
                     .onDisappear {
-                        Task { await viewModel.load(context: modelContext, dependencies: dependencies) }
+                        Task { await viewModel.load(context: modelContext, dependencies: dependencies, force: true) }
                     }
             }
         }
@@ -400,9 +395,9 @@ struct DashboardView: View {
                     "verified": item.verifiedLevel.rawValue
                 ])
             )
-            await viewModel.load(context: modelContext, dependencies: dependencies)
+            await viewModel.load(context: modelContext, dependencies: dependencies, force: true)
         } catch {
-            await viewModel.load(context: modelContext, dependencies: dependencies)
+            await viewModel.load(context: modelContext, dependencies: dependencies, force: true)
         }
     }
 

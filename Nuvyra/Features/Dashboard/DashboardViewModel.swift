@@ -22,6 +22,8 @@ final class DashboardViewModel: ObservableObject {
     @Published var shouldShowVitalsPermissionToast = false
 
     private var didPlayStepGoalHaptic = false
+    private var lastLoadFinishedAt = Date.distantPast
+    private let passiveReloadCooldown: TimeInterval = 1.5
 
     /// Day-one onboarding checklist state — derived live from today's data.
     var dayOneCompletedSteps: Set<DayOneTourCard.Step> {
@@ -217,11 +219,16 @@ final class DashboardViewModel: ObservableObject {
     }
 
     // MARK: - Load
-    func load(context: ModelContext, dependencies: DependencyContainer) async {
+    func load(context: ModelContext, dependencies: DependencyContainer, force: Bool = false) async {
+        let now = Date()
+        guard force || (!isLoading && now.timeIntervalSince(lastLoadFinishedAt) > passiveReloadCooldown) else {
+            return
+        }
         isLoading = true
         defer {
             isLoading = false
             lastUpdated = Date()
+            lastLoadFinishedAt = lastUpdated
         }
         do {
             let userRepository = dependencies.userRepository(context: context)
@@ -316,7 +323,6 @@ final class DashboardViewModel: ObservableObject {
                 mealStreakDays: mealStreak.currentStreak
             )
             await dependencies.smartReminderEngine.reschedule(context: reminderContext)
-            await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
 
             if healthSnapshot.steps >= stepTarget, !didPlayStepGoalHaptic {
                 didPlayStepGoalHaptic = true
@@ -336,7 +342,8 @@ final class DashboardViewModel: ObservableObject {
             try dependencies.waterRepository(context: context).addWater(amountMl: amount, date: Date())
             dependencies.haptics.waterAdded()
             await dependencies.analytics.track(.waterAdded, payload: AnalyticsPayload(values: ["amount_ml": "\(amount)"]))
-            await load(context: context, dependencies: dependencies)
+            await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
+            await load(context: context, dependencies: dependencies, force: true)
             flash("+\(amount) ml eklendi")
         } catch {}
     }
@@ -346,9 +353,10 @@ final class DashboardViewModel: ObservableObject {
             let removed = try dependencies.waterRepository(context: context).removeLastEntry(on: Date())
             if removed > 0 {
                 dependencies.haptics.waterAdded()
+                await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
                 flash("-\(removed) ml geri alındı")
             }
-            await load(context: context, dependencies: dependencies)
+            await load(context: context, dependencies: dependencies, force: true)
         } catch {}
     }
 

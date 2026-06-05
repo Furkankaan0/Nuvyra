@@ -17,6 +17,8 @@ struct NuvyraApp: App {
     /// lookup walked off the top of the tree on launch, fatally
     /// erroring before the first frame even drew.
     @StateObject private var toastCenter = NuvyraToastCenter()
+    @State private var foregroundRefreshInFlight = false
+    @State private var lastForegroundRefreshAt = Date.distantPast
     private let modelContainer: ModelContainer
     private let notificationDelegate = NuvyraNotificationDelegate()
     private let watchWaterSyncService = WatchWaterSyncService()
@@ -70,6 +72,17 @@ struct NuvyraApp: App {
     }
 
     private func refreshForegroundState() async {
+        let now = Date()
+        guard !foregroundRefreshInFlight,
+              now.timeIntervalSince(lastForegroundRefreshAt) > 2.0 else {
+            return
+        }
+        foregroundRefreshInFlight = true
+        defer {
+            foregroundRefreshInFlight = false
+            lastForegroundRefreshAt = Date()
+        }
+
         watchWaterSyncService.activate(modelContainer: modelContainer)
         SeedData.ensureMinimumData(in: modelContainer.mainContext)
         NuvyraNotificationCategoryService.shared.registerCategories()

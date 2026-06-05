@@ -27,7 +27,6 @@ struct NuvyraMeshBackground: View {
             }
         }
         .ignoresSafeArea()
-        .nuvyraFluidDistortion(intensity: scheme == .dark ? 7 : 8)
     }
 
     // MARK: - iOS 18+ MeshGradient
@@ -38,7 +37,7 @@ struct NuvyraMeshBackground: View {
         // morphs between three palettes (warm / mint / sand) over 12s.
         // `points` (control-point lattice) is fixed — only colours move,
         // which keeps the perceived motion calm.
-        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 24.0)) { context in
+        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 12.0)) { context in
             let phase = reduceMotion
                 ? 0.0
                 : sin(context.date.timeIntervalSinceReferenceDate * (.pi / 6.0)) * 0.5 + 0.5
@@ -91,7 +90,8 @@ struct NuvyraMeshBackground: View {
         // SwiftUI doesn't expose a public colour-interpolation API on iOS,
         // so we mix opacities of two Colors against the same neutral
         // backdrop. The result is visually close enough for ambient
-        // animation; the eye can't catch the simplification at 30 fps.
+        // animation; the eye can't catch the simplification at the low
+        // ambient frame rate we use here.
         let clamped = max(0, min(1, t))
         return Color(
             uiColor: blended(uiFrom: UIColor(from), uiTo: UIColor(to), t: clamped)
@@ -116,7 +116,7 @@ struct NuvyraMeshBackground: View {
     // MARK: - iOS 17 fallback (TimelineView + Canvas)
 
     private var canvasFallback: some View {
-        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 24.0)) { context in
+        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 12.0)) { context in
             Canvas { ctx, size in
                 // Static base gradient — same calmGradient the original
                 // background uses, painted with a Path so Canvas can

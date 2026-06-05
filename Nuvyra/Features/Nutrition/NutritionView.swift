@@ -13,7 +13,7 @@ struct NutritionView: View {
 
     var body: some View {
         ZStack {
-            NuvyraBackground(.animated)
+            NuvyraBackground()
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     header
