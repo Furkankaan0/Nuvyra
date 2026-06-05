@@ -26,7 +26,7 @@ import SwiftUI
 
 // MARK: - Model
 
-struct NuvyraToast: Identifiable, Equatable {
+struct NuvyraToast: Identifiable {
     enum Kind: Equatable {
         case success
         case error
@@ -57,6 +57,16 @@ struct NuvyraToast: Identifiable, Equatable {
         }
     }
 
+    /// Optional "tap-to-act" affordance. When set, the toast surface
+    /// becomes tappable, draws a trailing chevron + label, and runs
+    /// `handler` when the user accepts. We auto-dismiss the toast
+    /// after the action fires so the celebration / surface clears.
+    struct Action {
+        /// Short verb shown on the trailing chip — defaults to "Aç".
+        var title: String = "Aç"
+        var handler: () -> Void
+    }
+
     let id: UUID
     let kind: Kind
     let title: String
@@ -66,19 +76,24 @@ struct NuvyraToast: Identifiable, Equatable {
     /// Total display time. Defaults to 2.4 s — long enough to read a
     /// short Turkish sentence, short enough to feel non-intrusive.
     let duration: TimeInterval
+    /// Optional tap action — see `Action`. Toasts that carry one
+    /// stay visible a beat longer so the user has time to react.
+    let action: Action?
 
     init(
         id: UUID = UUID(),
         kind: Kind,
         title: String,
         detail: String? = nil,
-        duration: TimeInterval = 2.4
+        duration: TimeInterval = 2.4,
+        action: Action? = nil
     ) {
         self.id = id
         self.kind = kind
         self.title = title
         self.detail = detail
-        self.duration = duration
+        self.duration = action != nil ? max(duration, 4.0) : duration
+        self.action = action
     }
 }
 
@@ -130,16 +145,16 @@ final class NuvyraToastCenter: ObservableObject {
 
     /// Convenience for the success-text-only path that most screens
     /// were already using ad-hoc.
-    func success(_ message: String) {
-        show(NuvyraToast(kind: .success, title: message))
+    func success(_ message: String, action: NuvyraToast.Action? = nil) {
+        show(NuvyraToast(kind: .success, title: message, action: action))
     }
 
-    func error(_ message: String, detail: String? = nil) {
-        show(NuvyraToast(kind: .error, title: message, detail: detail, duration: 3.2))
+    func error(_ message: String, detail: String? = nil, action: NuvyraToast.Action? = nil) {
+        show(NuvyraToast(kind: .error, title: message, detail: detail, duration: 3.2, action: action))
     }
 
-    func info(_ message: String) {
-        show(NuvyraToast(kind: .info, title: message))
+    func info(_ message: String, action: NuvyraToast.Action? = nil) {
+        show(NuvyraToast(kind: .info, title: message, action: action))
     }
 
     func dismiss() {
@@ -218,6 +233,22 @@ private struct NuvyraToastView: View {
                 }
             }
             Spacer(minLength: 0)
+            if let action = toast.action {
+                // Trailing action pill — visually reads as "tap me",
+                // and the whole row is hit-testable so the user can
+                // tap the body too. Caret nudges the affordance
+                // toward iOS-native row behaviour.
+                HStack(spacing: 4) {
+                    Text(action.title)
+                        .font(.caption.weight(.bold))
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.bold))
+                }
+                .foregroundStyle(toast.kind.tint)
+                .padding(.horizontal, 9)
+                .padding(.vertical, 5)
+                .background(toast.kind.tint.opacity(0.12), in: Capsule())
+            }
         }
         .padding(.horizontal, NuvyraSpacing.md)
         .padding(.vertical, NuvyraSpacing.sm)
@@ -230,6 +261,12 @@ private struct NuvyraToastView: View {
                 .allowsHitTesting(false)
         )
         .nuvyraShadow(.floating, scheme: scheme)
+        .contentShape(shape)
+        .onTapGesture {
+            guard let handler = toast.action?.handler else { return }
+            handler()
+            onDismiss()
+        }
         .offset(y: dragOffset)
         .gesture(
             DragGesture()
@@ -250,7 +287,7 @@ private struct NuvyraToastView: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(toast.kind == .error ? "Hata: " : "")\(toast.title)")
-        .accessibilityHint("Yukarı kaydırarak kapat.")
+        .accessibilityHint(toast.action == nil ? "Yukarı kaydırarak kapat." : "Açmak için dokun, kaydırarak kapat.")
     }
 }
 

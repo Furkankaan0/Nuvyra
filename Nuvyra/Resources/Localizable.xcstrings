@@ -586,6 +586,20 @@
         "en" : { "stringUnit" : { "state" : "translated", "value" : "Delete" } },
         "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sil" } }
       }
+    },
+    "nutrition.empty.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Log your first meal for this day" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Bu güne ilk öğününü ekle" } }
+      }
+    },
+    "nutrition.empty.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Each entry stacks into the daily macro totals below." } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Ekledikçe günlük makro toplamın aşağıdaki kartta birikir." } }
+      }
     }
   },
   "version" : "1.0"

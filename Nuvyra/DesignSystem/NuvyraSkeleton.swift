@@ -51,35 +51,73 @@ private struct NuvyraSkeletonModifier: ViewModifier {
     }
 
     /// 1.4 s sweep — slow enough to read as "calm progress" instead of
-    /// the agitated WhatsApp shimmer most apps ship.
+    /// the agitated WhatsApp shimmer most apps ship. Two paths share
+    /// the same timeline:
+    ///   - iOS 18+ — `MeshGradient` whose horizontal control points
+    ///     pulse along with the cycle, producing a soft "liquid gradient"
+    ///     pull instead of a single travelling band.
+    ///   - iOS 17 — the original LinearGradient sweep, kept verbatim
+    ///     so the deployment target stays at iOS 17 without spilling
+    ///     into the host's silhouette.
     @ViewBuilder
     private var shimmerOverlay: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 24.0, paused: false)) { context in
-            // `phase` walks 0 → 1 every 1.4 s. We translate the gradient
-            // band along the leading edge by mapping phase into a
-            // unitPoint that travels off-screen on both ends.
             let cycle = 1.4
             let raw = context.date.timeIntervalSinceReferenceDate
                 .truncatingRemainder(dividingBy: cycle) / cycle
             let phase = CGFloat(raw)
 
-            GeometryReader { proxy in
-                let width = proxy.size.width
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0),
-                        Color.white.opacity(scheme == .dark ? 0.14 : 0.40),
-                        Color.white.opacity(0)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-                .frame(width: width * 0.5)
-                .offset(x: -width * 0.75 + (width * 1.5) * phase)
-                .blendMode(.plusLighter)
+            if #available(iOS 18.0, *) {
+                meshShimmer(phase: phase)
+                    .blendMode(.plusLighter)
+                    .allowsHitTesting(false)
+            } else {
+                linearShimmer(phase: phase)
             }
-            .allowsHitTesting(false)
         }
+    }
+
+    /// iOS 17 fallback — original 3-stop LinearGradient that slides
+    /// horizontally across the host shape. Calm and cheap.
+    private func linearShimmer(phase: CGFloat) -> some View {
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0),
+                    Color.white.opacity(scheme == .dark ? 0.14 : 0.40),
+                    Color.white.opacity(0)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(width: width * 0.5)
+            .offset(x: -width * 0.75 + (width * 1.5) * phase)
+            .blendMode(.plusLighter)
+        }
+        .allowsHitTesting(false)
+    }
+
+    /// iOS 18+ mesh-driven shimmer. A 3×2 lattice keeps the cost
+    /// modest while still giving the highlight a fluid pulled feel as
+    /// the middle row's X coordinates breathe along with `phase`.
+    @available(iOS 18.0, *)
+    @ViewBuilder
+    private func meshShimmer(phase: CGFloat) -> some View {
+        let pulse = sin(phase * .pi * 2) * 0.10  // ±0.10 lateral breath
+        let highlight = scheme == .dark ? 0.18 : 0.45
+        MeshGradient(
+            width: 3,
+            height: 2,
+            points: [
+                SIMD2(0.0, 0.0), SIMD2(0.5 + Float(pulse), 0.0), SIMD2(1.0, 0.0),
+                SIMD2(0.0, 1.0), SIMD2(0.5 - Float(pulse), 1.0), SIMD2(1.0, 1.0)
+            ],
+            colors: [
+                Color.white.opacity(0), Color.white.opacity(highlight), Color.white.opacity(0),
+                Color.white.opacity(0), Color.white.opacity(highlight * 0.65), Color.white.opacity(0)
+            ]
+        )
     }
 }
 

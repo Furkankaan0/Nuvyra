@@ -218,9 +218,9 @@ struct AddBodyMeasurementSheet: View {
     }
 
     /// Best-effort iCloud mirror for the new measurement. Failures
-    /// surface through the shared toast bar rather than blocking the
-    /// local save — the app stays local-first and the user keeps the
-    /// reading even when CloudKit is unreachable.
+    /// surface through `NuvyraSyncToastRouter` so the copy + the
+    /// tap-to-act fallback (`.quotaExceeded` → iCloud Settings) stays
+    /// consistent with every other CloudKit caller in the app.
     private func syncSavedMeasurement(for date: Date) async {
         let day = Calendar.nuvyra.startOfDay(for: date)
         let (start, end) = Calendar.nuvyra.startAndEndOfDay(for: day)
@@ -230,20 +230,8 @@ struct AddBodyMeasurementSheet: View {
         guard let saved = try? modelContext.fetch(descriptor).first else { return }
         do {
             try await dependencies.cloudSyncService.push(saved)
-        } catch let error as NuvyraSyncError {
-            // Skip the noisy "no account / disabled" buckets so the
-            // user only sees a toast for situations they can act on
-            // (network blip, quota exceeded).
-            switch error {
-            case .iCloudUnavailable, .noActiveAccount:
-                return
-            default:
-                toastCenter.error(error.localizedDescription)
-            }
         } catch {
-            // Anything else funnels into the catch-all bucket — the
-            // user-facing copy already explains the fall-back.
-            toastCenter.error(NuvyraSyncError.unexpected.localizedDescription)
+            NuvyraSyncToastRouter.handle(error, centre: toastCenter)
         }
     }
 

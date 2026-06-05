@@ -123,9 +123,13 @@ struct NutritionView: View {
         NuvyraGlassCard(.prominent) {
             NuvyraIllustratedPlaceholder(
                 systemImage: "fork.knife",
-                title: "Bu güne ilk öğününü ekle",
-                subtitle: "Ekledikçe günlük makro toplamın aşağıdaki kartta birikir.",
-                bullets: ["Yemek ekle", "Ara", "Barkod"]
+                title: String(localized: "nutrition.empty.title"),
+                subtitle: String(localized: "nutrition.empty.subtitle"),
+                bullets: [
+                    String(localized: "nutrition.action.addMeal"),
+                    String(localized: "nutrition.action.search"),
+                    String(localized: "nutrition.action.barcode")
+                ]
             ) {
                 HStack(spacing: NuvyraSpacing.sm) {
                     NuvyraPrimaryButton(
