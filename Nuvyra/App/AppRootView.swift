@@ -5,16 +5,14 @@ struct AppRootView: View {
     @EnvironmentObject private var router: AppRouter
     @Query private var settings: [AppSettings]
 
-    /// Shared toast bus. Owned by the root so every screen can publish
-    /// success / error / info banners through a single overlay instead
-    /// of rolling their own `actionFeedback` strings.
-    @StateObject private var toastCenter = NuvyraToastCenter()
-
     private var hasCompletedOnboarding: Bool {
         return settings.first?.hasCompletedOnboarding == true
     }
 
     var body: some View {
+        // NuvyraToastCenter is mounted on the WindowGroup in NuvyraApp,
+        // so every nested view (including the overlay modifier itself)
+        // sees it in the environment.
         Group {
             if hasCompletedOnboarding {
                 MainTabView()
@@ -23,7 +21,6 @@ struct AppRootView: View {
             }
         }
         .tint(NuvyraColors.accent)
-        .environmentObject(toastCenter)
         .nuvyraToastOverlay()
         .onReceive(NotificationCenter.default.publisher(for: .nuvyraOpenNutritionRequested)) { _ in
             router.selectedTab = .nutrition
@@ -75,4 +72,5 @@ private struct MainTabView: View {
         .modelContainer(NuvyraModelContainer.uiTesting())
         .environmentObject(DependencyContainer.preview())
         .environmentObject(AppRouter())
+        .environmentObject(NuvyraToastCenter())
 }

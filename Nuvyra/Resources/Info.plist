@@ -78,7 +78,7 @@
   <key>NSCameraUsageDescription</key>
   <string>Nuvyra, öğün fotoğrafını kaydederek tahmini besin değerlerini oluşturmak için kamerayı kullanır.</string>
   <key>NSHealthShareUsageDescription</key>
-  <string>Nuvyra, günlük adımlarını ve aktivite verilerini göstererek yürüyüş hedeflerini kişiselleştirmek için Apple Sağlık verilerini okur.</string>
+  <string>Nuvyra; adım, aktif kalori, yürüyüş mesafesi ile (izin verilirse) uyku ve istirahat nabzı verilerini okuyarak günlük ritmini özetlemek için Apple Sağlık verilerini kullanır.</string>
   <key>NSHealthUpdateUsageDescription</key>
   <string>Nuvyra, yalnızca kullanıcı onayıyla wellness kayıtlarını Apple Sağlık ile senkronize etmek için sağlık verisi yazabilir.</string>
   <key>NSLocationWhenInUseUsageDescription</key>

@@ -9,6 +9,14 @@ struct NuvyraApp: App {
     @AppStorage("nuvyra.theme.preference") private var themePreference = NuvyraThemePreference.system.rawValue
     @StateObject private var dependencies: DependencyContainer
     @StateObject private var router = AppRouter()
+    /// Global toast bus. Hosted at the very root so the
+    /// `.nuvyraToastOverlay()` modifier — which reads its centre from
+    /// the environment — finds it regardless of where the modifier is
+    /// applied in the view tree. Previously the centre lived on
+    /// AppRootView and the overlay modifier's `@EnvironmentObject`
+    /// lookup walked off the top of the tree on launch, fatally
+    /// erroring before the first frame even drew.
+    @StateObject private var toastCenter = NuvyraToastCenter()
     private let modelContainer: ModelContainer
     private let notificationDelegate = NuvyraNotificationDelegate()
     private let watchWaterSyncService = WatchWaterSyncService()
@@ -48,6 +56,7 @@ struct NuvyraApp: App {
                 .modelContainer(modelContainer)
                 .environmentObject(dependencies)
                 .environmentObject(router)
+                .environmentObject(toastCenter)
                 .preferredColorScheme(preferredColorScheme)
                 .task {
                     await dependencies.analytics.track(.appOpened, payload: AnalyticsPayload())
