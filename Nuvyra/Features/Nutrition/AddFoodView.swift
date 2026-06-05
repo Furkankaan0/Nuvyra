@@ -15,6 +15,7 @@ struct AddFoodView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var dependencies: DependencyContainer
+    @EnvironmentObject private var toastCenter: NuvyraToastCenter
 
     private let mode: Mode
 
@@ -719,6 +720,7 @@ struct AddFoodView: View {
                     )
                     try repository.addMeal(meal)
                     await dependencies.healthService.saveNutrition(for: meal)
+                    await syncSavedMeal(meal)
                     dependencies.haptics.mealLogged()
                     await syncWithFoodRepository(values: values)
                     await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "add_food_view", "provider": selectedLookupItem?.source.rawValue ?? "manual_adjusted"]))
@@ -734,6 +736,7 @@ struct AddFoodView: View {
                         photoData: photoData
                     )
                     await dependencies.healthService.saveNutrition(for: meal)
+                    await syncSavedMeal(meal)
                 }
                 if Calendar.nuvyra.isDateInToday(date) {
                     await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: modelContext, healthService: dependencies.healthService)
@@ -742,6 +745,16 @@ struct AddFoodView: View {
             } catch {
                 errorMessage = "Kayıt başarısız oldu. Tekrar dene."
             }
+        }
+    }
+
+    /// Mirrors semantic meal data to iCloud without making CloudKit a blocker for
+    /// the local-first nutrition flow.
+    private func syncSavedMeal(_ meal: MealEntry) async {
+        do {
+            try await dependencies.cloudSyncService.push(meal)
+        } catch {
+            NuvyraSyncToastRouter.handle(error, centre: toastCenter)
         }
     }
 
@@ -980,5 +993,6 @@ private extension String {
     AddFoodView(defaultMealType: .lunch)
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
+        .environmentObject(NuvyraToastCenter())
 }
 #endif

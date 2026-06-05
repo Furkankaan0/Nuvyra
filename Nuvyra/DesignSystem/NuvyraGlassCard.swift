@@ -36,6 +36,7 @@ struct NuvyraGlassCard<Content: View>: View {
             .padding(NuvyraSpacing.lg)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(materialBackground)
+            .background(stabilizingFillLayer)
             .background(prominentTintLayer)
             .clipShape(shape)
             .overlay(strokeOverlay)
@@ -62,10 +63,25 @@ struct NuvyraGlassCard<Content: View>: View {
         }
     }
 
+    /// Neutral fill sitting behind the material. Without this, scrolling a
+    /// glass card over the animated green/mint background lets the system
+    /// material sample too much backdrop and the whole card flashes green.
+    private var stabilizingFillLayer: some View {
+        shape.fill(NuvyraColors.card(scheme).opacity(stabilizingOpacity))
+    }
+
+    private var stabilizingOpacity: Double {
+        switch (variant, scheme) {
+        case (.floating, .dark): return 0.86
+        case (.floating, .light): return 0.92
+        case (_, .dark): return 0.74
+        case (_, .light): return 0.84
+        }
+    }
+
     /// Brand-tinted wash painted *behind* the material. Light scheme picks
-    /// up a 5% accent veil that makes the card feel warmer than the page;
-    /// dark scheme is a 10% wash so the glass doesn't disappear into the
-    /// near-black background.
+    /// up a subtle warm veil instead of the green accent so scroll-time
+    /// material compositing never turns dashboard widgets mint.
     @ViewBuilder
     private var prominentTintLayer: some View {
         if variant == .prominent {

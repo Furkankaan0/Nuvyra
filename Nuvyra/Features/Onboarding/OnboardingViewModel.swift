@@ -190,6 +190,12 @@ final class OnboardingViewModel: ObservableObject {
                 input: calculationInput,
                 targets: targets
             )
+            if healthState == .sharingAuthorized {
+                let settings = try repository.settings()
+                settings.vitalsPermissionToastShown = true
+                settings.updatedAt = Date()
+                try context.save()
+            }
             await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
 
             if wantsNotifications {

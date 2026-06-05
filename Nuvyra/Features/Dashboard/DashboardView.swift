@@ -174,6 +174,19 @@ struct DashboardView: View {
             toastCenter.success(message)
             viewModel.actionFeedback = nil
         }
+        .onChange(of: viewModel.shouldShowVitalsPermissionToast) { _, shouldShow in
+            guard shouldShow else { return }
+            viewModel.markVitalsPermissionToastShown(context: modelContext)
+            toastCenter.warning(
+                "Apple Sağlık'a izin ver",
+                detail: "Uyku ve istirahat nabzını toparlanma kartında gösterebiliriz.",
+                action: NuvyraToast.Action(title: "İzin ver") {
+                    Task { @MainActor in
+                        await viewModel.requestVitalsAuthorization(context: modelContext, dependencies: dependencies)
+                    }
+                }
+            )
+        }
         .task {
             await viewModel.load(context: modelContext, dependencies: dependencies)
             withAnimation(reduceMotion ? nil : .spring(response: 0.7, dampingFraction: 0.78)) {
@@ -372,6 +385,7 @@ struct DashboardView: View {
             )
             try dependencies.nutritionRepository(context: modelContext).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
+            await syncSavedMeal(meal)
             dependencies.haptics.mealLogged()
 
             if let rowID = selection.deterministicRowID {
@@ -389,6 +403,14 @@ struct DashboardView: View {
             await viewModel.load(context: modelContext, dependencies: dependencies)
         } catch {
             await viewModel.load(context: modelContext, dependencies: dependencies)
+        }
+    }
+
+    private func syncSavedMeal(_ meal: MealEntry) async {
+        do {
+            try await dependencies.cloudSyncService.push(meal)
+        } catch {
+            NuvyraSyncToastRouter.handle(error, centre: toastCenter)
         }
     }
 }
@@ -439,4 +461,5 @@ private extension View {
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
         .environmentObject(AppRouter())
+        .environmentObject(NuvyraToastCenter())
 }

@@ -87,4 +87,5 @@ struct WorkoutsView: View {
     NavigationStack { WorkoutsView() }
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
+        .environmentObject(NuvyraToastCenter())
 }

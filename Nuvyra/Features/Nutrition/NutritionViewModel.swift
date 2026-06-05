@@ -32,6 +32,7 @@ final class NutritionViewModel: ObservableObject {
     @Published var estimatedResults: [EstimatedMealResult] = []
     @Published var isEstimating = false
     @Published var actionFeedback: String?
+    @Published var syncError: NuvyraSyncError?
 
     var sectionedMeals: [(MealType, [MealEntry])] {
         MealType.allCases.map { type in
@@ -103,6 +104,7 @@ final class NutritionViewModel: ObservableObject {
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
+            await syncMeal(meal, dependencies: dependencies)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "smart_text", "estimated": "true"]))
             smartMealText = ""
@@ -131,6 +133,7 @@ final class NutritionViewModel: ObservableObject {
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
+            await syncMeal(meal, dependencies: dependencies)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "quick_food", "name": food.name]))
             load(context: context, dependencies: dependencies)
@@ -166,6 +169,7 @@ final class NutritionViewModel: ObservableObject {
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
+            await syncMeal(meal, dependencies: dependencies)
             dependencies.haptics.mealLogged()
 
             if let rowID = selection.deterministicRowID {
@@ -237,6 +241,7 @@ final class NutritionViewModel: ObservableObject {
             )
             do {
                 try repository.addMeal(meal)
+                await syncMeal(meal, dependencies: dependencies)
                 savedCount += 1
             } catch {
                 continue
@@ -405,6 +410,7 @@ final class NutritionViewModel: ObservableObject {
             let copiedMeals = try dependencies.nutritionRepository(context: context).meals(on: selectedDate)
             for meal in copiedMeals.suffix(count) {
                 await dependencies.healthService.saveNutrition(for: meal)
+                await syncMeal(meal, dependencies: dependencies)
             }
             load(context: context, dependencies: dependencies)
             refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
@@ -417,6 +423,9 @@ final class NutritionViewModel: ObservableObject {
     func copyMealToToday(_ meal: MealEntry, context: ModelContext, dependencies: DependencyContainer) async {
         do {
             try dependencies.nutritionRepository(context: context).copyMeal(meal, to: Date())
+            if let copied = try dependencies.nutritionRepository(context: context).meals(on: Date()).first(where: { $0.name == meal.name && $0.createdAt >= meal.createdAt }) {
+                await syncMeal(copied, dependencies: dependencies)
+            }
             if isViewingToday {
                 load(context: context, dependencies: dependencies)
             }
@@ -435,6 +444,14 @@ final class NutritionViewModel: ObservableObject {
     private func refreshWidget(context: ModelContext, dependencies: DependencyContainer) {
         Task { @MainActor in
             await NuvyraWidgetSnapshotWriter.writeTodaySnapshot(context: context, healthService: dependencies.healthService)
+        }
+    }
+
+    private func syncMeal(_ meal: MealEntry, dependencies: DependencyContainer) async {
+        do {
+            try await dependencies.cloudSyncService.push(meal)
+        } catch {
+            syncError = (error as? NuvyraSyncError) ?? .unexpected
         }
     }
 

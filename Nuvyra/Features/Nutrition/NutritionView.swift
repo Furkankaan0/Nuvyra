@@ -61,6 +61,11 @@ struct NutritionView: View {
             toastCenter.success(message)
             viewModel.actionFeedback = nil
         }
+        .onChange(of: viewModel.syncError) { _, error in
+            guard let error else { return }
+            NuvyraSyncToastRouter.handle(error, centre: toastCenter)
+            viewModel.syncError = nil
+        }
         .sheet(isPresented: $viewModel.showingAddMeal, onDismiss: { viewModel.load(context: modelContext, dependencies: dependencies) }) {
             AddFoodView(mode: .create(defaultMealType: viewModel.selectedMealType))
         }
@@ -263,6 +268,7 @@ struct NutritionView: View {
     NavigationStack { NutritionView() }
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
+        .environmentObject(NuvyraToastCenter())
 }
 
 private struct SmartMealEntryCard: View {

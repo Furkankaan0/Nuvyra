@@ -3,8 +3,8 @@ import SwiftUI
 import UIKit
 
 /// Single place that knows how to turn a `NuvyraSyncError` into a
-/// toast. Every CloudKit caller (`AddBodyMeasurementSheet`, future
-/// workout sync, meal sync, …) routes its `try await push(...)`
+/// toast. Every CloudKit caller (`AddBodyMeasurementSheet`, workout
+/// sync, meal sync, …) routes its `try await push(...)`
 /// failure path through this helper so the user-facing copy + the
 /// "open Settings" action stays consistent across the app.
 ///

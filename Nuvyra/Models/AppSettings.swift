@@ -18,6 +18,8 @@ final class AppSettings: Identifiable {
     /// Comma-separated raw values of `UpsellTrigger` cases already presented,
     /// so we don't re-show the same trigger multiple times.
     var shownUpsellTriggers: String = ""
+    /// One-shot dashboard toast asking for sleep + resting heart HealthKit reads.
+    var vitalsPermissionToastShown: Bool = false
     var createdAt: Date
     var updatedAt: Date
 
@@ -31,6 +33,7 @@ final class AppSettings: Identifiable {
         firstLaunchAt: Date? = nil,
         lastUpsellShownAt: Date? = nil,
         shownUpsellTriggers: String = "",
+        vitalsPermissionToastShown: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -43,6 +46,7 @@ final class AppSettings: Identifiable {
         self.firstLaunchAt = firstLaunchAt
         self.lastUpsellShownAt = lastUpsellShownAt
         self.shownUpsellTriggers = shownUpsellTriggers
+        self.vitalsPermissionToastShown = vitalsPermissionToastShown
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

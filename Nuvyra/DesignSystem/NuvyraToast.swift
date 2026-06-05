@@ -29,12 +29,14 @@ import SwiftUI
 struct NuvyraToast: Identifiable {
     enum Kind: Equatable {
         case success
+        case warning
         case error
         case info
 
         var tint: Color {
             switch self {
             case .success: NuvyraColors.accent
+            case .warning: Color(red: 0.88, green: 0.62, blue: 0.18)
             case .error: NuvyraColors.mutedCoral
             case .info: NuvyraColors.softSand
             }
@@ -43,6 +45,7 @@ struct NuvyraToast: Identifiable {
         var systemImage: String {
             switch self {
             case .success: "checkmark.circle.fill"
+            case .warning: "exclamationmark.circle.fill"
             case .error: "exclamationmark.triangle.fill"
             case .info: "info.circle.fill"
             }
@@ -51,6 +54,7 @@ struct NuvyraToast: Identifiable {
         var hapticName: String {
             switch self {
             case .success: "success"
+            case .warning: "warning"
             case .error: "warning"
             case .info: "selection"
             }
@@ -138,6 +142,7 @@ final class NuvyraToastCenter: ObservableObject {
     private func dedupeKey(for toast: NuvyraToast) -> String {
         switch toast.kind {
         case .success: return "success:\(toast.title)"
+        case .warning: return "warning:\(toast.title)"
         case .error: return "error:\(toast.title)"
         case .info: return "info:\(toast.title)"
         }
@@ -147,6 +152,10 @@ final class NuvyraToastCenter: ObservableObject {
     /// were already using ad-hoc.
     func success(_ message: String, action: NuvyraToast.Action? = nil) {
         show(NuvyraToast(kind: .success, title: message, action: action))
+    }
+
+    func warning(_ message: String, detail: String? = nil, action: NuvyraToast.Action? = nil) {
+        show(NuvyraToast(kind: .warning, title: message, detail: detail, duration: 3.0, action: action))
     }
 
     func error(_ message: String, detail: String? = nil, action: NuvyraToast.Action? = nil) {
@@ -197,6 +206,7 @@ private struct NuvyraToastOverlayModifier: ViewModifier {
                 guard let toast = center.current else { return nil }
                 switch toast.kind {
                 case .success: return .success
+                case .warning: return .warning
                 case .error:   return .error
                 case .info:    return .selection
                 }
@@ -286,8 +296,21 @@ private struct NuvyraToastView: View {
                 }
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(toast.kind == .error ? "Hata: " : "")\(toast.title)")
+        .accessibilityLabel("\(toast.accessibilityPrefix)\(toast.title)")
         .accessibilityHint(toast.action == nil ? "Yukarı kaydırarak kapat." : "Açmak için dokun, kaydırarak kapat.")
+    }
+}
+
+private extension NuvyraToast {
+    var accessibilityPrefix: String {
+        switch kind {
+        case .success, .info:
+            return ""
+        case .warning:
+            return "Uyarı: "
+        case .error:
+            return "Hata: "
+        }
     }
 }
 
@@ -301,6 +324,7 @@ private struct NuvyraToastView: View {
                 VStack(spacing: NuvyraSpacing.md) {
                     Spacer()
                     Button("Success") { center.success("250 ml su eklendi") }
+                    Button("Warning") { center.warning("Premium analiz sınırına yaklaştın") }
                     Button("Error") { center.error("Kayıt başarısız", detail: "Yeniden bağlanmayı denedik, sonuç olmadı.") }
                     Button("Info") { center.info("Yarın için hatırlatma kuruldu") }
                     Spacer()

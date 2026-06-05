@@ -19,5 +19,6 @@ struct AddMealView: View {
     AddMealView(defaultMealType: .dinner)
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
+        .environmentObject(NuvyraToastCenter())
 }
 #endif

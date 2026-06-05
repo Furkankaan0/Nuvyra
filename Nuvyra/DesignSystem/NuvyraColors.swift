@@ -81,7 +81,7 @@ enum NuvyraColors {
     /// should land on first".
     static func prominentGlassTint(_ scheme: ColorScheme) -> Color {
         scheme == .dark
-            ? accent.opacity(0.10)
-            : accent.opacity(0.05)
+            ? softSand.opacity(0.08)
+            : softSand.opacity(0.10)
     }
 }

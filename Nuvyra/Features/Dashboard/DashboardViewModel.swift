@@ -19,6 +19,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var vitals: NuvyraVitalsSnapshot = .empty
     @Published var didCompleteDayOneTour: Bool = false
     @Published var pendingUpsell: UpsellTrigger?
+    @Published var shouldShowVitalsPermissionToast = false
 
     private var didPlayStepGoalHaptic = false
 
@@ -188,6 +189,19 @@ final class DashboardViewModel: ObservableObject {
         pendingUpsell = nil
     }
 
+    func markVitalsPermissionToastShown(context: ModelContext) {
+        mutateSettings(context: context) { $0.vitalsPermissionToastShown = true }
+        shouldShowVitalsPermissionToast = false
+    }
+
+    func requestVitalsAuthorization(context: ModelContext, dependencies: DependencyContainer) async {
+        markVitalsPermissionToastShown(context: context)
+        let granted = await dependencies.vitalsService.requestAuthorization()
+        if granted {
+            vitals = await dependencies.vitalsService.snapshot()
+        }
+    }
+
     /// Tiny helper for AppSettings upsert with `updatedAt` housekeeping.
     private func mutateSettings(context: ModelContext, mutate: (AppSettings) -> Void) {
         let descriptor = FetchDescriptor<AppSettings>()
@@ -257,6 +271,9 @@ final class DashboardViewModel: ObservableObject {
             // Day-one tour flag — read from AppSettings, auto-complete once every step is done.
             let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first
             didCompleteDayOneTour = settings?.didCompleteDayOneTour ?? false
+            shouldShowVitalsPermissionToast = dependencies.healthService.isHealthDataAvailable
+                && !(settings?.vitalsPermissionToastShown ?? false)
+                && vitals == .empty
             if !didCompleteDayOneTour, dayOneCompletedSteps.count == DayOneTourCard.Step.allCases.count {
                 dismissDayOneTour(context: context)
             }

@@ -549,6 +549,7 @@ private struct SettingsBackup: Codable {
     var healthPermissionAsked: Bool
     var reducedInsightCopy: Bool
     var didCompleteDayOneTour: Bool
+    var vitalsPermissionToastShown: Bool?
     var createdAt: Date
     var updatedAt: Date
 
@@ -559,6 +560,7 @@ private struct SettingsBackup: Codable {
         self.healthPermissionAsked = settings.healthPermissionAsked
         self.reducedInsightCopy = settings.reducedInsightCopy
         self.didCompleteDayOneTour = settings.didCompleteDayOneTour
+        self.vitalsPermissionToastShown = settings.vitalsPermissionToastShown
         self.createdAt = settings.createdAt
         self.updatedAt = settings.updatedAt
     }
@@ -569,6 +571,7 @@ private struct SettingsBackup: Codable {
         settings.healthPermissionAsked = healthPermissionAsked
         settings.reducedInsightCopy = reducedInsightCopy
         settings.didCompleteDayOneTour = didCompleteDayOneTour
+        settings.vitalsPermissionToastShown = vitalsPermissionToastShown ?? false
         settings.createdAt = createdAt
         settings.updatedAt = updatedAt
     }

@@ -10,6 +10,7 @@ struct AddWorkoutSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var dependencies: DependencyContainer
+    @EnvironmentObject private var toastCenter: NuvyraToastCenter
 
     private let mode: Mode
 
@@ -218,6 +219,7 @@ struct AddWorkoutSheet: View {
                         source: .manual
                     )
                     try repo.add(log)
+                    await syncSavedWorkout(log)
                 case .edit(let log):
                     log.date = snap.date
                     log.typeRaw = snap.type.rawValue
@@ -226,12 +228,24 @@ struct AddWorkoutSheet: View {
                     log.distanceKm = snap.km
                     log.note = snap.noteValue
                     try repo.update(log)
+                    await syncSavedWorkout(log)
                 }
                 dependencies.haptics.mealLogged()
                 dismiss()
             } catch {
                 errorMessage = "Kayıt başarısız oldu. Tekrar dene."
             }
+        }
+    }
+
+    /// Best-effort iCloud mirror for manual workout rows. The local save has
+    /// already succeeded before this runs, so sync failures surface as a toast
+    /// and never block the user from closing the sheet.
+    private func syncSavedWorkout(_ log: WorkoutLog) async {
+        do {
+            try await dependencies.cloudSyncService.push(log)
+        } catch {
+            NuvyraSyncToastRouter.handle(error, centre: toastCenter)
         }
     }
 
@@ -252,5 +266,6 @@ struct AddWorkoutSheet: View {
     AddWorkoutSheet()
         .modelContainer(NuvyraModelContainer.preview())
         .environmentObject(DependencyContainer.preview())
+        .environmentObject(NuvyraToastCenter())
 }
 #endif
