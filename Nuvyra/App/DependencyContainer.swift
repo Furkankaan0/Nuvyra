@@ -29,6 +29,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
     let foodRepository: FoodRepository
     let weeklyInsightEngine: WeeklyInsightEngine
     let mealTimingEngine: MealTimingEngine
+    let trendInsightEngine: TrendInsightEngine
     let vitalsService: NuvyraVitalsService
     let cloudSyncService: NuvyraCloudSyncService
     @Published var subscriptionManager: SubscriptionManager
@@ -54,6 +55,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
         foodRepository: FoodRepository? = nil,
         weeklyInsightEngine: WeeklyInsightEngine? = nil,
         mealTimingEngine: MealTimingEngine? = nil,
+        trendInsightEngine: TrendInsightEngine? = nil,
         vitalsService: NuvyraVitalsService? = nil,
         cloudSyncService: NuvyraCloudSyncService? = nil,
         subscriptionManager: SubscriptionManager? = nil
@@ -76,6 +78,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
         self.foodRepository = foodRepository ?? DefaultFoodRepository()
         self.weeklyInsightEngine = weeklyInsightEngine ?? DefaultWeeklyInsightEngine()
         self.mealTimingEngine = mealTimingEngine ?? DefaultMealTimingEngine()
+        self.trendInsightEngine = trendInsightEngine ?? DefaultTrendInsightEngine()
         self.vitalsService = vitalsService ?? LiveNuvyraVitalsService()
         self.cloudSyncService = cloudSyncService ?? DisabledNuvyraCloudSyncService()
         self.subscriptionManager = subscriptionManager
@@ -124,6 +127,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
             smartReminderEngine: MockSmartReminderEngine(),
             foodRepository: MockFoodRepository(seed: MockFoodRepository.previewSeed),
             weeklyInsightEngine: MockWeeklyInsightEngine(comparison: .previewSample),
+            trendInsightEngine: MockTrendInsightEngine(insights: TrendInsight.previewSamples),
             vitalsService: MockNuvyraVitalsService(),
             cloudSyncService: MockNuvyraCloudSyncService()
         )

@@ -115,6 +115,9 @@ struct DashboardView: View {
                     SleepHeartCard(vitals: viewModel.vitals)
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
+                    TrendInsightCard(insights: viewModel.trendInsights)
+                        .dashboardSlide(index: 10, animated: didAnimateAppearance)
+
                     if viewModel.weightSummary.latestWeightKg != nil {
                         NavigationLink(value: DashboardDestination.bodyMeasurements) {
                             WeightTrendCard(

@@ -17,6 +17,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var weightSummary: WeightTrendSummary = .empty
     @Published var mealTiming: MealTimingInsight = .empty
     @Published var vitals: NuvyraVitalsSnapshot = .empty
+    @Published var trendInsights: [TrendInsight] = []
     @Published var didCompleteDayOneTour: Bool = false
     @Published var pendingUpsell: UpsellTrigger?
     @Published var shouldShowVitalsPermissionToast = false
@@ -274,6 +275,17 @@ final class DashboardViewModel: ObservableObject {
             // the rest of the load() and falls back silently to .empty
             // when HealthKit auth is missing.
             vitals = await dependencies.vitalsService.snapshot()
+
+            // Multi-day behavioural pattern detection (protein shortfall
+            // runs, weekend water dips, step streaks). Empty array when
+            // nothing notable — the card hides itself.
+            trendInsights = (try? dependencies.trendInsightEngine.detect(
+                nutrition: nutritionRepository,
+                water: waterRepository,
+                activity: activityRepository,
+                profile: profile,
+                endingOn: Date()
+            )) ?? []
 
             // Day-one tour flag — read from AppSettings, auto-complete once every step is done.
             let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first
