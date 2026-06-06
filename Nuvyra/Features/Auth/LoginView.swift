@@ -9,8 +9,9 @@ struct LoginView: View {
     @ObservedObject var auth: AuthManager
     var onContinueAsGuest: (() -> Void)?
 
-    init(auth: AuthManager = .shared, onContinueAsGuest: (() -> Void)? = nil) {
-        _auth = ObservedObject(wrappedValue: auth)
+    @MainActor
+    init(auth: AuthManager? = nil, onContinueAsGuest: (() -> Void)? = nil) {
+        _auth = ObservedObject(wrappedValue: auth ?? AuthManager.shared)
         self.onContinueAsGuest = onContinueAsGuest
     }
 

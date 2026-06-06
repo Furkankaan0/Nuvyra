@@ -283,12 +283,14 @@ struct DefaultWeeklyInsightEngine: WeeklyInsightEngine {
 
 /// Two-language copy bank for the weekly storyline. Lives next to the engine
 /// so the rules and the language sit in the same file and stay in sync.
+private typealias WeeklyStorylineBuilder = @Sendable (Int) -> String
+
 struct WeeklyStorylineCopy: Sendable {
     let needsMoreData: String
     let firstWeek: String
     let holdingSteady: String
-    private let positive: [WeeklyMetric.Kind: (Int) -> String]
-    private let negative: [WeeklyMetric.Kind: (Int) -> String]
+    private let positive: [WeeklyMetric.Kind: WeeklyStorylineBuilder]
+    private let negative: [WeeklyMetric.Kind: WeeklyStorylineBuilder]
 
     func positive(for kind: WeeklyMetric.Kind, percent: Int) -> String {
         positive[kind]?(percent) ?? holdingSteady

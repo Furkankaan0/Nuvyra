@@ -77,6 +77,7 @@ private struct NuvyraScrollTiltModifier: ViewModifier {
     var maxDegrees: Double
 
     func body(content: Content) -> some View {
+        let shouldReduceMotion = reduceMotion
         // We deliberately dropped the opacity falloff that used to come
         // with this modifier. On animated backgrounds (mesh / blurred
         // blobs) the falloff plus a parallax tilt read as flicker
@@ -85,7 +86,7 @@ private struct NuvyraScrollTiltModifier: ViewModifier {
         // "next card is on the way" affordance.
         content.scrollTransition(.interactive, axis: .vertical) { view, phase in
             let value = phase.value
-            let degrees = reduceMotion ? 0 : Double(value) * maxDegrees
+            let degrees = shouldReduceMotion ? 0 : Double(value) * maxDegrees
             return view.rotation3DEffect(
                 .degrees(degrees),
                 axis: (x: 1, y: 0, z: 0),

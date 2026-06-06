@@ -76,6 +76,7 @@ struct NuvyraGlassCard<Content: View>: View {
         case (.floating, .light): return 0.92
         case (_, .dark): return 0.74
         case (_, .light): return 0.84
+        @unknown default: return 0.84
         }
     }
 

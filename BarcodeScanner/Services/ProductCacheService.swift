@@ -59,7 +59,7 @@ public actor ProductCacheService {
         self.decoder = JSONDecoder()
         self.decoder.dateDecodingStrategy = .iso8601
 
-        try openAndMigrate()
+        self.db = try Self.openAndMigrate(at: dbURL)
     }
 
     deinit {
@@ -133,7 +133,7 @@ public actor ProductCacheService {
         } else {
             sqlite3_bind_null(stmt, 3)
         }
-        payload.withUnsafeBytes { raw in
+        _ = payload.withUnsafeBytes { raw in
             sqlite3_bind_blob(stmt, 4, raw.baseAddress, Int32(payload.count), SQLITE_TRANSIENT)
         }
         sqlite3_bind_double(stmt, 5, Date().timeIntervalSince1970)
@@ -166,9 +166,14 @@ public actor ProductCacheService {
     // MARK: - Internals
 
     /// DB'yi açar ve şemayı kurar.
-    private func openAndMigrate() throws {
+    private static func openAndMigrate(at dbURL: URL) throws -> OpaquePointer? {
+        var db: OpaquePointer?
         if sqlite3_open(dbURL.path, &db) != SQLITE_OK {
-            throw CacheError.openFailed(lastErrorMessage())
+            let message = lastErrorMessage(for: db)
+            if db != nil {
+                sqlite3_close(db)
+            }
+            throw CacheError.openFailed(message)
         }
         let createSQL = """
             CREATE TABLE IF NOT EXISTS products (
@@ -182,12 +187,19 @@ public actor ProductCacheService {
                 ON products(updated_at);
             """
         if sqlite3_exec(db, createSQL, nil, nil, nil) != SQLITE_OK {
-            throw CacheError.stepFailed(lastErrorMessage())
+            let message = lastErrorMessage(for: db)
+            sqlite3_close(db)
+            throw CacheError.stepFailed(message)
         }
+        return db
     }
 
     /// SQLite son hata mesajını UTF-8 String olarak çevirir.
     private func lastErrorMessage() -> String {
+        Self.lastErrorMessage(for: db)
+    }
+
+    private static func lastErrorMessage(for db: OpaquePointer?) -> String {
         guard let cstr = sqlite3_errmsg(db) else { return "unknown" }
         return String(cString: cstr)
     }

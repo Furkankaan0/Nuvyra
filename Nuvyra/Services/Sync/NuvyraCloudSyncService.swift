@@ -79,7 +79,7 @@ final class LiveNuvyraCloudSyncService: NuvyraCloudSyncService {
     /// Same container id we'll register on developer.apple.com. The
     /// `container.privateCloudDatabase` is the one Nuvyra uses; the
     /// public DB stays empty.
-    static let containerIdentifier = "iCloud.com.nuvyra.app"
+    nonisolated static let containerIdentifier = "iCloud.com.nuvyra.app"
 
     private let container: CKContainer
     private let database: CKDatabase

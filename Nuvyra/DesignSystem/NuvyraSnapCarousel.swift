@@ -35,6 +35,7 @@ struct NuvyraSnapCarousel<Item: Identifiable, Content: View>: View {
     var body: some View {
         GeometryReader { proxy in
             let cardWidth = max(proxy.size.width * cardWidthFraction - spacing, 220)
+            let shouldReduceMotion = reduceMotion
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: spacing) {
                     ForEach(items) { item in
@@ -42,8 +43,8 @@ struct NuvyraSnapCarousel<Item: Identifiable, Content: View>: View {
                             .frame(width: cardWidth, height: cardHeight)
                             .scrollTransition(.interactive) { view, phase in
                                 view
-                                    .scaleEffect(reduceMotion ? 1 : (phase.isIdentity ? 1.0 : 0.92))
-                                    .opacity(reduceMotion ? 1 : (phase.isIdentity ? 1.0 : 0.65))
+                                    .scaleEffect(shouldReduceMotion ? 1 : (phase.isIdentity ? 1.0 : 0.92))
+                                    .opacity(shouldReduceMotion ? 1 : (phase.isIdentity ? 1.0 : 0.65))
                             }
                     }
                 }

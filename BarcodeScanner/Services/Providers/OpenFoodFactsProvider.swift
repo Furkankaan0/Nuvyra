@@ -469,8 +469,7 @@ public struct OpenFoodFactsProvider: NutritionProvider {
         // Scanner ile ilk floatı yakala.
         let scanner = Scanner(string: normalized)
         scanner.charactersToBeSkipped = .whitespacesAndNewlines
-        var value: Double = 0
-        if scanner.scanDouble(&value), value > 0 {
+        if let value = scanner.scanDouble(representation: .decimal), value > 0 {
             return value
         }
         return nil

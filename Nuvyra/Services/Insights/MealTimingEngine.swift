@@ -145,6 +145,10 @@ struct DefaultMealTimingEngine: MealTimingEngine {
 /// Two-language copy bank for the meal timing engine. Sits next to the
 /// engine so the rule order and the language stay in sync when either side
 /// is tweaked.
+private typealias MealLongGapBuilder = @Sendable (String, Int) -> String
+private typealias MealNeutralBuilder = @Sendable (String, String) -> String
+private typealias MealHoursAgoBuilder = @Sendable (Int) -> String
+
 struct MealTimingCopy: Sendable {
     let emptyHeadline: String
     let emptyDetail: String
@@ -156,11 +160,11 @@ struct MealTimingCopy: Sendable {
     let balancedHeadline: String
     let balancedDetail: String
 
-    private let longGap: (_ lastSlot: String, _ hours: Int) -> String
-    private let neutral: (_ lastSlot: String, _ hoursText: String) -> String
+    private let longGap: MealLongGapBuilder
+    private let neutral: MealNeutralBuilder
     private let lowercaseLocale: Locale
     private let justNow: String
-    private let hoursAgoSuffix: (Int) -> String
+    private let hoursAgoSuffix: MealHoursAgoBuilder
 
     func longGapHeadline(lastSlot: String, hours: Int) -> String { longGap(lastSlot, hours) }
     func neutralHeadline(lastSlot: String, hoursText: String) -> String { neutral(lastSlot, hoursText) }

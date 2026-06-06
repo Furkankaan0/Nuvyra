@@ -22,7 +22,13 @@ actor MockFoodRepository: FoodRepository {
     /// kolayca kurabilsin diye. Production fixture'ları (örn. canlı önizleme)
     /// `previewSeed` üzerinden gelir.
     init(seed: [FoodItem] = []) {
-        for item in seed { ingest(item) }
+        for item in seed {
+            if let rowID = item.deterministicRowID {
+                itemsByRowID[rowID] = item
+            } else {
+                manualItems[item.id] = item
+            }
+        }
     }
 
     /// SwiftUI preview / dev fixture'larında gösterilebilecek minimum bir
