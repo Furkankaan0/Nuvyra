@@ -1,6 +1,48 @@
 ﻿{
   "sourceLanguage" : "tr",
   "strings" : {
+    "dashboard.trend.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your rhythm patterns" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Ritim örüntülerin" } }
+      }
+    },
+    "dashboard.trend.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "What we noticed over the last 14 days" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Son 14 günde fark ettiklerimiz" } }
+      }
+    },
+    "dashboard.goals.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Weekly goals" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Haftalık hedefler" } }
+      }
+    },
+    "dashboard.goals.badges" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your badges" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Rozetlerin" } }
+      }
+    },
+    "nutrition.quickRepeat.title" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Quick repeat" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Hızlı tekrar" } }
+      }
+    },
+    "nutrition.quickRepeat.subtitle" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Your usual foods" } },
+        "tr" : { "stringUnit" : { "state" : "translated", "value" : "Sık yediklerin" } }
+      }
+    },
     "ai.chat.error.title" : {
       "extractionState" : "manual",
       "localizations" : {

@@ -25,9 +25,9 @@ struct TrendInsightCard: View {
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Ritim örüntülerin")
+                Text("dashboard.trend.title")
                     .font(NuvyraTypography.section)
-                Text("Son 14 günde fark ettiklerimiz")
+                Text("dashboard.trend.subtitle")
                     .font(NuvyraTypography.caption)
                     .foregroundStyle(.secondary)
             }

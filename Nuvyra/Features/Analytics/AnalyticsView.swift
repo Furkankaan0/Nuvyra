@@ -12,7 +12,9 @@ struct AnalyticsView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     AnalyticsHeader(summary: viewModel.currentSummary)
+                    WeeklyGoalCard(summary: viewModel.weeklyGoals)
                     WeeklyComparisonCard(comparison: viewModel.weeklyComparison)
+                    TrendInsightCard(insights: viewModel.trendInsights)
                     AnalyticsSegmentedControl(selection: $viewModel.selectedPeriod)
 
                     analyticsState

@@ -34,10 +34,10 @@ struct QuickRepeatCard: View {
             Image(systemName: "arrow.counterclockwise.circle.fill")
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(NuvyraColors.accent)
-            Text("Hızlı tekrar")
+            Text("nutrition.quickRepeat.title")
                 .font(NuvyraTypography.section)
             Spacer()
-            Text("Sık yediklerin")
+            Text("nutrition.quickRepeat.subtitle")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

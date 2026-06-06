@@ -51,7 +51,7 @@ struct WeeklyGoalCard: View {
             .frame(width: 64, height: 64)
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Haftalık hedefler")
+                Text("dashboard.goals.title")
                     .font(NuvyraTypography.section)
                 Text("\(summary.achievedCount)/4 hedef bu hafta tamam")
                     .font(NuvyraTypography.caption)
@@ -113,7 +113,7 @@ struct WeeklyGoalCard: View {
 
     private var badgeRail: some View {
         VStack(alignment: .leading, spacing: NuvyraSpacing.xs) {
-            Text("Rozetlerin")
+            Text("dashboard.goals.badges")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(.secondary)
             ScrollView(.horizontal, showsIndicators: false) {
