@@ -18,6 +18,7 @@ final class DashboardViewModel: ObservableObject {
     @Published var mealTiming: MealTimingInsight = .empty
     @Published var vitals: NuvyraVitalsSnapshot = .empty
     @Published var trendInsights: [TrendInsight] = []
+    @Published var weeklyGoals: WeeklyGoalSummary = .empty
     @Published var didCompleteDayOneTour: Bool = false
     @Published var pendingUpsell: UpsellTrigger?
     @Published var shouldShowVitalsPermissionToast = false
@@ -286,6 +287,18 @@ final class DashboardViewModel: ObservableObject {
                 profile: profile,
                 endingOn: Date()
             )) ?? []
+
+            // Weekly goal completion + derived milestone badges. Reuses
+            // the streak rollups computed just above.
+            weeklyGoals = (try? dependencies.weeklyGoalEngine.summary(
+                nutrition: nutritionRepository,
+                water: waterRepository,
+                activity: activityRepository,
+                profile: profile,
+                mealStreak: mealStreak,
+                waterStreak: waterStreak,
+                endingOn: Date()
+            )) ?? .empty
 
             // Day-one tour flag — read from AppSettings, auto-complete once every step is done.
             let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first

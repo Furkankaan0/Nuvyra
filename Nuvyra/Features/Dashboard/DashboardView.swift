@@ -118,6 +118,9 @@ struct DashboardView: View {
                     TrendInsightCard(insights: viewModel.trendInsights)
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
+                    WeeklyGoalCard(summary: viewModel.weeklyGoals)
+                        .dashboardSlide(index: 10, animated: didAnimateAppearance)
+
                     if viewModel.weightSummary.latestWeightKg != nil {
                         NavigationLink(value: DashboardDestination.bodyMeasurements) {
                             WeightTrendCard(

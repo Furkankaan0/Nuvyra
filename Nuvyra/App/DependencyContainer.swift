@@ -30,6 +30,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
     let weeklyInsightEngine: WeeklyInsightEngine
     let mealTimingEngine: MealTimingEngine
     let trendInsightEngine: TrendInsightEngine
+    let weeklyGoalEngine: WeeklyGoalEngine
     let vitalsService: NuvyraVitalsService
     let cloudSyncService: NuvyraCloudSyncService
     @Published var subscriptionManager: SubscriptionManager
@@ -56,6 +57,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
         weeklyInsightEngine: WeeklyInsightEngine? = nil,
         mealTimingEngine: MealTimingEngine? = nil,
         trendInsightEngine: TrendInsightEngine? = nil,
+        weeklyGoalEngine: WeeklyGoalEngine? = nil,
         vitalsService: NuvyraVitalsService? = nil,
         cloudSyncService: NuvyraCloudSyncService? = nil,
         subscriptionManager: SubscriptionManager? = nil
@@ -79,6 +81,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
         self.weeklyInsightEngine = weeklyInsightEngine ?? DefaultWeeklyInsightEngine()
         self.mealTimingEngine = mealTimingEngine ?? DefaultMealTimingEngine()
         self.trendInsightEngine = trendInsightEngine ?? DefaultTrendInsightEngine()
+        self.weeklyGoalEngine = weeklyGoalEngine ?? DefaultWeeklyGoalEngine()
         self.vitalsService = vitalsService ?? LiveNuvyraVitalsService()
         self.cloudSyncService = cloudSyncService ?? DisabledNuvyraCloudSyncService()
         self.subscriptionManager = subscriptionManager
@@ -128,6 +131,7 @@ final class DependencyContainer: ObservableObject, DependencyProvider {
             foodRepository: MockFoodRepository(seed: MockFoodRepository.previewSeed),
             weeklyInsightEngine: MockWeeklyInsightEngine(comparison: .previewSample),
             trendInsightEngine: MockTrendInsightEngine(insights: TrendInsight.previewSamples),
+            weeklyGoalEngine: MockWeeklyGoalEngine(summary: .previewSample),
             vitalsService: MockNuvyraVitalsService(),
             cloudSyncService: MockNuvyraCloudSyncService()
         )
