@@ -7,6 +7,7 @@ final class NutritionViewModel: ObservableObject {
     @Published var profile: UserProfile?
     @Published var meals: [MealEntry] = []
     @Published var favorites: [MealEntry] = []
+    @Published var frequentMeals: [FrequentMeal] = []
     @Published var summary: DailyMealSummary = .empty
     @Published var streak: StreakInsight = .empty
     @Published var selectedMealType: MealType = .breakfast
@@ -52,8 +53,46 @@ final class NutritionViewModel: ObservableObject {
             summary = try repository.dailySummary(on: selectedDate)
             profile = try? dependencies.userRepository(context: context).profile()
             streak = (try? repository.mealStreak(daysBack: 60)) ?? .empty
+            frequentMeals = (try? repository.frequentMeals(daysBack: 30, limit: 6)) ?? []
         } catch {
             errorMessage = "Öğünler yüklenemedi."
+        }
+    }
+
+    /// Clones a frequent-meal template onto the selected day + meal type
+    /// and saves it. Returns immediately on success so the UI can flash
+    /// a confirmation. Mirrors the same health-save + cloud-sync +
+    /// widget-refresh path the other add flows use.
+    func quickRepeat(_ frequent: FrequentMeal, context: ModelContext, dependencies: DependencyContainer) async {
+        let t = frequent.template
+        let meal = MealEntry(
+            date: selectedDate,
+            mealType: selectedMealType,
+            name: t.name,
+            calories: t.calories,
+            protein: t.protein,
+            carbs: t.carbs,
+            fat: t.fat,
+            portionDescription: t.portionDescription,
+            isFavorite: false,
+            isVerifiedTurkishFood: t.isVerifiedTurkishFood,
+            isEstimated: t.isEstimated,
+            fiberGrams: t.fiberGrams,
+            sodiumMg: t.sodiumMg,
+            sugarGrams: t.sugarGrams,
+            saturatedFatGrams: t.saturatedFatGrams
+        )
+        do {
+            try dependencies.nutritionRepository(context: context).addMeal(meal)
+            await dependencies.healthService.saveNutrition(for: meal)
+            await syncMeal(meal, context: context, dependencies: dependencies)
+            dependencies.haptics.mealLogged()
+            await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "quick_repeat", "name": t.name]))
+            flash("\(t.name) eklendi")
+            load(context: context, dependencies: dependencies)
+            refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
+        } catch {
+            errorMessage = "Öğün eklenemedi."
         }
     }
 

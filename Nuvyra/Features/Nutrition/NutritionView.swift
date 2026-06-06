@@ -32,6 +32,9 @@ struct NutritionView: View {
                     StreakCard(kind: .meal, insight: viewModel.streak)
                     FoodQualityCard(totals: viewModel.summary.totals, target: viewModel.macroTarget)
                     quickActions
+                    QuickRepeatCard(meals: viewModel.frequentMeals) { frequent in
+                        Task { await viewModel.quickRepeat(frequent, context: modelContext, dependencies: dependencies) }
+                    }
                     mealSections
                     SmartMealEntryCard(
                         text: $viewModel.smartMealText,

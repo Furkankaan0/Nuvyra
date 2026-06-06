@@ -33,6 +33,19 @@ struct DailyMealSummary: Equatable {
     static let empty = DailyMealSummary(date: Date(), totals: .zero, mealCount: 0)
 }
 
+/// A frequently-logged food + how often it appeared in the lookback
+/// window. `template` is a representative entry (most recent occurrence)
+/// the UI clones when the user taps "quick add".
+struct FrequentMeal: Identifiable, Equatable {
+    var id: String { template.name }
+    let template: MealEntry
+    let count: Int
+
+    static func == (lhs: FrequentMeal, rhs: FrequentMeal) -> Bool {
+        lhs.template.id == rhs.template.id && lhs.count == rhs.count
+    }
+}
+
 @MainActor
 protocol NutritionRepository {
     func meals(on date: Date) throws -> [MealEntry]
@@ -44,6 +57,10 @@ protocol NutritionRepository {
     func copyMeal(_ meal: MealEntry, to date: Date) throws
     func copyMeals(from sourceDate: Date, to targetDate: Date) throws -> Int
     func favoriteMeals() throws -> [MealEntry]
+    /// Most-frequently-logged meals over the lookback window, most
+    /// frequent first. One representative `MealEntry` per distinct
+    /// food name. Powers the "quick repeat" suggestions.
+    func frequentMeals(daysBack: Int, limit: Int) throws -> [FrequentMeal]
     func totalCalories(on date: Date) throws -> Int
     func dailySummary(on date: Date) throws -> DailyMealSummary
     /// Per-day rollups for a range, oldest → newest. Missing days return `.empty`
@@ -156,6 +173,44 @@ final class SwiftDataNutritionRepository: NutritionRepository {
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
         return try context.fetch(descriptor)
+    }
+
+    /// Single window fetch → group by (case-insensitive) name → count.
+    /// We keep the most-recent entry per name as the clone template so
+    /// the quick-add carries the freshest macros the user logged for
+    /// that food. Names that only appear once are dropped — a "frequent"
+    /// list of one-offs isn't useful.
+    func frequentMeals(daysBack: Int = 30, limit: Int = 6) throws -> [FrequentMeal] {
+        let startDay = calendar.date(
+            byAdding: .day,
+            value: -(daysBack - 1),
+            to: calendar.startOfDay(for: Date())
+        ) ?? Date()
+        let descriptor = FetchDescriptor<MealEntry>(
+            predicate: #Predicate { $0.date >= startDay },
+            sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
+        )
+        let rows = try context.fetch(descriptor)
+
+        // Group by lowercased trimmed name. First row wins as template
+        // because the fetch is already newest-first.
+        var templates: [String: MealEntry] = [:]
+        var counts: [String: Int] = [:]
+        for row in rows {
+            let key = row.name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(with: Locale(identifier: "tr_TR"))
+            guard !key.isEmpty else { continue }
+            counts[key, default: 0] += 1
+            if templates[key] == nil { templates[key] = row }
+        }
+
+        return counts
+            .filter { $0.value >= 2 }
+            .sorted { $0.value > $1.value }
+            .prefix(limit)
+            .compactMap { key, count in
+                guard let template = templates[key] else { return nil }
+                return FrequentMeal(template: template, count: count)
+            }
     }
 
     func totalCalories(on date: Date) throws -> Int {
