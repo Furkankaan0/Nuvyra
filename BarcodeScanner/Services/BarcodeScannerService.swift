@@ -61,8 +61,8 @@ public final class BarcodeScannerService: NSObject {
 
     private nonisolated(unsafe) let session: AVCaptureSession
     private nonisolated(unsafe) let metadataOutput: AVCaptureMetadataOutput
-    private nonisolated(unsafe) let sessionQueue = DispatchQueue(label: "nuvyra.scanner.session")
-    private nonisolated(unsafe) let metadataQueue = DispatchQueue(label: "nuvyra.scanner.metadata")
+    private let sessionQueue = DispatchQueue(label: "nuvyra.scanner.session")
+    private let metadataQueue = DispatchQueue(label: "nuvyra.scanner.metadata")
     private let haptic = UIImpactFeedbackGenerator(style: .medium)
 
     /// Duplicate prevention: barkod → son okuma zamanı.

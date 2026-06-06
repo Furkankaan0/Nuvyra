@@ -67,8 +67,7 @@ extension LiveAppleSignInService: ASAuthorizationControllerDelegate {
             switch asError.code {
             case .canceled: authError = .canceled
             case .invalidResponse, .notHandled, .failed: authError = .invalidCredential
-            case .notInteractive, .unknown: authError = .unknown(error)
-            @unknown default: authError = .unknown(error)
+            default: authError = .unknown(error)
             }
         } else {
             authError = .unknown(error)

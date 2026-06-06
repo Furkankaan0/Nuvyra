@@ -823,7 +823,7 @@ struct AddFoodView: View {
             servingSizes: resolvedServings,
             nutritionPer100g: per100g
         )
-        try? await dependencies.foodRepository.addUserItem(userItem)
+        _ = try? await dependencies.foodRepository.addUserItem(userItem)
     }
 
     private func delete(_ meal: MealEntry) {

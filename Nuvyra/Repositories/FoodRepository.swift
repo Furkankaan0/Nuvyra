@@ -99,7 +99,7 @@ final class DefaultFoodRepository: FoodRepository, @unchecked Sendable {
         for provider in barcodeProviders {
             do {
                 let item = try await provider.fetchItem(barcode: trimmed)
-                try? await localStore.upsertItem(item)
+                _ = try? await localStore.upsertItem(item)
                 return item
             } catch {
                 continue
@@ -118,17 +118,17 @@ final class DefaultFoodRepository: FoodRepository, @unchecked Sendable {
     }
 
     func cacheItem(_ item: FoodItem) async {
-        try? await localStore.upsertItem(item)
+        _ = try? await localStore.upsertItem(item)
     }
 
     // MARK: Usage
 
     func recordUse(id: Int64) async {
-        try? await localStore.recordUse(rowID: id)
+        _ = try? await localStore.recordUse(rowID: id)
     }
 
     func setFavorite(id: Int64, _ isFavorite: Bool) async {
-        try? await localStore.setFavorite(rowID: id, isFavorite)
+        _ = try? await localStore.setFavorite(rowID: id, isFavorite)
     }
 
     func isFavorite(id: Int64) async -> Bool {
@@ -147,7 +147,7 @@ final class DefaultFoodRepository: FoodRepository, @unchecked Sendable {
 
     private func writeThrough(_ items: [FoodItem]) async {
         for item in items {
-            try? await localStore.upsertItem(item)
+            _ = try? await localStore.upsertItem(item)
         }
     }
 
