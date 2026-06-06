@@ -206,7 +206,6 @@ struct MockWeeklyGoalEngine: WeeklyGoalEngine {
     }
 }
 
-#if DEBUG
 extension WeeklyGoalSummary {
     static let previewSample = WeeklyGoalSummary(
         progress: [
@@ -224,4 +223,3 @@ extension WeeklyGoalSummary {
         overallFraction: 0.64
     )
 }
-#endif

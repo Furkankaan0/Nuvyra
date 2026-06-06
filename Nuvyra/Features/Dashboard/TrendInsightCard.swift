@@ -78,7 +78,6 @@ struct TrendInsightCard: View {
     }
 }
 
-#if DEBUG
 extension TrendInsight {
     static let previewSamples: [TrendInsight] = [
         TrendInsight(
@@ -98,6 +97,7 @@ extension TrendInsight {
     ]
 }
 
+#if DEBUG
 #Preview {
     ZStack {
         NuvyraBackground(.animated)
