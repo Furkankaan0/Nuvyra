@@ -13,6 +13,10 @@ struct DashboardView: View {
     @State private var didAnimateAppearance = false
     /// Phase 7 — barcode tarama sonrası rich `FoodItem` portion picker'ı için.
     @State private var pendingBarcodeItem: FoodItem?
+    /// Flips each time a fresh badge unlock lands, driving the confetti
+    /// burst overlay. The value itself is throwaway — the burst keys on
+    /// the change.
+    @State private var badgeCelebrationTrigger = 0
 
     var body: some View {
         ZStack {
@@ -175,6 +179,26 @@ struct DashboardView: View {
             toastCenter.success(message)
             viewModel.actionFeedback = nil
         }
+        // Badge unlock → symbol confetti + a tap-to-act toast that jumps
+        // the user to the Insights tab where the full badge rail lives.
+        .onChange(of: viewModel.newlyEarnedBadge) { _, badge in
+            guard let badge else { return }
+            badgeCelebrationTrigger += 1
+            dependencies.haptics.goalCompleted()
+            toastCenter.success(
+                "Yeni rozet: \(badge.title)",
+                action: NuvyraToast.Action(title: "Gör") { router.selectedTab = .insights }
+            )
+            viewModel.newlyEarnedBadge = nil
+        }
+        .overlay(
+            NuvyraConfettiBurst(
+                trigger: AnyHashable(badgeCelebrationTrigger),
+                palette: [NuvyraColors.accent, NuvyraColors.softMint, NuvyraColors.paleLime, NuvyraColors.softSand],
+                style: .symbols(["star.fill", "sparkles", "checkmark.seal.fill", "crown.fill"])
+            )
+            .allowsHitTesting(false)
+        )
         .onChange(of: viewModel.shouldShowVitalsPermissionToast) { _, shouldShow in
             guard shouldShow else { return }
             viewModel.markVitalsPermissionToastShown(context: modelContext)

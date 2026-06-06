@@ -25,6 +25,10 @@ final class AppSettings: Identifiable {
     /// Profile. When false, every `cloudSyncService.push` call site
     /// no-ops early so we never touch CloudKit without consent.
     var iCloudSyncEnabled: Bool = false
+    /// Comma-joined IDs of `NuvyraBadge`s the user has already earned.
+    /// Used to detect *newly* earned badges on load so we only fire the
+    /// celebration once per unlock, not on every dashboard refresh.
+    var earnedBadgeIDs: String = ""
     var createdAt: Date
     var updatedAt: Date
 
@@ -40,6 +44,7 @@ final class AppSettings: Identifiable {
         shownUpsellTriggers: String = "",
         vitalsPermissionToastShown: Bool = false,
         iCloudSyncEnabled: Bool = false,
+        earnedBadgeIDs: String = "",
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -54,6 +59,7 @@ final class AppSettings: Identifiable {
         self.shownUpsellTriggers = shownUpsellTriggers
         self.vitalsPermissionToastShown = vitalsPermissionToastShown
         self.iCloudSyncEnabled = iCloudSyncEnabled
+        self.earnedBadgeIDs = earnedBadgeIDs
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

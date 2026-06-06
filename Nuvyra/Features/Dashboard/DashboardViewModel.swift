@@ -19,6 +19,10 @@ final class DashboardViewModel: ObservableObject {
     @Published var vitals: NuvyraVitalsSnapshot = .empty
     @Published var trendInsights: [TrendInsight] = []
     @Published var weeklyGoals: WeeklyGoalSummary = .empty
+    /// Set when the latest load detected a badge the user hadn't earned
+    /// before. The view consumes it to fire one celebration, then
+    /// clears it. `nil` most of the time.
+    @Published var newlyEarnedBadge: NuvyraBadge?
     @Published var didCompleteDayOneTour: Bool = false
     @Published var pendingUpsell: UpsellTrigger?
     @Published var shouldShowVitalsPermissionToast = false
@@ -220,6 +224,34 @@ final class DashboardViewModel: ObservableObject {
         try? context.save()
     }
 
+    /// Compares the freshly-computed badge set against the persisted
+    /// earned IDs. If a badge was earned that wasn't before, sets
+    /// `newlyEarnedBadge` (newest first) and stores the union so the
+    /// celebration fires exactly once per unlock — even across relaunch.
+    private func detectNewlyEarnedBadge(settings: AppSettings?, context: ModelContext) {
+        let earnedNow = Set(weeklyGoals.badges.filter(\.isEarned).map(\.id))
+        guard !earnedNow.isEmpty else { return }
+
+        let previouslyEarned = Set(
+            (settings?.earnedBadgeIDs ?? "")
+                .split(separator: ",")
+                .map { String($0).trimmingCharacters(in: .whitespaces) }
+                .filter { !$0.isEmpty }
+        )
+        let fresh = earnedNow.subtracting(previouslyEarned)
+        guard !fresh.isEmpty else { return }
+
+        // Pick the freshest unlock to celebrate. Order follows the
+        // badge array (most prestigious last), so we take the last one.
+        if let badge = weeklyGoals.badges.last(where: { fresh.contains($0.id) }) {
+            newlyEarnedBadge = badge
+        }
+
+        // Persist the full union so we never re-celebrate.
+        let union = previouslyEarned.union(earnedNow).sorted().joined(separator: ",")
+        mutateSettings(context: context) { $0.earnedBadgeIDs = union }
+    }
+
     // MARK: - Load
     func load(context: ModelContext, dependencies: DependencyContainer, force: Bool = false) async {
         let now = Date()
@@ -302,6 +334,13 @@ final class DashboardViewModel: ObservableObject {
 
             // Day-one tour flag — read from AppSettings, auto-complete once every step is done.
             let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first
+
+            // Badge unlock detection — compare the engine's earned set
+            // against the IDs we've already celebrated. Fire at most one
+            // celebration per load (the freshest unlock) and persist the
+            // full earned set so we never re-celebrate.
+            detectNewlyEarnedBadge(settings: settings, context: context)
+
             didCompleteDayOneTour = settings?.didCompleteDayOneTour ?? false
             shouldShowVitalsPermissionToast = dependencies.healthService.isHealthDataAvailable
                 && !(settings?.vitalsPermissionToastShown ?? false)
