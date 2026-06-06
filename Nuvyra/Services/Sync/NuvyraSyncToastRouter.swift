@@ -66,3 +66,38 @@ enum NuvyraSyncToastRouter {
         UIApplication.shared.open(url)
     }
 }
+
+import SwiftData
+
+/// Convenience that gates a CloudKit push on the user's opt-in flag and
+/// routes any failure through `NuvyraSyncToastRouter`. Call sites that
+/// just want "mirror this if the user enabled iCloud" use this instead
+/// of repeating the settings-fetch + try/catch dance.
+@MainActor
+enum NuvyraSyncCoordinator {
+    /// Pushes `value` only when `AppSettings.iCloudSyncEnabled` is true.
+    /// Reads the flag from the passed `context` so we never touch
+    /// CloudKit without an explicit opt-in. Errors surface via the
+    /// optional toast centre.
+    static func mirror<T: NuvyraSyncable>(
+        _ value: T,
+        service: NuvyraCloudSyncService,
+        context: ModelContext,
+        centre: NuvyraToastCenter?
+    ) async {
+        guard isSyncEnabled(in: context) else { return }
+        do {
+            try await service.push(value)
+        } catch {
+            NuvyraSyncToastRouter.handle(error, centre: centre)
+        }
+    }
+
+    /// One-shot read of the opt-in flag. Defaults to `false` when no
+    /// settings row exists yet — local-first until the user says
+    /// otherwise.
+    static func isSyncEnabled(in context: ModelContext) -> Bool {
+        let descriptor = FetchDescriptor<AppSettings>()
+        return (try? context.fetch(descriptor))?.first?.iCloudSyncEnabled ?? false
+    }
+}

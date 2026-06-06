@@ -217,10 +217,10 @@ struct AddBodyMeasurementSheet: View {
         }
     }
 
-    /// Best-effort iCloud mirror for the new measurement. Failures
-    /// surface through `NuvyraSyncToastRouter` so the copy + the
-    /// tap-to-act fallback (`.quotaExceeded` → iCloud Settings) stays
-    /// consistent with every other CloudKit caller in the app.
+    /// Best-effort iCloud mirror for the new measurement. Gated on the
+    /// user's opt-in flag and routed through `NuvyraSyncCoordinator`
+    /// so the copy + the tap-to-act fallback stays consistent with
+    /// every other CloudKit caller in the app.
     private func syncSavedMeasurement(for date: Date) async {
         let day = Calendar.nuvyra.startOfDay(for: date)
         let (start, end) = Calendar.nuvyra.startAndEndOfDay(for: day)
@@ -228,11 +228,12 @@ struct AddBodyMeasurementSheet: View {
             predicate: #Predicate { $0.date >= start && $0.date < end }
         )
         guard let saved = try? modelContext.fetch(descriptor).first else { return }
-        do {
-            try await dependencies.cloudSyncService.push(saved)
-        } catch {
-            NuvyraSyncToastRouter.handle(error, centre: toastCenter)
-        }
+        await NuvyraSyncCoordinator.mirror(
+            saved,
+            service: dependencies.cloudSyncService,
+            context: modelContext,
+            centre: toastCenter
+        )
     }
 
     private func delete(_ log: WeightLog) {

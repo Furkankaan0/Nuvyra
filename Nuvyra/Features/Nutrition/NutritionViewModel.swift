@@ -104,7 +104,7 @@ final class NutritionViewModel: ObservableObject {
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
-            await syncMeal(meal, dependencies: dependencies)
+            await syncMeal(meal, context: context, dependencies: dependencies)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "smart_text", "estimated": "true"]))
             smartMealText = ""
@@ -133,7 +133,7 @@ final class NutritionViewModel: ObservableObject {
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
-            await syncMeal(meal, dependencies: dependencies)
+            await syncMeal(meal, context: context, dependencies: dependencies)
             dependencies.haptics.mealLogged()
             await dependencies.analytics.track(.mealAdded, payload: AnalyticsPayload(values: ["source": "quick_food", "name": food.name]))
             load(context: context, dependencies: dependencies)
@@ -169,7 +169,7 @@ final class NutritionViewModel: ObservableObject {
             )
             try dependencies.nutritionRepository(context: context).addMeal(meal)
             await dependencies.healthService.saveNutrition(for: meal)
-            await syncMeal(meal, dependencies: dependencies)
+            await syncMeal(meal, context: context, dependencies: dependencies)
             dependencies.haptics.mealLogged()
 
             if let rowID = selection.deterministicRowID {
@@ -241,7 +241,7 @@ final class NutritionViewModel: ObservableObject {
             )
             do {
                 try repository.addMeal(meal)
-                await syncMeal(meal, dependencies: dependencies)
+                await syncMeal(meal, context: context, dependencies: dependencies)
                 savedCount += 1
             } catch {
                 continue
@@ -410,7 +410,7 @@ final class NutritionViewModel: ObservableObject {
             let copiedMeals = try dependencies.nutritionRepository(context: context).meals(on: selectedDate)
             for meal in copiedMeals.suffix(count) {
                 await dependencies.healthService.saveNutrition(for: meal)
-                await syncMeal(meal, dependencies: dependencies)
+                await syncMeal(meal, context: context, dependencies: dependencies)
             }
             load(context: context, dependencies: dependencies)
             refreshWidgetIfViewingToday(context: context, dependencies: dependencies)
@@ -424,7 +424,7 @@ final class NutritionViewModel: ObservableObject {
         do {
             try dependencies.nutritionRepository(context: context).copyMeal(meal, to: Date())
             if let copied = try dependencies.nutritionRepository(context: context).meals(on: Date()).first(where: { $0.name == meal.name && $0.createdAt >= meal.createdAt }) {
-                await syncMeal(copied, dependencies: dependencies)
+                await syncMeal(copied, context: context, dependencies: dependencies)
             }
             if isViewingToday {
                 load(context: context, dependencies: dependencies)
@@ -447,7 +447,12 @@ final class NutritionViewModel: ObservableObject {
         }
     }
 
-    private func syncMeal(_ meal: MealEntry, dependencies: DependencyContainer) async {
+    /// Mirror a freshly-saved meal to CloudKit — only when the user has
+    /// opted into iCloud sync. Silent (`centre: nil`): meal logging is a
+    /// high-frequency action and we don't want a sync hiccup to toast on
+    /// every entry. Errors still land in `syncError` for diagnostics.
+    private func syncMeal(_ meal: MealEntry, context: ModelContext, dependencies: DependencyContainer) async {
+        guard NuvyraSyncCoordinator.isSyncEnabled(in: context) else { return }
         do {
             try await dependencies.cloudSyncService.push(meal)
         } catch {

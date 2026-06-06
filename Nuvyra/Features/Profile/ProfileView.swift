@@ -9,9 +9,14 @@ struct ProfileView: View {
     @Query private var settings: [AppSettings]
     @StateObject private var viewModel = ProfileViewModel()
     @StateObject private var auth = AuthManager.shared
+    @EnvironmentObject private var toastCenter: NuvyraToastCenter
     @State private var showsGoalEditor = false
     @State private var showsProfileEditor = false
     @State private var showsAppIconPicker = false
+    /// Live iCloud account status string, refreshed on appear + when
+    /// the user toggles sync on. Empty until the first query lands.
+    @State private var iCloudStatusText = "Durum kontrol ediliyor…"
+    @State private var isBulkSyncing = false
 
     var body: some View {
         ZStack {
@@ -28,6 +33,7 @@ struct ProfileView: View {
                     goalsSection
                     premiumSection
                     healthSection
+                    iCloudSyncSection
                     preferencesSection
                     legalSection
                     accountSection
@@ -307,6 +313,104 @@ struct ProfileView: View {
                 try? modelContext.save()
             }
         )
+    }
+
+    // MARK: - iCloud sync
+
+    private var iCloudSyncSection: some View {
+        SettingsSection(
+            title: "iCloud yedekleme",
+            subtitle: "Kilo, öğün ve egzersiz kayıtların iCloud hesabında yedeklenir. Fotoğraflar cihazda kalır."
+        ) {
+            SettingsRow(
+                title: "iCloud senkronizasyonu",
+                subtitle: iCloudStatusText,
+                systemImage: "icloud.fill",
+                tint: NuvyraColors.accent
+            ) {
+                Toggle("iCloud senkronizasyonu", isOn: iCloudSyncBinding)
+                    .labelsHidden()
+                    .tint(NuvyraColors.accent)
+                    .disabled(isBulkSyncing)
+            }
+            if isBulkSyncing {
+                SettingsDivider()
+                HStack(spacing: NuvyraSpacing.sm) {
+                    ProgressView()
+                    Text("Kayıtların yükleniyor…")
+                        .font(NuvyraTypography.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 6)
+            }
+        }
+        .task { await refreshICloudStatus() }
+    }
+
+    private var iCloudSyncBinding: Binding<Bool> {
+        Binding(
+            get: { settings.first?.iCloudSyncEnabled ?? false },
+            set: { newValue in
+                let item: AppSettings
+                if let existing = settings.first {
+                    item = existing
+                } else {
+                    item = AppSettings()
+                    modelContext.insert(item)
+                }
+                item.iCloudSyncEnabled = newValue
+                item.updatedAt = Date()
+                try? modelContext.save()
+                if newValue {
+                    Task { await enableICloudSync() }
+                } else {
+                    toastCenter.info("iCloud yedekleme kapatıldı.")
+                }
+            }
+        )
+    }
+
+    /// Reads the current CloudKit account status and renders a humane
+    /// one-liner. Runs on appear so the row reflects reality before the
+    /// user even touches the toggle.
+    private func refreshICloudStatus() async {
+        let status = await dependencies.cloudSyncService.accountStatus()
+        iCloudStatusText = {
+            switch status {
+            case .available: "iCloud hesabın hazır."
+            case .noAccount: "iCloud hesabı bulunamadı. Ayarlar'dan giriş yap."
+            case .restricted: "iCloud bu cihazda kısıtlı."
+            case .couldNotDetermine: "Durum belirlenemedi."
+            case .temporarilyUnavailable: "iCloud geçici olarak kullanılamıyor."
+            @unknown default: "Durum bilinmiyor."
+            }
+        }()
+    }
+
+    /// First-time enable hydrates the private DB with everything already
+    /// stored locally so the user's history isn't lost on a fresh
+    /// install of another device. Best-effort — failures toast but the
+    /// flag stays on so future writes still mirror.
+    private func enableICloudSync() async {
+        await refreshICloudStatus()
+        isBulkSyncing = true
+        defer { isBulkSyncing = false }
+
+        let weightRepo = dependencies.weightRepository(context: modelContext)
+        let weights = (try? weightRepo.logs(days: 3_650)) ?? []
+        let mealDescriptor = FetchDescriptor<MealEntry>()
+        let meals = (try? modelContext.fetch(mealDescriptor)) ?? []
+        let workoutDescriptor = FetchDescriptor<WorkoutLog>()
+        let workouts = (try? modelContext.fetch(workoutDescriptor)) ?? []
+
+        do {
+            for weight in weights { try await dependencies.cloudSyncService.push(weight) }
+            for meal in meals { try await dependencies.cloudSyncService.push(meal) }
+            for workout in workouts { try await dependencies.cloudSyncService.push(workout) }
+            toastCenter.success("iCloud yedekleme açıldı.")
+        } catch {
+            NuvyraSyncToastRouter.handle(error, centre: toastCenter)
+        }
     }
 
     private var alertBinding: Binding<Bool> {

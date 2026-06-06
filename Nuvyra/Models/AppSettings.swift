@@ -20,6 +20,11 @@ final class AppSettings: Identifiable {
     var shownUpsellTriggers: String = ""
     /// One-shot dashboard toast asking for sleep + resting heart HealthKit reads.
     var vitalsPermissionToastShown: Bool = false
+    /// User opt-in for the CloudKit mirror. Off by default — the app is
+    /// local-first; the user enables iCloud backup explicitly from
+    /// Profile. When false, every `cloudSyncService.push` call site
+    /// no-ops early so we never touch CloudKit without consent.
+    var iCloudSyncEnabled: Bool = false
     var createdAt: Date
     var updatedAt: Date
 
@@ -34,6 +39,7 @@ final class AppSettings: Identifiable {
         lastUpsellShownAt: Date? = nil,
         shownUpsellTriggers: String = "",
         vitalsPermissionToastShown: Bool = false,
+        iCloudSyncEnabled: Bool = false,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
@@ -47,6 +53,7 @@ final class AppSettings: Identifiable {
         self.lastUpsellShownAt = lastUpsellShownAt
         self.shownUpsellTriggers = shownUpsellTriggers
         self.vitalsPermissionToastShown = vitalsPermissionToastShown
+        self.iCloudSyncEnabled = iCloudSyncEnabled
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
