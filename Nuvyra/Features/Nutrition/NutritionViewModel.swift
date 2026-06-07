@@ -53,7 +53,7 @@ final class NutritionViewModel: ObservableObject {
             summary = try repository.dailySummary(on: selectedDate)
             profile = try? dependencies.userRepository(context: context).profile()
             streak = (try? repository.mealStreak(daysBack: 60)) ?? .empty
-            frequentMeals = (try? repository.frequentMeals(daysBack: 30, limit: 6)) ?? []
+            frequentMeals = (try? repository.frequentMeals(daysBack: 14, limit: 6)) ?? []
         } catch {
             errorMessage = "Öğünler yüklenemedi."
         }

@@ -269,10 +269,22 @@ final class DashboardViewModel: ObservableObject {
             let nutritionRepository = dependencies.nutritionRepository(context: context)
             let waterRepository = dependencies.waterRepository(context: context)
             let activityRepository = dependencies.activityRepository(context: context)
+
+            // HealthKit queries are the highest-latency awaits in this
+            // load (network-ish round-trips through the HK daemon).
+            // Kick them off in parallel BEFORE the local SwiftData
+            // reads so they're already in flight while we walk through
+            // the repositories on the main actor. Net result on a cold
+            // dashboard: the load tail drops by ~one HK call's worth
+            // of wall clock.
+            async let healthSnapshotTask = dependencies.healthService.todaySnapshot()
+            async let vitalsTask = dependencies.vitalsService.snapshot()
+
             profile = try userRepository.profile()
             meals = try nutritionRepository.meals(on: Date())
             waterMl = try waterRepository.totalWater(on: Date())
-            healthSnapshot = await dependencies.healthService.todaySnapshot()
+
+            healthSnapshot = await healthSnapshotTask
             try activityRepository.upsertWalkingSnapshot(
                 date: Date(),
                 steps: healthSnapshot.steps,
@@ -304,10 +316,10 @@ final class DashboardViewModel: ObservableObject {
             // meals we already fetched, no extra repo round-trip.
             mealTiming = dependencies.mealTimingEngine.evaluate(meals: meals, at: Date())
 
-            // Sleep + resting heart-rate snapshot. Runs in parallel with
-            // the rest of the load() and falls back silently to .empty
-            // when HealthKit auth is missing.
-            vitals = await dependencies.vitalsService.snapshot()
+            // Sleep + resting heart-rate snapshot — kicked off in
+            // parallel with the steps query at the top of load(), so by
+            // the time we get here it's typically already resolved.
+            vitals = await vitalsTask
 
             // Multi-day behavioural pattern detection (protein shortfall
             // runs, weekend water dips, step streaks). Empty array when

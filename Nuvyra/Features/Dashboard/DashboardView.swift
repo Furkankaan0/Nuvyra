@@ -124,11 +124,13 @@ struct DashboardView: View {
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
                     TrendInsightCard(insights: viewModel.trendInsights)
+                        .equatable()
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
                     WeeklyGoalCard(summary: viewModel.weeklyGoals) { badge in
                         focusedBadge = badge
                     }
+                    .equatable()
                     .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
                     if viewModel.weightSummary.latestWeightKg != nil {

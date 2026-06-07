@@ -18,8 +18,10 @@ struct AnalyticsView: View {
                     WeeklyGoalCard(summary: viewModel.weeklyGoals) { badge in
                         focusedBadge = badge
                     }
+                    .equatable()
                     WeeklyComparisonCard(comparison: viewModel.weeklyComparison)
                     TrendInsightCard(insights: viewModel.trendInsights)
+                        .equatable()
                     AnalyticsSegmentedControl(selection: $viewModel.selectedPeriod)
 
                     analyticsState

@@ -103,10 +103,18 @@ final class WatchWaterSyncService: NSObject {
 @MainActor
 enum WatchOutbound {
     private static weak var sink: WatchWaterSyncService?
+    /// Last snapshot we actually sent. Used to short-circuit repeat
+    /// pushes — every dashboard refresh recomputes WeeklyGoalSummary,
+    /// but the value usually hasn't moved within a few minutes. Skipping
+    /// the identical payload avoids a needless IPC round-trip + dict
+    /// serialise, which matters on a tight foreground refresh loop.
+    private static var lastSentSnapshot: WeeklyGoalSummary?
 
     static func register(_ service: WatchWaterSyncService) { sink = service }
 
     static func pushWeeklyGoals(_ summary: WeeklyGoalSummary) {
+        guard summary != lastSentSnapshot else { return }
+        lastSentSnapshot = summary
         sink?.pushWeeklyGoalSnapshot(summary)
     }
 }

@@ -4,9 +4,13 @@ import SwiftUI
 /// by `TrendInsightEngine`. Renders nothing when the engine finds no
 /// pattern worth mentioning — better silence than filler. Each insight
 /// is a glass row with a tinted medallion, headline and detail.
-struct TrendInsightCard: View {
+struct TrendInsightCard: View, Equatable {
     @Environment(\.colorScheme) private var scheme
     var insights: [TrendInsight]
+
+    static func == (lhs: TrendInsightCard, rhs: TrendInsightCard) -> Bool {
+        lhs.insights == rhs.insights
+    }
 
     var body: some View {
         if !insights.isEmpty {

@@ -5,7 +5,15 @@ import SwiftUI
 /// metric's "days hit this week"; a badge rail shows earned (and the
 /// next locked) milestones. Renders nothing until there's at least
 /// some progress to show.
-struct WeeklyGoalCard: View {
+/// Equatable so SwiftUI can short-circuit re-renders when the snapshot
+/// hasn't moved. Dashboard refreshes happen on every foreground —
+/// without this, the diffing engine walks the body each time even if
+/// every value is identical, costing layout work for nothing.
+struct WeeklyGoalCard: View, Equatable {
+    static func == (lhs: WeeklyGoalCard, rhs: WeeklyGoalCard) -> Bool {
+        lhs.summary == rhs.summary
+    }
+
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animatedOverall: Double = 0
@@ -67,13 +75,22 @@ struct WeeklyGoalCard: View {
 
     // MARK: - Metrics grid
 
+    /// The metric count is fixed at four (`steps`, `water`, `calories`,
+    /// `protein`), so a `LazyVGrid` is overkill — it forces an extra
+    /// measure-then-place layout pass each render. Hand-rolling the 2×2
+    /// as VStack-of-HStacks skips that and shaves milliseconds on every
+    /// dashboard refresh.
+    @ViewBuilder
     private var metricsGrid: some View {
-        LazyVGrid(
-            columns: [GridItem(.flexible(), spacing: NuvyraSpacing.sm), GridItem(.flexible(), spacing: NuvyraSpacing.sm)],
-            spacing: NuvyraSpacing.sm
-        ) {
-            ForEach(summary.progress) { item in
-                metricTile(item)
+        let items = summary.progress
+        VStack(spacing: NuvyraSpacing.sm) {
+            HStack(spacing: NuvyraSpacing.sm) {
+                if items.indices.contains(0) { metricTile(items[0]) } else { Color.clear }
+                if items.indices.contains(1) { metricTile(items[1]) } else { Color.clear }
+            }
+            HStack(spacing: NuvyraSpacing.sm) {
+                if items.indices.contains(2) { metricTile(items[2]) } else { Color.clear }
+                if items.indices.contains(3) { metricTile(items[3]) } else { Color.clear }
             }
         }
     }

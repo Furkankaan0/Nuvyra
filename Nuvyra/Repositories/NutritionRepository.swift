@@ -180,16 +180,20 @@ final class SwiftDataNutritionRepository: NutritionRepository {
     /// the quick-add carries the freshest macros the user logged for
     /// that food. Names that only appear once are dropped — a "frequent"
     /// list of one-offs isn't useful.
-    func frequentMeals(daysBack: Int = 30, limit: Int = 6) throws -> [FrequentMeal] {
+    func frequentMeals(daysBack: Int = 14, limit: Int = 6) throws -> [FrequentMeal] {
         let startDay = calendar.date(
             byAdding: .day,
             value: -(daysBack - 1),
             to: calendar.startOfDay(for: Date())
         ) ?? Date()
-        let descriptor = FetchDescriptor<MealEntry>(
+        // `fetchLimit` caps the row count for very heavy loggers. Even
+        // 14 days of 6+ meals/day stays well under this; the limit just
+        // protects against pathological cases.
+        var descriptor = FetchDescriptor<MealEntry>(
             predicate: #Predicate { $0.date >= startDay },
             sortBy: [SortDescriptor(\.createdAt, order: .reverse)]
         )
+        descriptor.fetchLimit = 200
         let rows = try context.fetch(descriptor)
 
         // Group by lowercased trimmed name. First row wins as template

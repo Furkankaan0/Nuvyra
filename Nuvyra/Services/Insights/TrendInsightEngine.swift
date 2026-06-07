@@ -204,6 +204,9 @@ struct TrendInsightCopy: Sendable {
     func stepStreakHeadline(days: Int) -> String { stepStreak(days) }
     func loggingConsistencyHeadline(daysLogged: Int) -> String { loggingConsistency(daysLogged) }
 
+    /// Both branches return the *same* static instance, so callers can
+    /// resolve on every engine invocation without paying for a new
+    /// struct allocation each time.
     static func resolved(for locale: Locale) -> TrendInsightCopy {
         let code = locale.language.languageCode?.identifier ?? "tr"
         return code == "en" ? .english : .turkish

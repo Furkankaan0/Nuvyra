@@ -17,6 +17,19 @@ import UIKit
 struct NuvyraMeshBackground: View {
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// Pauses the ambient animation whenever the app isn't actively in
+    /// front of the user. Inactive / background phases run no GPU or
+    /// CPU work — meaningful battery + thermal win for users who leave
+    /// the dashboard parked behind a banner or in split view.
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// `TimelineView.animation(minimumInterval:)` only re-renders on
+    /// the next tick. Setting this to `.infinity` while the app is
+    /// inactive freezes both paths at their current frame at zero cost.
+    private var tickInterval: Double {
+        guard scenePhase == .active, !reduceMotion else { return .infinity }
+        return 1.0 / 12.0
+    }
 
     var body: some View {
         Group {
@@ -37,8 +50,8 @@ struct NuvyraMeshBackground: View {
         // morphs between three palettes (warm / mint / sand) over 12s.
         // `points` (control-point lattice) is fixed — only colours move,
         // which keeps the perceived motion calm.
-        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 12.0)) { context in
-            let phase = reduceMotion
+        TimelineView(.animation(minimumInterval: tickInterval)) { context in
+            let phase = tickInterval.isInfinite
                 ? 0.0
                 : sin(context.date.timeIntervalSinceReferenceDate * (.pi / 6.0)) * 0.5 + 0.5
             // phase ∈ [0, 1] — used to lerp between two palettes.
@@ -116,7 +129,7 @@ struct NuvyraMeshBackground: View {
     // MARK: - iOS 17 fallback (TimelineView + Canvas)
 
     private var canvasFallback: some View {
-        TimelineView(.animation(minimumInterval: reduceMotion ? .infinity : 1.0 / 12.0)) { context in
+        TimelineView(.animation(minimumInterval: tickInterval)) { context in
             Canvas { ctx, size in
                 // Static base gradient — same calmGradient the original
                 // background uses, painted with a Path so Canvas can
@@ -134,7 +147,7 @@ struct NuvyraMeshBackground: View {
                 // Three slowly-orbiting tinted blobs. Each one's phase is
                 // offset so their peaks never align — the perceived motion
                 // stays smooth instead of pulsing.
-                let t = reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate
+                let t = tickInterval.isInfinite ? 0 : context.date.timeIntervalSinceReferenceDate
                 drawBlob(in: ctx, size: size, tint: NuvyraColors.accent,
                          radius: size.width * 0.42, phase: t * 0.07, offset: 0)
                 drawBlob(in: ctx, size: size, tint: NuvyraColors.softSand,
