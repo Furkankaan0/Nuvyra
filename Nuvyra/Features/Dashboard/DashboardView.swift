@@ -17,6 +17,10 @@ struct DashboardView: View {
     /// burst overlay. The value itself is throwaway — the burst keys on
     /// the change.
     @State private var badgeCelebrationTrigger = 0
+    /// Non-nil when the user tapped a badge chip. Drives the
+    /// `BadgeDetailSheet` presentation; `focusedBadgeID` keeps the tap
+    /// target highlighted inside the grid.
+    @State private var focusedBadge: NuvyraBadge?
 
     var body: some View {
         ZStack {
@@ -122,8 +126,10 @@ struct DashboardView: View {
                     TrendInsightCard(insights: viewModel.trendInsights)
                         .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
-                    WeeklyGoalCard(summary: viewModel.weeklyGoals)
-                        .dashboardSlide(index: 10, animated: didAnimateAppearance)
+                    WeeklyGoalCard(summary: viewModel.weeklyGoals) { badge in
+                        focusedBadge = badge
+                    }
+                    .dashboardSlide(index: 10, animated: didAnimateAppearance)
 
                     if viewModel.weightSummary.latestWeightKg != nil {
                         NavigationLink(value: DashboardDestination.bodyMeasurements) {
@@ -199,6 +205,11 @@ struct DashboardView: View {
             )
             .allowsHitTesting(false)
         )
+        .sheet(item: $focusedBadge) { badge in
+            BadgeDetailSheet(summary: viewModel.weeklyGoals, focusedBadgeID: badge.id)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+        }
         .onChange(of: viewModel.shouldShowVitalsPermissionToast) { _, shouldShow in
             guard shouldShow else { return }
             viewModel.markVitalsPermissionToastShown(context: modelContext)

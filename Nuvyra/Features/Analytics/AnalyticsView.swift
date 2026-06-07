@@ -5,6 +5,9 @@ struct AnalyticsView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var dependencies: DependencyContainer
     @StateObject private var viewModel = AnalyticsViewModel()
+    /// Non-nil when the user tapped a badge chip. Drives the badge
+    /// detail sheet pre-focused on the tapped one.
+    @State private var focusedBadge: NuvyraBadge?
 
     var body: some View {
         ZStack {
@@ -12,7 +15,9 @@ struct AnalyticsView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: NuvyraSpacing.lg) {
                     AnalyticsHeader(summary: viewModel.currentSummary)
-                    WeeklyGoalCard(summary: viewModel.weeklyGoals)
+                    WeeklyGoalCard(summary: viewModel.weeklyGoals) { badge in
+                        focusedBadge = badge
+                    }
                     WeeklyComparisonCard(comparison: viewModel.weeklyComparison)
                     TrendInsightCard(insights: viewModel.trendInsights)
                     AnalyticsSegmentedControl(selection: $viewModel.selectedPeriod)
@@ -30,6 +35,11 @@ struct AnalyticsView: View {
         .task { await viewModel.load(context: modelContext, dependencies: dependencies) }
         .onReceive(NotificationCenter.default.publisher(for: .nuvyraAppDidBecomeActive)) { _ in
             Task { await viewModel.reloadSelectedPeriod(context: modelContext, dependencies: dependencies) }
+        }
+        .sheet(item: $focusedBadge) { badge in
+            BadgeDetailSheet(summary: viewModel.weeklyGoals, focusedBadgeID: badge.id)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 

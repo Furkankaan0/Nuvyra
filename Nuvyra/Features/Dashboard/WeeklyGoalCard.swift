@@ -11,6 +11,10 @@ struct WeeklyGoalCard: View {
     @State private var animatedOverall: Double = 0
 
     var summary: WeeklyGoalSummary
+    /// Fires when the user taps a badge chip. Lets the host present the
+    /// detail sheet pre-focused on the tapped badge. No-op default keeps
+    /// existing call sites valid.
+    var onSelectBadge: (NuvyraBadge) -> Void = { _ in }
 
     private var hasContent: Bool {
         summary.progress.contains { $0.daysHit > 0 } || summary.badges.contains(where: \.isEarned)
@@ -130,29 +134,33 @@ struct WeeklyGoalCard: View {
 
     private func badgeChip(_ badge: NuvyraBadge) -> some View {
         let tint = badge.isEarned ? NuvyraColors.accent : NuvyraColors.mutedGray
-        return VStack(spacing: 4) {
-            ZStack {
-                Circle()
-                    .fill(badge.isEarned ? tint.opacity(scheme == .dark ? 0.22 : 0.16) : NuvyraColors.mutedGray.opacity(0.12))
-                Image(systemName: badge.systemImage)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(badge.isEarned ? tint : NuvyraColors.mutedGray.opacity(0.6))
-                if !badge.isEarned {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.secondary)
-                        .offset(x: 14, y: 14)
+        return Button { onSelectBadge(badge) } label: {
+            VStack(spacing: 4) {
+                ZStack {
+                    Circle()
+                        .fill(badge.isEarned ? tint.opacity(scheme == .dark ? 0.22 : 0.16) : NuvyraColors.mutedGray.opacity(0.12))
+                    Image(systemName: badge.systemImage)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(badge.isEarned ? tint : NuvyraColors.mutedGray.opacity(0.6))
+                    if !badge.isEarned {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(.secondary)
+                            .offset(x: 14, y: 14)
+                    }
                 }
+                .frame(width: 44, height: 44)
+                Text(badge.title)
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(badge.isEarned ? .primary : .secondary)
+                    .lineLimit(1)
             }
-            .frame(width: 44, height: 44)
-            Text(badge.title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(badge.isEarned ? .primary : .secondary)
-                .lineLimit(1)
+            .frame(width: 76)
         }
-        .frame(width: 76)
+        .buttonStyle(.plain)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(badge.title), \(badge.isEarned ? "kazanıldı" : "kilitli"). \(badge.detail)")
+        .accessibilityHint("Tüm rozetleri görmek için dokun.")
     }
 
     // MARK: - Animation
