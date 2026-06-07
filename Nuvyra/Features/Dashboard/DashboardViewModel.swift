@@ -332,6 +332,12 @@ final class DashboardViewModel: ObservableObject {
                 endingOn: Date()
             )) ?? .empty
 
+            // Mirror the latest snapshot to the paired Apple Watch so
+            // the watch dashboard's mini goal grid + complications stay
+            // in step with the phone. `updateApplicationContext`
+            // coalesces — only the most recent state ever lands.
+            WatchOutbound.pushWeeklyGoals(weeklyGoals)
+
             // Day-one tour flag — read from AppSettings, auto-complete once every step is done.
             let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first
 

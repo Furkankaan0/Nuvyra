@@ -47,6 +47,10 @@ struct WatchDashboardView: View {
                         progress: viewModel.stepProgress
                     )
 
+                    if let snapshot = session.weeklyGoalsSnapshot {
+                        WatchWeeklyGoalGrid(snapshot: snapshot)
+                    }
+
                     if !session.isReachable {
                         Label("iPhone çevrimdışıysa su kaydı eşitlenmek üzere bekletilir.", systemImage: "iphone.slash")
                             .font(.caption2)

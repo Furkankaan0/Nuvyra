@@ -18,6 +18,43 @@ final class WatchWaterSyncService: NSObject {
         isSessionConfigured = true
     }
 
+    /// Outbound state push: mirrors the latest weekly-goal snapshot to
+    /// the paired Watch via `updateApplicationContext`. Latest-state
+    /// wins (no message queue replay), so we don't have to dedup on the
+    /// watch side. Safely no-ops when WC isn't supported, paired, or
+    /// the watch hasn't installed the companion app.
+    func pushWeeklyGoalSnapshot(_ summary: WeeklyGoalSummary) {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard session.activationState == .activated, session.isPaired, session.isWatchAppInstalled else { return }
+
+        let payload: [String: Any] = [
+            "type": "goals.snapshot",
+            "overallFraction": summary.overallFraction,
+            "achievedCount": summary.achievedCount,
+            "totalGoals": summary.progress.count,
+            "metrics": summary.progress.map { [
+                "key": $0.metric.rawValue,
+                "daysHit": $0.daysHit,
+                "totalDays": $0.totalDays
+            ] },
+            "badges": summary.badges.map { [
+                "id": $0.id,
+                "title": $0.title,
+                "isEarned": $0.isEarned
+            ] }
+        ]
+        do {
+            try session.updateApplicationContext(payload)
+        } catch {
+            // Non-fatal — the next refresh will retry. Logging only in
+            // debug avoids leaking the WC error through release.
+            #if DEBUG
+            print("[WatchWaterSyncService] updateApplicationContext failed: \(error.localizedDescription)")
+            #endif
+        }
+    }
+
     private func handleWaterPayload(_ payload: [String: Any]) {
         guard payload["type"] as? String == "water.added" else { return }
         guard let rawAmount = payload["amountMl"] as? Int else { return }
@@ -55,6 +92,22 @@ final class WatchWaterSyncService: NSObject {
         var ids = UserDefaults.standard.stringArray(forKey: processedEventIDsKey) ?? []
         ids.append(eventID)
         UserDefaults.standard.set(Array(ids.suffix(50)), forKey: processedEventIDsKey)
+    }
+}
+
+/// Process-wide outbound hook for one-way iPhone → Watch state pushes.
+/// `NuvyraApp` registers the live `WatchWaterSyncService` here once at
+/// launch; view models call into it without importing the service or
+/// drilling it through `DependencyContainer`. Off by default — a build
+/// without a paired watch (simulators, CI) safely no-ops.
+@MainActor
+enum WatchOutbound {
+    private static weak var sink: WatchWaterSyncService?
+
+    static func register(_ service: WatchWaterSyncService) { sink = service }
+
+    static func pushWeeklyGoals(_ summary: WeeklyGoalSummary) {
+        sink?.pushWeeklyGoalSnapshot(summary)
     }
 }
 

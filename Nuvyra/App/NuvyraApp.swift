@@ -84,6 +84,7 @@ struct NuvyraApp: App {
         }
 
         watchWaterSyncService.activate(modelContainer: modelContainer)
+        WatchOutbound.register(watchWaterSyncService)
         SeedData.ensureMinimumData(in: modelContainer.mainContext)
         NuvyraNotificationCategoryService.shared.registerCategories()
         await dependencies.subscriptionManager.loadProducts()
