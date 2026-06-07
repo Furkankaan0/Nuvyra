@@ -8,14 +8,16 @@ struct WeeklyGoalProgress: Identifiable, Equatable {
         case steps, water, calories, protein
         var id: String { rawValue }
 
-        var title: String {
-            switch self {
-            case .steps: "Adım"
-            case .water: "Su"
-            case .calories: "Kalori"
-            case .protein: "Protein"
-            }
+        /// Locale-aware human title. Engine resolves via `WeeklyGoalCopy`;
+        /// callers that don't have a locale fall back to Turkish so the
+        /// existing TR-only UI keeps working.
+        func title(in locale: Locale = .current) -> String {
+            WeeklyGoalCopy.resolved(for: locale).metricTitle(for: self)
         }
+
+        /// Backwards-compatible accessor — preserves call sites that read
+        /// `.title` as a property.
+        var title: String { title(in: .current) }
 
         var systemImage: String {
             switch self {
@@ -83,7 +85,11 @@ protocol WeeklyGoalEngine {
 @MainActor
 struct DefaultWeeklyGoalEngine: WeeklyGoalEngine {
     private let calendar: Calendar
-    init(calendar: Calendar = .nuvyra) { self.calendar = calendar }
+    private let locale: Locale
+    init(calendar: Calendar = .nuvyra, locale: Locale = .current) {
+        self.calendar = calendar
+        self.locale = locale
+    }
 
     func summary(
         nutrition: NutritionRepository,
@@ -138,7 +144,8 @@ struct DefaultWeeklyGoalEngine: WeeklyGoalEngine {
         let badges = makeBadges(
             progress: progress,
             mealStreak: mealStreak,
-            waterStreak: waterStreak
+            waterStreak: waterStreak,
+            copy: WeeklyGoalCopy.resolved(for: locale)
         )
 
         return WeeklyGoalSummary(progress: progress, badges: badges, overallFraction: overall)
@@ -150,7 +157,8 @@ struct DefaultWeeklyGoalEngine: WeeklyGoalEngine {
     private func makeBadges(
         progress: [WeeklyGoalProgress],
         mealStreak: StreakInsight,
-        waterStreak: StreakInsight
+        waterStreak: StreakInsight,
+        copy: WeeklyGoalCopy
     ) -> [NuvyraBadge] {
         let allAchieved = progress.allSatisfy(\.isAchieved)
         let bestStreak = max(mealStreak.longestStreak, waterStreak.longestStreak)
@@ -158,34 +166,97 @@ struct DefaultWeeklyGoalEngine: WeeklyGoalEngine {
         return [
             NuvyraBadge(
                 id: "badge.week.balanced",
-                title: "Dengeli hafta",
-                detail: "Bu hafta dört hedefin de çoğu günde tamam.",
+                title: copy.balancedWeekTitle,
+                detail: copy.balancedWeekDetail,
                 systemImage: "checkmark.seal.fill",
                 isEarned: allAchieved
             ),
             NuvyraBadge(
                 id: "badge.streak.7",
-                title: "7 gün ritim",
-                detail: "7 günlük bir alışkanlık serisi tamamla.",
+                title: copy.streak7Title,
+                detail: copy.streak7Detail,
                 systemImage: "flame.fill",
                 isEarned: bestStreak >= 7
             ),
             NuvyraBadge(
                 id: "badge.streak.30",
-                title: "30 gün ritim",
-                detail: "Bir aylık tutarlılık — kalıcı alışkanlık.",
+                title: copy.streak30Title,
+                detail: copy.streak30Detail,
                 systemImage: "crown.fill",
                 isEarned: bestStreak >= 30
             ),
             NuvyraBadge(
                 id: "badge.steps.week",
-                title: "Yürüyüş haftası",
-                detail: "Adım hedefini haftanın çoğunda tuttur.",
+                title: copy.stepsWeekTitle,
+                detail: copy.stepsWeekDetail,
                 systemImage: "figure.walk.motion",
                 isEarned: progress.first { $0.metric == .steps }?.isAchieved ?? false
             )
         ]
     }
+}
+
+/// Two-language copy bank for `WeeklyGoalEngine` — same pattern as the
+/// other engine copy banks. Drives the metric titles + the four badge
+/// strings; everything else is data-driven.
+struct WeeklyGoalCopy: Sendable {
+    let stepsTitle: String
+    let waterTitle: String
+    let caloriesTitle: String
+    let proteinTitle: String
+
+    let balancedWeekTitle: String
+    let balancedWeekDetail: String
+    let streak7Title: String
+    let streak7Detail: String
+    let streak30Title: String
+    let streak30Detail: String
+    let stepsWeekTitle: String
+    let stepsWeekDetail: String
+
+    func metricTitle(for metric: WeeklyGoalProgress.Metric) -> String {
+        switch metric {
+        case .steps: stepsTitle
+        case .water: waterTitle
+        case .calories: caloriesTitle
+        case .protein: proteinTitle
+        }
+    }
+
+    static func resolved(for locale: Locale) -> WeeklyGoalCopy {
+        let code = locale.language.languageCode?.identifier ?? "tr"
+        return code == "en" ? .english : .turkish
+    }
+
+    static let turkish = WeeklyGoalCopy(
+        stepsTitle: "Adım",
+        waterTitle: "Su",
+        caloriesTitle: "Kalori",
+        proteinTitle: "Protein",
+        balancedWeekTitle: "Dengeli hafta",
+        balancedWeekDetail: "Bu hafta dört hedefin de çoğu günde tamam.",
+        streak7Title: "7 gün ritim",
+        streak7Detail: "7 günlük bir alışkanlık serisi tamamla.",
+        streak30Title: "30 gün ritim",
+        streak30Detail: "Bir aylık tutarlılık — kalıcı alışkanlık.",
+        stepsWeekTitle: "Yürüyüş haftası",
+        stepsWeekDetail: "Adım hedefini haftanın çoğunda tuttur."
+    )
+
+    static let english = WeeklyGoalCopy(
+        stepsTitle: "Steps",
+        waterTitle: "Water",
+        caloriesTitle: "Calories",
+        proteinTitle: "Protein",
+        balancedWeekTitle: "Balanced week",
+        balancedWeekDetail: "All four goals hit on most days this week.",
+        streak7Title: "7-day rhythm",
+        streak7Detail: "Build a 7-day habit streak.",
+        streak30Title: "30-day rhythm",
+        streak30Detail: "A month of consistency — a lasting habit.",
+        stepsWeekTitle: "Walking week",
+        stepsWeekDetail: "Hit your step goal on most days of the week."
+    )
 }
 
 /// Static stub for previews + tests.

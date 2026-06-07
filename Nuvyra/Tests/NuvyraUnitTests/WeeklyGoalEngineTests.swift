@@ -129,4 +129,26 @@ final class WeeklyGoalEngineTests: XCTestCase {
         XCTAssertTrue(week.isEarned)
         XCTAssertFalse(month.isEarned)
     }
+
+    func testEnglishLocaleProducesEnglishBadgeTitles() throws {
+        let container = try makeContainer()
+        let context = container.mainContext
+        let engine = DefaultWeeklyGoalEngine(locale: Locale(identifier: "en_US"))
+        let summary = try engine.summary(
+            nutrition: SwiftDataNutritionRepository(context: context),
+            water: SwiftDataWaterRepository(context: context),
+            activity: SwiftDataActivityRepository(context: context),
+            profile: profile(),
+            mealStreak: .empty, waterStreak: .empty, endingOn: Date()
+        )
+        let streak7 = try XCTUnwrap(summary.badges.first { $0.id == "badge.streak.7" })
+        XCTAssertEqual(streak7.title, "7-day rhythm")
+        XCTAssertEqual(WeeklyGoalProgress.Metric.steps.title(in: Locale(identifier: "en_US")), "Steps")
+    }
+
+    func testTrendInsightCopyEnglishHeadlines() {
+        let copy = TrendInsightCopy.english
+        XCTAssertEqual(copy.proteinShortfallHeadline(days: 4), "Protein has been under target for 4 days")
+        XCTAssertEqual(copy.weekendWaterDipHeadline(percent: 22), "Your water rhythm dips 22% on weekends")
+    }
 }

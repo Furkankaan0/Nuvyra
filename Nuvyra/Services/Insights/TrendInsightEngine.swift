@@ -39,9 +39,11 @@ protocol TrendInsightEngine {
 @MainActor
 struct DefaultTrendInsightEngine: TrendInsightEngine {
     private let calendar: Calendar
+    private let locale: Locale
 
-    init(calendar: Calendar = .nuvyra) {
+    init(calendar: Calendar = .nuvyra, locale: Locale = .current) {
         self.calendar = calendar
+        self.locale = locale
     }
 
     func detect(
@@ -51,6 +53,7 @@ struct DefaultTrendInsightEngine: TrendInsightEngine {
         profile: UserProfile?,
         endingOn date: Date = Date()
     ) throws -> [TrendInsight] {
+        let copy = TrendInsightCopy.resolved(for: locale)
         let days = 14
         let nutritionDays = try nutrition.dailySummaries(days: days, endingOn: date)
         let waterDays = try water.dailyTotals(days: days, endingOn: date)
@@ -63,16 +66,16 @@ struct DefaultTrendInsightEngine: TrendInsightEngine {
 
         var found: [TrendInsight] = []
 
-        if let proteinTrend = proteinShortfallTrend(nutritionDays, profile: profile) {
+        if let proteinTrend = proteinShortfallTrend(nutritionDays, profile: profile, copy: copy) {
             found.append(proteinTrend)
         }
-        if let weekendWater = weekendWaterDipTrend(waterDays, targetMl: profile?.dailyWaterTargetMl ?? 2_000) {
+        if let weekendWater = weekendWaterDipTrend(waterDays, targetMl: profile?.dailyWaterTargetMl ?? 2_000, copy: copy) {
             found.append(weekendWater)
         }
-        if let stepStreak = stepImprovementTrend(stepsByDay: stepsByDay, endingOn: date, goal: profile?.dailyStepTarget ?? 7_500) {
+        if let stepStreak = stepImprovementTrend(stepsByDay: stepsByDay, endingOn: date, goal: profile?.dailyStepTarget ?? 7_500, copy: copy) {
             found.append(stepStreak)
         }
-        if let consistency = loggingConsistencyTrend(nutritionDays) {
+        if let consistency = loggingConsistencyTrend(nutritionDays, copy: copy) {
             found.append(consistency)
         }
 
@@ -93,7 +96,7 @@ struct DefaultTrendInsightEngine: TrendInsightEngine {
     // MARK: - Detectors
 
     /// 3+ consecutive recent days below 70% of the protein target.
-    private func proteinShortfallTrend(_ days: [DailyMealSummary], profile: UserProfile?) -> TrendInsight? {
+    private func proteinShortfallTrend(_ days: [DailyMealSummary], profile: UserProfile?, copy: TrendInsightCopy) -> TrendInsight? {
         let target = Double(profile?.dailyProteinTargetGrams ?? 120)
         guard target > 0 else { return nil }
         let threshold = target * 0.7
@@ -109,15 +112,15 @@ struct DefaultTrendInsightEngine: TrendInsightEngine {
         guard run >= 3 else { return nil }
         return TrendInsight(
             id: "protein.shortfall",
-            headline: "\(run) gündür protein hedefinin altındasın",
-            detail: "Yoğurt, mercimek veya yumurta gibi küçük eklemeler ortalamanı nazikçe yukarı çeker.",
+            headline: copy.proteinShortfallHeadline(days: run),
+            detail: copy.proteinShortfallDetail,
             tone: .nudge,
             systemImage: "bolt.heart"
         )
     }
 
     /// Weekend water average noticeably below the weekday average.
-    private func weekendWaterDipTrend(_ days: [WaterDayTotal], targetMl: Int) -> TrendInsight? {
+    private func weekendWaterDipTrend(_ days: [WaterDayTotal], targetMl: Int, copy: TrendInsightCopy) -> TrendInsight? {
         var weekdayTotals: [Int] = []
         var weekendTotals: [Int] = []
         for day in days {
@@ -136,15 +139,15 @@ struct DefaultTrendInsightEngine: TrendInsightEngine {
         let dropPercent = Int(((weekdayAvg - weekendAvg) / weekdayAvg * 100).rounded())
         return TrendInsight(
             id: "water.weekend.dip",
-            headline: "Su ritmin hafta sonu %\(dropPercent) düşüyor",
-            detail: "Hafta sonu sabahına bir bardak su eklemek bu farkı kapatmanın en sade yolu.",
+            headline: copy.weekendWaterDipHeadline(percent: dropPercent),
+            detail: copy.weekendWaterDipDetail,
             tone: .nudge,
             systemImage: "drop.fill"
         )
     }
 
     /// 4+ consecutive recent days that hit the step goal.
-    private func stepImprovementTrend(stepsByDay: [Date: Int], endingOn date: Date, goal: Int) -> TrendInsight? {
+    private func stepImprovementTrend(stepsByDay: [Date: Int], endingOn date: Date, goal: Int, copy: TrendInsightCopy) -> TrendInsight? {
         guard goal > 0 else { return nil }
         let startOfEnd = calendar.startOfDay(for: date)
         var run = 0
@@ -156,27 +159,77 @@ struct DefaultTrendInsightEngine: TrendInsightEngine {
         guard run >= 4 else { return nil }
         return TrendInsight(
             id: "steps.streak",
-            headline: "\(run) gündür adım hedefini tutturuyorsun",
-            detail: "Bu tür sakin tutarlılık, tek seferlik büyük çıkışlardan daha kalıcıdır.",
+            headline: copy.stepStreakHeadline(days: run),
+            detail: copy.stepStreakDetail,
             tone: .encouraging,
             systemImage: "figure.walk.motion"
         )
     }
 
     /// Logged a meal on 6 of the last 7 days.
-    private func loggingConsistencyTrend(_ days: [DailyMealSummary]) -> TrendInsight? {
+    private func loggingConsistencyTrend(_ days: [DailyMealSummary], copy: TrendInsightCopy) -> TrendInsight? {
         let lastSeven = Array(days.suffix(7))
         guard lastSeven.count == 7 else { return nil }
         let loggedDays = lastSeven.filter { $0.mealCount > 0 }.count
         guard loggedDays >= 6 else { return nil }
         return TrendInsight(
             id: "logging.consistency",
-            headline: "Son 7 günün \(loggedDays)'sinde öğün kaydı tuttun",
-            detail: "Kayıt tutmak, beslenmeni suçlulukla değil farkındalıkla izlemenin en yumuşak yolu.",
+            headline: copy.loggingConsistencyHeadline(daysLogged: loggedDays),
+            detail: copy.loggingConsistencyDetail,
             tone: .encouraging,
             systemImage: "checkmark.seal.fill"
         )
     }
+}
+
+/// Two-language copy bank — same pattern as `MealTimingCopy`. Keeps the
+/// engine's rule logic and the user-facing language right next to each
+/// other so they stay in sync when either side moves.
+private typealias TrendDaysBuilder = @Sendable (Int) -> String
+private typealias TrendPercentBuilder = @Sendable (Int) -> String
+
+struct TrendInsightCopy: Sendable {
+    let proteinShortfallDetail: String
+    let weekendWaterDipDetail: String
+    let stepStreakDetail: String
+    let loggingConsistencyDetail: String
+
+    private let proteinShortfall: TrendDaysBuilder
+    private let weekendWaterDip: TrendPercentBuilder
+    private let stepStreak: TrendDaysBuilder
+    private let loggingConsistency: TrendDaysBuilder
+
+    func proteinShortfallHeadline(days: Int) -> String { proteinShortfall(days) }
+    func weekendWaterDipHeadline(percent: Int) -> String { weekendWaterDip(percent) }
+    func stepStreakHeadline(days: Int) -> String { stepStreak(days) }
+    func loggingConsistencyHeadline(daysLogged: Int) -> String { loggingConsistency(daysLogged) }
+
+    static func resolved(for locale: Locale) -> TrendInsightCopy {
+        let code = locale.language.languageCode?.identifier ?? "tr"
+        return code == "en" ? .english : .turkish
+    }
+
+    static let turkish = TrendInsightCopy(
+        proteinShortfallDetail: "Yoğurt, mercimek veya yumurta gibi küçük eklemeler ortalamanı nazikçe yukarı çeker.",
+        weekendWaterDipDetail: "Hafta sonu sabahına bir bardak su eklemek bu farkı kapatmanın en sade yolu.",
+        stepStreakDetail: "Bu tür sakin tutarlılık, tek seferlik büyük çıkışlardan daha kalıcıdır.",
+        loggingConsistencyDetail: "Kayıt tutmak, beslenmeni suçlulukla değil farkındalıkla izlemenin en yumuşak yolu.",
+        proteinShortfall: { days in "\(days) gündür protein hedefinin altındasın" },
+        weekendWaterDip: { percent in "Su ritmin hafta sonu %\(percent) düşüyor" },
+        stepStreak: { days in "\(days) gündür adım hedefini tutturuyorsun" },
+        loggingConsistency: { logged in "Son 7 günün \(logged)'sinde öğün kaydı tuttun" }
+    )
+
+    static let english = TrendInsightCopy(
+        proteinShortfallDetail: "Small additions like yogurt, lentils or eggs can lift your average gently.",
+        weekendWaterDipDetail: "A glass of water with your weekend mornings is the simplest way to close that gap.",
+        stepStreakDetail: "This kind of calm consistency lasts longer than one-off big pushes.",
+        loggingConsistencyDetail: "Logging is the gentlest way to follow your nutrition with awareness, not guilt.",
+        proteinShortfall: { days in "Protein has been under target for \(days) days" },
+        weekendWaterDip: { percent in "Your water rhythm dips \(percent)% on weekends" },
+        stepStreak: { days in "You've hit your step goal \(days) days running" },
+        loggingConsistency: { logged in "You logged a meal on \(logged) of the last 7 days" }
+    )
 }
 
 /// Static stub for previews + tests.
